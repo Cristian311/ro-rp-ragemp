@@ -17,7 +17,6 @@ mp.events.add('openPokerUI', () => {
     if (pokerBrowser === null) {
         pokerBrowser = mp.browsers.new("package://poker/index.html");
         mp.gui.cursor.show(true, true);
-        mp.gui.chat.push("Ai deschis masa de Poker.");
     }
 });
 
@@ -26,7 +25,6 @@ if (pokerBrowser !== null) {
         pokerBrowser.destroy();
         pokerBrowser = null;
         mp.gui.cursor.show(false, false);
-        mp.gui.chat.push("Ai închis masa de Poker.");
     }
 }
 

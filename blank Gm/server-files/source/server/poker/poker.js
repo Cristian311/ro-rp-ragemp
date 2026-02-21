@@ -1,4 +1,3 @@
-
 const util = require('./util.js');
 const fs = require('fs');
 const path = require('path');
@@ -15,7 +14,7 @@ mp.events.add('Server_ReceivePokerAction', (player, actionName) => {
         player.outputChatBox("Ai dat Fold. Așteaptă runda următoare.");
     } 
     else if (actionName === 'call') {
-        player.outputChatBox("Ai dat Call.");ddsssssssssss
+        player.outputChatBox("Ai dat Call.");
     } 
     else if (actionName === 'raise') {
         player.outputChatBox("Ai dat Raise.");
@@ -34,8 +33,8 @@ mp.events.add('Server_PlayerAction', (player, actionName) => {
     console.log(`Jucătorul ${player.name} a acționat: ${actionName}`);
     if (actionName === 'interact') {
         if (player.currentTable) {
-            player.outputChatBox("Interacționezi cu masa de poker.");
-            player.call('openPokerUI');
+            player.outputChatBox(`Ești la masa de poker: ${player.currentTable.getVariable('tableIndex')} ${player.currentTable.getVariable('tableName')}`);
+            mp.events.call('Server_JoinPokerTable', player, player.currentTable.getVariable('tableIndex'), player.currentTable.getVariable('tableName'));
         } else {
             player.outputChatBox("Nu ești lângă nicio masă de poker.");
         }
@@ -55,6 +54,8 @@ mp.events.add("playerExitColshape", (player, colshape) => {
         player.currentTable = null;
     }
 });
+
+let pokerTables = [];
 
 // Comenzi
 mp.events.addCommand('createpoker', (player, name) => {
@@ -83,14 +84,11 @@ mp.events.addCommand('createpoker', (player, name) => {
     fs.writeFileSync(savePath, JSON.stringify(tables, null, 4)); 
 
     util.createMarker(newTable, tables.length - 1);
-    util.createColshape(newTable, tables.length - 1);
+    util.createColshape(newTable, tables.length - 1, name);
     util.createBlip(newTable);
 
     player.outputChatBox(`Masa de poker salvata la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
 });
-
-
-//Load async
 
 function loadPokerTables() {
     if (!fs.existsSync(savePath)) return;
@@ -102,7 +100,7 @@ function loadPokerTables() {
 
     tables.forEach((table, index) => {
         util.createBlip(table);
-        util.createColshape(table, index);
+        util.createColshape(table, index, table.name);
         util.createMarker(table, index);   
         console.log(`Masa #${index}. ${table.name}: X:${table.x}, Y:${table.y}, Z:${table.z}`);
     });

@@ -16,10 +16,11 @@ function createMarker(table, index) {
     });
 }
 
-function createColshape(position, index) {
+function createColshape(position, index, name) {
     const colShape = mp.colshapes.newCircle(position.x, position.y, 2.0, 0); // 2.0 este raza in metri
     colShape.setVariable('isPokerTable', true);
-    colShape.setVariable('tableID', index);
+    colShape.setVariable('tableIndex', index);
+    colShape.setVariable('tableName', name);
 }
 
 
