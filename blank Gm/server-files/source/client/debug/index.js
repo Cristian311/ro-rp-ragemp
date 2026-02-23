@@ -39,24 +39,41 @@ mp.events.add('Client_UpdateDebugHUD', (text) => {
 mp.events.add('render', () => {
     if (!isDebugVisible) return;
 
-    const startX = 0.78;
-    const startY = 0.75;
+    // Setăm dimensiunile și poziția bazei (colțul stânga-sus al cutiei)
+    const startX = 0.72; // L-am dat puțin mai în stânga ca să nu iasă de pe ecran
+    const startY = 0.20; 
+    const width = 0.25;  // Cutie un pic mai lată pentru a cuprinde tot textul
 
-    const width = 0.20;
-    // Înălțimea calculată din numărul de linii + padding vertical (sus + jos)
-    const height = (lineCount * LINE_HEIGHT) + (PADDING_Y * 2);
+    // Spațiul real ocupat de un rând de text (Ajustat fix pentru scale 0.35)
+    const LINE_HEIGHT = 0.020; 
+    const PADDING_X = 0.005;
+    const PADDING_Y = 0.010;
 
-    // drawRect vrea centrul, nu colțul
+    // Împărțim textul în linii
+    const debugLines = debugText.split('\n');
+
+    // Înălțimea cutiei calculată exact pe baza numărului de linii
+    const height = (debugLines.length * LINE_HEIGHT) + (PADDING_Y * 2);
+
+    // GTA V cere coordonata centrului pentru a desena un dreptunghi (drawRect)
     const centerX = startX + (width / 2);
     const centerY = startY + (height / 2);
 
+    // 1. Desenăm cutia neagră transparentă
     mp.game.graphics.drawRect(centerX, centerY, width, height, 15, 15, 15, 200);
 
-    // Textul pornește din colțul stânga-sus + padding
-    mp.game.graphics.drawText(debugText, [startX + PADDING_X, startY + PADDING_Y], {
-        font: 4,
-        color: [255, 255, 255, 255],
-        scale: [0.35, 0.35],
-        outline: true
-    });
+    // 2. Desenăm textul, linie cu linie
+    for (let i = 0; i < debugLines.length; i++) {
+        // Calculăm poziția Y pentru fiecare linie
+        // Am pus o mică corecție de -0.010 ca textul să nu pornească prea de jos
+        let currentY = startY + PADDING_Y + (i * LINE_HEIGHT) - 0.010;
+
+        mp.game.graphics.drawText(debugLines[i], [startX + PADDING_X, currentY], {
+            font: 4,
+            color: [255, 255, 255, 255],
+            scale: [0.35, 0.35],
+            outline: true,
+            centre: false // <-- IMPORTANT: Asta forțează textul să se alinieze frumos la stânga!
+        });
+    }
 });

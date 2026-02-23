@@ -6,25 +6,16 @@
 <link rel="stylesheet" href="styles.css">
 <title>Poker HUD – RageMP</title>
 </head>
-
 <body>
 
 <div id="topbar">
   <div class="logo">♠ POKER HUD</div>
   <div class="sep"></div>
-  <div class="info" id="phase-label">PRE-FLOP</div>
-  <div class="info" style="margin-left:20px">RageMP v1.1</div>
+  <div class="info" id="phase-label">WAITING</div>
+  <div class="info">RageMP v1.1</div>
 </div>
 
 <div id="pot-display">POT: $<span id="pot-value">0</span></div>
-
-<div id="player-hand">
-  <div class="label">Cărțile tale</div>
-  <div class="cards" id="hand-cards">
-    <div class="card back" id="pc1"></div>
-    <div class="card back" id="pc2"></div>
-  </div>
-</div>
 
 <div id="community">
   <div class="label">Masă</div>
@@ -37,21 +28,32 @@
   </div>
 </div>
 
+<div id="player-hand">
+  <div class="label">Cărțile tale</div>
+  <div class="cards" id="hand-cards">
+    <div class="card back" id="pc1"></div>
+    <div class="card back" id="pc2"></div>
+  </div>
+</div>
+
 <div id="actions">
   <button class="btn-action" id="btn-fold"  onclick="sendAction('fold')">Fold</button>
   <button class="btn-action" id="btn-check" onclick="sendAction('check')">Check</button>
-  <button class="btn-action" id="btn-call"  onclick="sendAction('call')">Call</button>
-  <button class="btn-action" id="btn-raise" onclick="sendAction('raise')">Raise</button>
+  <button class="btn-action" id="btn-call"  onclick="sendAction('call')">Call $0</button>
+  <button class="btn-action" id="btn-raise" onclick="toggleRaiseInput()">Raise</button>
+  <div id="raise-wrap">
+    <input id="raise-input" type="number" placeholder="Sumă" min="0" step="50" />
+    <button id="btn-raise-confirm" onclick="confirmRaise()">OK</button>
+  </div>
   <button class="btn-action" id="btn-allin" onclick="sendAction('allin')">All-In</button>
 </div>
 
 <div id="player-list">
   <div class="pl-header">
     <span>Jucători</span>
-    <span class="pot" id="blind-info">BB $20 / SB $10</span>
+    <span class="pot" id="blind-info">SB $50 / BB $100</span>
   </div>
-  <div id="pl-rows">
-    </div>
+  <div id="pl-rows"></div>
 </div>
 
 <div id="timer-wrap">
@@ -65,184 +67,176 @@
   <div id="timer-label">Așteptare...</div>
 </div>
 
+
+
 <div id="toast"></div>
 
 <script>
-// ==========================================
-// 1. CONFIGURĂRI ȘI HELPERE
-// ==========================================
-const SUIT_SYMBOLS = { s:'♠', h:'♥', d:'♦', c:'♣' };
-const RED_SUITS = ['h','d'];
-let timerInterval = null;
-const CIRCUMFERENCE = 2 * Math.PI * 26; // Pentru animația cercului
+const SUIT_SYMBOLS  = { s:'♠', h:'♥', d:'♦', c:'♣' };
+const RED_SUITS     = ['h', 'd'];
+const CIRCUMFERENCE = 2 * Math.PI * 26;
 
-// Funcție internă pentru a construi HTML-ul unei cărți
+let timerTotal   = 30;
+let toastTimeout = null;
+
+function parseCard(cardStr) {
+    if (!cardStr) return { rank:'', suit:'' };
+    return { suit: cardStr.slice(-1), rank: cardStr.slice(0,-1) };
+}
+
 function setCardData(elementId, rank, suit) {
     const el = document.getElementById(elementId);
     if (!el) return;
-
-    if (!rank || !suit) {
-        el.className = "card back";
-        el.innerHTML = "";
-        return;
-    }
-
+    if (!rank || !suit) { el.className='card back'; el.innerHTML=''; return; }
     const isRed = RED_SUITS.includes(suit);
-    const sym = SUIT_SYMBOLS[suit] || suit;
-    el.className = `card face ${isRed ? 'red' : 'black'}`;
-    el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${sym}</span>`;
+    el.className = `card face ${isRed?'red':'black'}`;
+    el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${SUIT_SYMBOLS[suit]||suit}</span>`;
 }
 
-
-// ==========================================
-// 2. FUNCȚIILE TALE PENTRU RAGEMP (API)
-// ==========================================
-
-/**
- * Actualizează cărțile jucătorului local (ale tale).
- * Exemplu utilizare: updateMyCards('A', 's', 'K', 'h'); 
- */
 function updateMyCards(rank1, suit1, rank2, suit2) {
     setCardData('pc1', rank1, suit1);
     setCardData('pc2', rank2, suit2);
 }
 
-/**
- * Actualizează cărțile de pe masă (community cards).
- * Trimite un array de obiecte. Dacă trimiți 3 cărți, arată Flop-ul. Dacă trimiți 5, arată River-ul.
- * Exemplu: updateTableCards([{r:'A', s:'s'}, {r:'10', s:'d'}, {r:'2', s:'c'}])
- */
-function updateTableCards(cardsArray) {
-    for (let i = 1; i <= 5; i++) {
+function updateGameState(state) {
+    document.getElementById('pot-value').textContent   = state.pot || 0;
+    document.getElementById('phase-label').textContent = (state.round||'WAITING').toUpperCase();
+    const cc = state.communityCards || [];
+    for (let i=1; i<=5; i++) {
         const el = document.getElementById(`cc${i}`);
-        const cardData = cardsArray[i - 1]; // Indexul array-ului începe de la 0
-
-        if (cardData) {
-            el.style.display = 'flex'; // Arată cartea
-            setCardData(`cc${i}`, cardData.r, cardData.s);
+        if (cc[i-1]) {
+            const {rank,suit} = parseCard(cc[i-1]);
+            el.style.display='flex';
+            setCardData(`cc${i}`, rank, suit);
         } else {
-            el.style.display = 'none'; // Ascunde cartea dacă nu există (ex: turn/river)
+            el.style.display='none';
+            setCardData(`cc${i}`,'','');
         }
     }
+    renderPlayerList(state.players||[], state.currentPlayer);
 }
 
-/**
- * Afișează sau ascunde butoanele de acțiune (Fold, Check, Raise etc.).
- * Exemplu: toggleActionButtons(true) -> le arată; toggleActionButtons(false) -> le ascunde.
- */
-function toggleActionButtons(isVisible) {
-    const actionsEl = document.getElementById('actions');
-    if (isVisible) {
-        actionsEl.classList.add('visible'); // Asigură-te că ai în CSS `.actions.visible { display: flex; }` sau similar
+function onYourTurn(currentBet, myBet, myChips) {
+    const toCall   = currentBet - myBet;
+    const callBtn  = document.getElementById('btn-call');
+    const checkBtn = document.getElementById('btn-check');
+    if (toCall <= 0) {
+        callBtn.style.display='none'; checkBtn.style.display='';
     } else {
-        actionsEl.classList.remove('visible');
+        callBtn.textContent=`Call $${Math.min(toCall,myChips)}`; callBtn.style.display=''; checkBtn.style.display='none';
     }
+    const inp=document.getElementById('raise-input');
+    const minRaise=currentBet+100;
+    inp.min=minRaise; inp.value=minRaise; inp.max=myChips+myBet;
+    toggleActionButtons(true);
+    showToast('Rândul tău!');
 }
 
-/**
- * Setează cine e la rând în acest moment.
- * Va schimba numele sub timer și va evidenția jucătorul în lista din stânga.
- * Exemplu: setActivePlayer(1, "xXDarkBoyXx")
- */
-function setActivePlayer(playerIndex, playerName) {
-    // Schimbă textul timer-ului
-    document.getElementById('timer-label').textContent = playerName || "Așteptare...";
-    
-    // Evidențiază rândul în lista de jucători
-    const rows = document.querySelectorAll('.pl-row');
-    rows.forEach((row, i) => {
-        if (i === playerIndex) {
-            row.classList.add('active');
-        } else {
-            row.classList.remove('active');
-        }
+function updateTurnTimer(playerName, timeLeft) {
+    const wrap=document.getElementById('timer-wrap');
+    const fillEl=document.getElementById('fill');
+    const numEl=document.getElementById('timer-num');
+    const lblEl=document.getElementById('timer-label');
+    if (timeLeft<=0) { wrap.classList.remove('visible'); return; }
+    wrap.classList.add('visible');
+    lblEl.textContent=playerName;
+    numEl.textContent=timeLeft;
+    fillEl.style.strokeDasharray=CIRCUMFERENCE;
+    const ratio=timeLeft/timerTotal;
+    fillEl.style.strokeDashoffset=CIRCUMFERENCE*(1-ratio);
+    if (ratio<0.34) fillEl.style.stroke='#e74c3c';
+    else if (ratio<0.67) fillEl.style.stroke='#f39c12';
+    else fillEl.style.stroke='var(--gold)';
+}
+
+function updateLobbyCountdown(secondsLeft) {
+    const overlay=document.getElementById('countdown-overlay');
+    const numEl=document.getElementById('countdown-num');
+    if (secondsLeft<=0) { overlay.classList.remove('visible'); return; }
+    overlay.classList.add('visible');
+    numEl.textContent=secondsLeft;
+    numEl.classList.remove('pop');
+    void numEl.offsetWidth;
+    numEl.classList.add('pop');
+    setTimeout(()=>numEl.classList.remove('pop'),150);
+}
+
+function renderPlayerList(players, currentPlayerName) {
+    const container=document.getElementById('pl-rows');
+    container.innerHTML='';
+    players.forEach(p => {
+        const isActive=p.name===currentPlayerName;
+        const row=document.createElement('div');
+        row.className=`pl-row${isActive?' active':''}${p.hasFolded?' folded':''}`;
+        row.innerHTML=`
+            <div class="pl-arrow"></div>
+            <div class="pl-avatar">${escHtml(p.name.charAt(0).toUpperCase())}</div>
+            <div class="pl-info">
+                <div class="pl-name">${escHtml(p.name)}</div>
+                <div class="pl-chips">$${p.chips}${p.currentBet>0?` <span class="pl-bet">+$${p.currentBet}</span>`:''}</div>
+            </div>
+            ${p.hasFolded?'<span class="pl-status">FOLD</span>':''}`;
+        container.appendChild(row);
     });
 }
 
-/**
- * Pornește timer-ul circular.
- * Exemplu: startTimer(30) -> pornește de la 30 secunde.
- */
-function startTimer(seconds) {
-    clearInterval(timerInterval); // Oprește orice timer vechi
-    
-    document.getElementById('timer-wrap').classList.add('visible');
-    
-    const numEl = document.getElementById('timer-num');
-    const fillEl = document.getElementById('fill');
-    let timeLeft = seconds;
-    
-    fillEl.style.strokeDasharray = CIRCUMFERENCE;
-
-    function tick() {
-        numEl.textContent = timeLeft;
-        const ratio = timeLeft / seconds;
-        fillEl.style.strokeDashoffset = CIRCUMFERENCE * (1 - ratio);
-
-        // Schimbă culoarea pe măsură ce scade timpul
-        if (ratio < 0.34) fillEl.style.stroke = '#e74c3c'; // Roșu
-        else if (ratio < 0.67) fillEl.style.stroke = '#f39c12'; // Portocaliu
-        else fillEl.style.stroke = 'var(--gold)'; // Auriu (culoarea ta)
-
-        if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            document.getElementById('timer-wrap').classList.remove('visible');
-            // Aici poți chema mp.trigger dacă vrei să anunți serverul că a expirat timpul
-        }
-        timeLeft--;
-    }
-    
-    tick(); // Execută imediat
-    timerInterval = setInterval(tick, 1000);
+function toggleActionButtons(visible) {
+    document.getElementById('actions').classList.toggle('visible',visible);
+    if (!visible) document.getElementById('raise-wrap').classList.remove('open');
 }
 
-/**
- * Oprește și ascunde timer-ul manual.
- */
-function stopTimer() {
-    clearInterval(timerInterval);
+function toggleRaiseInput() {
+    document.getElementById('raise-wrap').classList.toggle('open');
+    if (document.getElementById('raise-wrap').classList.contains('open'))
+        document.getElementById('raise-input').focus();
+}
+
+function confirmRaise() {
+    const amount=parseInt(document.getElementById('raise-input').value,10);
+    if (!amount||amount<=0) return;
+    sendAction('raise',amount);
+}
+
+function sendAction(actionName, raiseAmount) {
+    if (typeof mp!=='undefined') mp.trigger('Poker_PlayerAction',actionName,raiseAmount||0);
+    else console.log('[TEST] Action:',actionName,raiseAmount||'');
+    toggleActionButtons(false);
     document.getElementById('timer-wrap').classList.remove('visible');
 }
 
-
-// ==========================================
-// 3. EVENT-URI SPRE CLIENT (RageMP)
-// ==========================================
-
-// Această funcție este chemată când apeși pe butoanele din HTML
-function sendAction(actionName) {
-    // Aici trimiți acțiunea înapoi către scriptul tău client-side de RageMP
-    if (typeof mp !== 'undefined') {
-        mp.trigger('Poker_PlayerAction', actionName);
-    } else {
-        console.log("Action sent to server:", actionName); // Pentru testare în browser
-    }
-    
-    // De obicei, după ce faci o acțiune, îți ascunzi butoanele și oprești timer-ul
-    toggleActionButtons(false);
-    stopTimer();
+function showToast(msg, duration) {
+    clearTimeout(toastTimeout);
+    const el=document.getElementById('toast');
+    el.textContent=msg; el.classList.add('show');
+    toastTimeout=setTimeout(()=>el.classList.remove('show'),duration||2500);
 }
 
-// ==========================================
-// ZONA DE TEST (Așteaptă 1 secundă și simulează un scenariu)
-// Pentru a vedea cum arată în browser, decomentează blocul de mai jos:
-// ==========================================
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
-setTimeout(() => {
-    // 1. Îți dăm cărțile
-    updateMyCards('A', 's', 'K', 'h');
-    
-    // 2. Punem FLOP pe masă
-    updateTableCards([ {r:'7', s:'h'}, {r:'J', s:'s'}, {r:'3', s:'d'}, {r:'4', s:'s'}, {r:'3', s:'c'} ]);
-    
-    // 3. E rândul tău (index 0, nume "Tu joci")
-    setActivePlayer(0, "Tu joci");
-    
-    // 4. Arătăm butoanele și pornim timpul
-    toggleActionButtons(true);
-    startTimer(30);
-}, 1000);
-
+/*
+// TEST — decomentează pentru preview
+updateLobbyCountdown(5);
+setTimeout(()=>updateLobbyCountdown(4),1000);
+setTimeout(()=>updateLobbyCountdown(3),2000);
+setTimeout(()=>updateLobbyCountdown(2),3000);
+setTimeout(()=>updateLobbyCountdown(1),4000);
+setTimeout(()=>updateLobbyCountdown(0),5000);
+setTimeout(()=>{
+    updateMyCards('A','s','K','h');
+    updateGameState({ round:'flop', pot:750, currentBet:100, currentPlayer:'Bogdan',
+        communityCards:['7h','Js','3d'],
+        players:[
+            {name:'Bogdan',chips:850,seat:0,hasFolded:false,currentBet:100},
+            {name:'xXDarkBoy',chips:1200,seat:1,hasFolded:false,currentBet:0},
+            {name:'Mihai99',chips:400,seat:2,hasFolded:true,currentBet:0},
+        ]
+    });
+    onYourTurn(100,0,1000);
+    updateTurnTimer('Bogdan',25);
+},5500);
+*/
 </script>
 </body>
 </html>

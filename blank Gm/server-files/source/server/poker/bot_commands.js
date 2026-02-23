@@ -66,40 +66,38 @@ function autoBotAction(lobby) {
     const currentSlot = lobby.players[lobby.currentPlayerIndex];
     if (!currentSlot) return;
 
-    // E rândul unui bot în auto-mode?
     const owner = botOwner.get(currentSlot.player);
     if (!owner || !autoMode.has(owner.name)) return;
 
-    // Delay mic ca să pară natural
     setTimeout(() => {
-        // Verifică din nou că e tot rândul lui
+        // Re-fetch fresh după delay
         const slot = lobby.players[lobby.currentPlayerIndex];
-        if (!slot || slot.player !== currentSlot.player) return;
+        if (!slot) return;
+        
+        // Verifică că mai e tot un bot al aceluiași owner
+        const currentOwner = botOwner.get(slot.player);
+        if (!currentOwner || !autoMode.has(currentOwner.name)) return;
 
         const canCheck = lobby.currentBet <= slot.currentBet;
-        const roll     = Math.random();
-
+        const roll = Math.random();
         let action;
+
         if (canCheck) {
-            // Check 50%, raise 30%, fold 20%
-            if (roll < 0.5)       action = 'check';
-            else if (roll < 0.8)  action = 'raise';
-            else                   action = 'fold';
+            if (roll < 0.5)      action = 'check';
+            else if (roll < 0.8) action = 'raise';
+            else                  action = 'fold';
         } else {
-            // Call 55%, fold 30%, raise 15%
-            if (roll < 0.55)      action = 'call';
-            else if (roll < 0.85) action = 'fold';
-            else                   action = 'raise';
+            if (roll < 0.55)     action = 'call';
+            else if (roll < 0.85)action = 'fold';
+            else                  action = 'raise';
         }
 
         const raiseAmount = action === 'raise'
             ? lobby.currentBet + (Math.floor(Math.random() * 3) + 1) * 100
             : 0;
 
-        processAction(currentSlot.player, action, raiseAmount);
-
-        // Dacă mai e un bot la rând, continuăm auto
-        setTimeout(() => autoBotAction(lobby), 500);
+        processAction(slot.player, action, raiseAmount);
+        // Nu mai ai nevoie de al doilea setTimeout — _poker_afterTurn va declanșa din nou
     }, 800 + Math.random() * 700);
 }
 

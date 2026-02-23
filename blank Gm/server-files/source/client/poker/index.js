@@ -45,12 +45,11 @@ mp.events.add('closePokerUI', closePokerUI);
 
 // ──────────────────────────────────────────
 // Receive cards from server — r1, s1, r2, s2
-// (server sends: pokerDealCards, rank1, suit1, rank2, suit2)
 // ──────────────────────────────────────────
-mp.events.add('pokerDealCards', (rank1, suit1, rank2, suit2) => {
-    mp.gui.chat.push(`[POKER] Cărțile tale: ${rank1}${suit1} ${rank2}${suit2}`);
+mp.events.add('pokerDealCards', (r1, s1, r2, s2) => {
+    mp.gui.chat.push(`[POKER] Cărțile tale: ${r1}${s1} ${r2}${s2}`);
     if (pokerBrowser !== null) {
-        pokerBrowser.execute(`updateMyCards('${rank1}', '${suit1}', '${rank2}', '${suit2}');`);
+        pokerBrowser.execute(`updateMyCards('${r1}', '${s1}', '${r2}', '${s2}');`);
     }
 });
 
