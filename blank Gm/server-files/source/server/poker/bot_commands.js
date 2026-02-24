@@ -25,10 +25,10 @@ function createFakePlayer(name) {
         _messages: [],       // stocăm mesajele pentru debug
         outputChatBox(msg) {
             // Trimite mesajul la toți adminii online sau logează
-            console.log(`[BOT:${this.name}] ${msg}`);
+            // console.log(`[BOT:${this.name}] ${msg}`);
         },
         call(eventName, ...args) {
-            console.log(`[BOT:${this.name}] event "${eventName}" args: ${JSON.stringify(args)}`);
+            //console.log(`[BOT:${this.name}] event "${eventName}" args: ${JSON.stringify(args)}`);
         },
     };
 }
@@ -57,9 +57,9 @@ function getBotBySeat(lobby, seat) {
     return lobby.players.find(p => p.seat === parseInt(seat));
 }
 
-// ──────────────────────────────────────────
+// ────────────────────────────────────────────
 // Auto-play logic (random simplu)
-// ──────────────────────────────────────────
+// ────────────────────────────────────────────
 function autoBotAction(lobby) {
     if (lobby.state !== 'playing') return;
 
@@ -83,13 +83,13 @@ function autoBotAction(lobby) {
         let action;
 
         if (canCheck) {
-            if (roll < 0.5)      action = 'check';
-            else if (roll < 0.8) action = 'raise';
+            if (roll < 0.6)      action = 'check';
+            else if (roll < 0.9) action = 'raise';
             else                  action = 'fold';
         } else {
-            if (roll < 0.55)     action = 'call';
-            else if (roll < 0.85)action = 'fold';
-            else                  action = 'raise';
+            if (roll < 0.6)     action = 'call';
+            else if (roll < 0.96)action = 'raise';
+            else                  action = 'fold';
         }
 
         const raiseAmount = action === 'raise'
@@ -101,8 +101,7 @@ function autoBotAction(lobby) {
     }, 800 + Math.random() * 700);
 }
 
-// Hook în nextTurn pentru auto-mode — patches processAction indirect prin event
-const originalProcessAction = processAction;
+// Hook în nextTurn pentru auto-mode
 mp.events.add('_poker_afterTurn', (lobby) => {
     autoBotAction(lobby);
 });
@@ -110,6 +109,7 @@ mp.events.add('_poker_afterTurn', (lobby) => {
 // ──────────────────────────────────────────
 // /addbot [numar]
 // ──────────────────────────────────────────
+
 mp.events.addCommand('addbot', (player, _, countStr) => {
     const lobby = getLobbyByPlayer(player);
     if (!lobby) {
@@ -274,6 +274,47 @@ mp.events.addCommand('autobots', (player) => {
         // Dacă e deja rândul unui bot, pornește imediat
         const lobby = getLobbyByPlayer(player);
         if (lobby) autoBotAction(lobby);
+    }
+});
+
+// ──────────────────────────────────────────
+// /a — shortcut: addbot 2 + autobots ON
+// ──────────────────────────────────────────
+mp.events.addCommand('a', (player) => {
+    const lobby = getLobbyByPlayer(player);
+    if (!lobby) {
+        player.outputChatBox('!{Red}[BOT] Nu ești la nicio masă de poker!');
+        return;
+    }
+    if (lobby.state === 'playing') {
+        player.outputChatBox('!{Red}[BOT] Nu poți adăuga boți în timpul jocului!');
+        return;
+    }
+
+    // Adaugă 2 boți
+    const count = Math.min(2, LOBBY_CONFIG_MAX - lobby.players.length);
+    if (count <= 0) {
+        player.outputChatBox('!{Red}[BOT] Masa este plină!');
+        return;
+    }
+    const added = [];
+    for (let i = 0; i < count; i++) {
+        const botName    = `Bot_${botIdCounter++}`;
+        const fakePlayer = createFakePlayer(botName);
+        botOwner.set(fakePlayer, player);
+        if (!ownerBots.has(player.name)) ownerBots.set(player.name, []);
+        ownerBots.get(player.name).push(fakePlayer);
+        joinLobby(fakePlayer, lobby.id, lobby.name);
+        added.push(botName);
+    }
+    player.outputChatBox(`!{Green}[BOT] Adăugat: ${added.join(', ')}`);
+
+    // Pornește auto-play dacă nu e deja activ
+    if (!autoMode.has(player.name)) {
+        autoMode.add(player.name);
+        player.outputChatBox('!{Green}[BOT] Auto-play PORNIT automat.');
+        const updatedLobby = getLobbyByPlayer(player);
+        if (updatedLobby) autoBotAction(updatedLobby);
     }
 });
 

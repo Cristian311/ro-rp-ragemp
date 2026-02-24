@@ -15,6 +15,7 @@ mp.keys.bind(KEY_E, true, () => {
 mp.keys.bind(KEY_ESC, true, () => {
     if (pokerBrowser !== null) {
         closePokerUI();
+        mp.events.callRemote('Server_LeavePokerTable');
     }
 });
 
@@ -56,10 +57,10 @@ mp.events.add('pokerDealCards', (r1, s1, r2, s2) => {
 // ──────────────────────────────────────────
 // Game state update from server
 // ──────────────────────────────────────────
-mp.events.add('pokerUpdateState', (stateJson) => {
+mp.events.add('pokerUpdateState', (state) => {
     if (pokerBrowser !== null) {
         // stateJson already serialized by RAGE; pass it straight to the HTML
-        pokerBrowser.execute(`updateGameState(${JSON.stringify(stateJson)});`);
+        pokerBrowser.execute(`updateGameState('${JSON.stringify(state)}');`);
     }
 });
 

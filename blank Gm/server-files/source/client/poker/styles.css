@@ -18,6 +18,8 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 html, body {
@@ -85,6 +87,14 @@ html, body {
     display: flex;
     gap: 8px;
 }
+
+#community .card {
+    width: 78px;
+    height: 108px;
+}
+
+#community .card.face .rank { font-size: 26px; }
+#community .card.face .suit { font-size: 24px; }
 
 /* ── PLAYER HAND — centru jos ── */
 #player-hand {

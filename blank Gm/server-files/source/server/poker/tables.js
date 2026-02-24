@@ -5,6 +5,35 @@ const path = require('path');
 
 const savePath = path.join(process.cwd(), 'poker_tables.json');
 
+// References by tableIndex
+const tableLabels    = {};  // index → mp.TextLabel
+const tableColshapes = {};  // index → mp.Colshape
+const tableBlips     = {};  // index → mp.Blip
+
+function getMarkerText(index, state, players, maxPlayers) {
+    let statusLine;
+    if (state === 'playing') {
+        statusLine = `~r~In joc`;
+    } else if (players >= 2) {
+        statusLine = `~g~Asteapta start`;
+    } else {
+        statusLine = `~y~Asteapta jucatori`;
+    }
+    return `~g~Masa Poker ~w~#${index}\n${statusLine} ~w~(${players}/${maxPlayers})\n~y~Apasa E pentru joc`;
+}
+
+function updateTableMarker(tableIndex, state, players, maxPlayers) {
+    const old = tableLabels[tableIndex];
+    if (!old) return;
+    const pos = old.position;
+    old.destroy();
+    tableLabels[tableIndex] = mp.labels.new(
+        getMarkerText(tableIndex, state, players, maxPlayers),
+        pos,
+        { los: true, font: 4, drawDistance: 10, dimension: 0 }
+    );
+}
+
 // ──────────────────────────────────────────
 // Load saved tables on startup
 // ──────────────────────────────────────────
@@ -15,7 +44,7 @@ function loadPokerTables() {
     console.log(`[POKER] S-au găsit ${tables.length} mese salvate:`);
 
     tables.forEach((table, index) => {
-        createBlip(table);
+        createBlip(table, index);
         createColshape(table, index, table.name);
         createMarker(table, index);
         console.log(`  Masa #${index}. ${table.name}: X:${table.x}, Y:${table.y}, Z:${table.z}`);
@@ -55,7 +84,7 @@ mp.events.addCommand('createpoker', (player, _, name) => {
     const newIndex = tables.length - 1;
     createMarker(newTable, newIndex);
     createColshape(newTable, newIndex, newTable.name);
-    createBlip(newTable);
+    createBlip(newTable, newIndex);
 
     player.outputChatBox(`!{Green}[POKER] Masa "${newTable.name}" salvată la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
 });
@@ -97,26 +126,25 @@ mp.events.add('Server_PlayerAction', (player, actionName) => {
 
 // Util
 
-function createBlip(position) {
-    mp.blips.new(602, new mp.Vector3(position.x, position.y, position.z), {
+function createBlip(position, index) {
+    const blip = mp.blips.new(602, new mp.Vector3(position.x, position.y, position.z), {
         name: "Masa Poker",
         color: 2,
         shortRange: false,
         scale: 1.0
     });
+    if (index !== undefined) tableBlips[index] = blip;
+    return blip;
 }
 
 function createMarker(table, index) {
-    mp.labels.new(
-        `~g~Masa Poker ~w~#${index}\n~y~Apasa E pentru joc`,
+    const label = mp.labels.new(
+        getMarkerText(index, 'waiting', 0, 10),
         new mp.Vector3(table.x, table.y, table.z + 1.1),
-        {
-            los: true,
-            font: 4,
-            drawDistance: 10,
-            dimension: 0
-        }
+        { los: true, font: 4, drawDistance: 10, dimension: 0 }
     );
+    tableLabels[index] = label;
+    return label;
 }
 
 function createColshape(position, index, name) {
@@ -124,4 +152,46 @@ function createColshape(position, index, name) {
     colShape.setVariable('isPokerTable', true);
     colShape.setVariable('tableIndex', index);
     colShape.setVariable('tableName', name);
+    tableColshapes[index] = colShape;
+    return colShape;
 }
+
+// ──────────────────────────────────────────
+// Event: update marker text from poker_server
+// ──────────────────────────────────────────
+mp.events.add('_poker_updateMarker', (tableIndex, state, players, maxPlayers) => {
+    updateTableMarker(tableIndex, state, players, maxPlayers);
+});
+
+// ──────────────────────────────────────────
+// /deletepoker <id>
+// ──────────────────────────────────────────
+mp.events.addCommand('deletepoker', (player, _, idStr) => {
+    const index = parseInt(idStr);
+    if (isNaN(index)) {
+        player.outputChatBox('!{Red}[POKER] Folosire: /deletepoker <id>');
+        return;
+    }
+
+    // Destroy marker
+    if (tableLabels[index]) { tableLabels[index].destroy(); delete tableLabels[index]; }
+    // Destroy colshape
+    if (tableColshapes[index]) { tableColshapes[index].destroy(); delete tableColshapes[index]; }
+    // Destroy blip
+    if (tableBlips[index]) { tableBlips[index].destroy(); delete tableBlips[index]; }
+
+    // Remove from JSON
+    if (fs.existsSync(savePath)) {
+        const tables = JSON.parse(fs.readFileSync(savePath, 'utf8'));
+        if (index < 0 || index >= tables.length) {
+            player.outputChatBox(`!{Red}[POKER] Nu există masa cu ID-ul ${index}.`);
+            return;
+        }
+        const removed = tables.splice(index, 1)[0];
+        fs.writeFileSync(savePath, JSON.stringify(tables, null, 4));
+        player.outputChatBox(`!{Green}[POKER] Masa #${index} "${removed.name}" a fost ștearsă.`);
+        mp.players.forEach(p => p.outputChatBox(`!{Red}[POKER] Masa #${index} "${removed.name}" a fost eliminată de un admin.`));
+    } else {
+        player.outputChatBox('!{Red}[POKER] Nu există tabele salvate.');
+    }
+});

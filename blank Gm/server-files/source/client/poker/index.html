@@ -93,12 +93,22 @@ function setCardData(elementId, rank, suit) {
     el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${SUIT_SYMBOLS[suit]||suit}</span>`;
 }
 
+function resetCommunityCards() {
+    for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`cc${i}`);
+        if (el) { el.style.display = 'none'; setCardData(`cc${i}`, '', ''); }
+    }
+}
+
 function updateMyCards(rank1, suit1, rank2, suit2) {
+    resetCommunityCards();
     setCardData('pc1', rank1, suit1);
     setCardData('pc2', rank2, suit2);
 }
 
-function updateGameState(state) {
+function updateGameState(statejson) {
+    const state = JSON.parse(statejson);
+
     document.getElementById('pot-value').textContent   = state.pot || 0;
     document.getElementById('phase-label').textContent = (state.round||'WAITING').toUpperCase();
     const cc = state.communityCards || [];
@@ -150,15 +160,7 @@ function updateTurnTimer(playerName, timeLeft) {
 }
 
 function updateLobbyCountdown(secondsLeft) {
-    const overlay=document.getElementById('countdown-overlay');
-    const numEl=document.getElementById('countdown-num');
-    if (secondsLeft<=0) { overlay.classList.remove('visible'); return; }
-    overlay.classList.add('visible');
-    numEl.textContent=secondsLeft;
-    numEl.classList.remove('pop');
-    void numEl.offsetWidth;
-    numEl.classList.add('pop');
-    setTimeout(()=>numEl.classList.remove('pop'),150);
+    // countdown overlay disabled
 }
 
 function renderPlayerList(players, currentPlayerName) {
@@ -198,6 +200,7 @@ function confirmRaise() {
 }
 
 function sendAction(actionName, raiseAmount) {
+    if (!document.getElementById('actions').classList.contains('visible')) return;
     if (typeof mp!=='undefined') mp.trigger('Poker_PlayerAction',actionName,raiseAmount||0);
     else console.log('[TEST] Action:',actionName,raiseAmount||'');
     toggleActionButtons(false);
@@ -214,6 +217,18 @@ function showToast(msg, duration) {
 function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// Blochează Space/Enter pe butoane ca să nu activeze click prin tastatură
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') {
+        if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+            e.preventDefault();
+        }
+    }
+});
+
+// Dezactivează context menu
+document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 /*
 // TEST — decomentează pentru preview
