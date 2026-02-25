@@ -86,7 +86,8 @@ function joinLobby(player, tableIndex, tableName) {
 
     player.call('openPokerUI');
     updateLobbyUI(lobby);
-
+    callToLobby(lobby, 'pokerUpdateState', JSON.stringify(getLobbyStateForUI(lobby)));
+    
     if (lobby.players.length >= LOBBY_CONFIG.MIN_PLAYERS && lobby.state === 'waiting') {
         lobby.state = 'starting';
         startCountdown(lobby);
@@ -212,6 +213,7 @@ function startGame(lobby) {
     });
 
     updateLobbyUI(lobby);
+    
 
     lobby.currentPlayerIndex = (bbIndex + 1) % lobby.players.length;
     startTurn(lobby);
@@ -587,9 +589,9 @@ function updateLobbyUI(lobby) {
     let stateJson = JSON.stringify(getLobbyStateForUI(lobby));
     callToLobby(lobby, 'pokerUpdateState', stateJson);
     lobby.players.filter(p => p.player === lobby.players[lobby.currentPlayerIndex]?.player).forEach(slot => {
-        slot.player.outputChatBox(`!{Blue}[POKER] Lobby "${lobby.name}" actualizat.`);
+        //slot.player.outputChatBox(`!{Blue}[POKER] Lobby "${lobby.name}" actualizat.`);
     });
-    console.log(`[POKER] Lobby "${lobby.name}" actualizat. ${stateJson}.`);
+    console.log(`[POKER] Lobby "${lobby.name}" actualizat. Runda: ${lobby.round} Community cards: ${lobby.communityCards.join(' ')} Time: ${new Date().toLocaleTimeString()}`);
 
     // Updatează markerul cu starea curentă
     mp.events.call('_poker_updateMarker', lobby.id, lobby.state, lobby.players.length, LOBBY_CONFIG.MAX_PLAYERS);

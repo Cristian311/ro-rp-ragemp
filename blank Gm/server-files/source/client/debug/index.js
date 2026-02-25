@@ -2,7 +2,7 @@ let isDebugVisible = false;
 let debugText = "Aștept date...";
 let lineCount = 1;
 
-const KEY_R = 82;
+const KEY_1 = 49;
 const LINE_HEIGHT = 0.028; // Înălțimea reală a unei linii la scale 0.35
 const PADDING_X = 0.008;
 const PADDING_Y = 0.006;
@@ -27,7 +27,7 @@ function formatDebugText(rawText) {
     return lines.join('\n');
 }
 
-mp.keys.bind(KEY_R, true, () => {
+mp.keys.bind(KEY_1, true, () => {
     isDebugVisible = !isDebugVisible;
     mp.gui.chat.push(`!{Grey}[Sistem] Debug HUD: ${isDebugVisible ? '!{Green}ON' : '!{Red}OFF'}`);
 });

@@ -2,9 +2,9 @@
 
 let pokerBrowser = null;
 
-const KEY_E   = 69;
-const KEY_ESC = 27;
-const KEY_CURSOR = 0xC0; // ~
+const KEY_E   = 0x45;
+const KEY_ESC = 0x1B;
+const KEY_F3 = 0x72; 
 // ──────────────────────────────────────────
 // Key bindings
 // ──────────────────────────────────────────
@@ -19,7 +19,7 @@ mp.keys.bind(KEY_ESC, true, () => {
     }
 });
 
-mp.keys.bind(KEY_CURSOR, true, () => {
+mp.keys.bind(KEY_F3, true, () => {
     const cursorState = mp.gui.cursor.visible;
     mp.gui.cursor.show(!cursorState, !cursorState);
 });
