@@ -28,4 +28,3 @@ mp.events.addCommand('savepos', (player, name) => {
         if (err) console.error("Log error:", err);
     });
 });
-

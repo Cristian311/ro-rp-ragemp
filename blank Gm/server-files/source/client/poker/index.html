@@ -15,10 +15,34 @@
   <div class="info">RageMP v1.1</div>
 </div>
 
-<div id="pot-display">POT: $<span id="pot-value">0</span></div>
+
+<div id="right-panel">
+  <div id="left-info">
+    <div class="info-box">
+      <div class="info-label">POT</div>
+      <div class="info-value" id="left-pot-value">$0</div>
+    </div>
+    <div class="info-box" id="bet-box">
+      <div class="info-label">BET</div>
+      <div class="info-value" id="left-bet-value">$0</div>
+    </div>
+  </div>
+
+  <div id="timer-wrap">
+    <div id="timer-ring">
+      <svg width="60" height="60" viewBox="0 0 60 60">
+        <circle id="track" cx="30" cy="30" r="26"/>
+        <circle id="fill"  cx="30" cy="30" r="26"/>
+      </svg>
+      <div id="timer-num">30</div>
+    </div>
+    <div id="timer-label">Āşteptare...</div>
+  </div>
+</div>
 
 <div id="community">
-  <div class="label">Masă</div>
+  <div id="winner-banner"></div>
+ <!-- <div class="label">Masă</div> -->
   <div class="cards" id="community-cards">
     <div class="card back" id="cc1" style="display:none"></div>
     <div class="card back" id="cc2" style="display:none"></div>
@@ -29,7 +53,7 @@
 </div>
 
 <div id="player-hand">
-  <div class="label">Cărțile tale</div>
+<!--<div class="label">Cărțile tale</div> -->
   <div class="cards" id="hand-cards">
     <div class="card back" id="pc1"></div>
     <div class="card back" id="pc2"></div>
@@ -55,18 +79,6 @@
   </div>
   <div id="pl-rows"></div>
 </div>
-
-<div id="timer-wrap">
-  <div id="timer-ring">
-    <svg width="60" height="60" viewBox="0 0 60 60">
-      <circle id="track" cx="30" cy="30" r="26"/>
-      <circle id="fill"  cx="30" cy="30" r="26"/>
-    </svg>
-    <div id="timer-num">30</div>
-  </div>
-  <div id="timer-label">Așteptare...</div>
-</div>
-
 
 
 <div id="toast"></div>
@@ -102,6 +114,7 @@ function resetCommunityCards() {
 
 function updateMyCards(rank1, suit1, rank2, suit2) {
     resetCommunityCards();
+    hideWinnerBanner();
     setCardData('pc1', rank1, suit1);
     setCardData('pc2', rank2, suit2);
 }
@@ -109,7 +122,19 @@ function updateMyCards(rank1, suit1, rank2, suit2) {
 function updateGameState(statejson) {
     const state = JSON.parse(statejson);
 
-    document.getElementById('pot-value').textContent   = state.pot || 0;
+    document.getElementById('left-pot-value').textContent = `$${(state.pot || 0).toLocaleString('en-US')}`;
+    document.getElementById('left-bet-value').textContent = `$${state.currentBet.toLocaleString('en-US')}`;
+
+
+    // Arată left-info (POT + BET) doar când jocul e activ
+    const leftInfo = document.getElementById('left-info');
+    const roundUpper = (state.round || 'WAITING').toUpperCase();
+    if (roundUpper !== 'WAITING') {
+        leftInfo.classList.add('visible');
+    } else {
+        leftInfo.classList.remove('visible');
+    }
+    
     document.getElementById('phase-label').textContent = (state.round||'WAITING').toUpperCase();
     const cc = state.communityCards || [];
     for (let i=1; i<=5; i++) {
@@ -130,14 +155,38 @@ function onYourTurn(currentBet, myBet, myChips) {
     const toCall   = currentBet - myBet;
     const callBtn  = document.getElementById('btn-call');
     const checkBtn = document.getElementById('btn-check');
+    const raiseBtn = document.getElementById('btn-raise');
+    const allinBtn = document.getElementById('btn-allin');
     if (toCall <= 0) {
         callBtn.style.display='none'; checkBtn.style.display='';
     } else {
         callBtn.textContent=`Call $${Math.min(toCall,myChips)}`; callBtn.style.display=''; checkBtn.style.display='none';
     }
+
     const inp=document.getElementById('raise-input');
-    const minRaise=currentBet+100;
-    inp.min=minRaise; inp.value=minRaise; inp.max=myChips+myBet;
+    const minRaise=100; // Minimum raise increment
+    const maxRaise=myChips - toCall; // Cât poate ridica peste currentBet
+
+    if (maxRaise < minRaise) {
+        // Nu-și permite raise — ascunde butonul Raise
+        raiseBtn.style.display='none';
+        document.getElementById('raise-wrap').classList.remove('open');
+    } else {
+        raiseBtn.style.display='';
+        inp.min=minRaise;
+        inp.max=maxRaise;
+        inp.value=minRaise;
+        inp.placeholder=`Min +$${minRaise}`;
+    }
+
+    // Dacă nu mai are chips deloc, ascunde și All-In (nu face sens)
+    if (myChips <= 0) {
+        raiseBtn.style.display='none';
+        allinBtn.style.display='none';
+    } else {
+        allinBtn.style.display='';
+    }
+
     toggleActionButtons(true);
     showToast('Rândul tău!');
 }
@@ -166,10 +215,23 @@ function updateLobbyCountdown(secondsLeft) {
 function renderPlayerList(players, currentPlayerName) {
     const container=document.getElementById('pl-rows');
     container.innerHTML='';
+    const ACTION_LABELS = {
+        fold:  'FOLD',
+        check: 'CHECK',
+        call:  'CALL',
+        raise: 'RAISE',
+        allin: 'ALL-IN',
+    };
     players.forEach(p => {
         const isActive=p.name===currentPlayerName;
         const row=document.createElement('div');
         row.className=`pl-row${isActive?' active':''}${p.hasFolded?' folded':''}`;
+        
+        let statusHtml = '';
+        if (p.lastAction && ACTION_LABELS[p.lastAction]) {
+            statusHtml = `<span class="pl-status ${p.lastAction}">${ACTION_LABELS[p.lastAction]}</span>`;
+        }
+        
         row.innerHTML=`
             <div class="pl-arrow"></div>
             <div class="pl-avatar">${escHtml(p.name.charAt(0).toUpperCase())}</div>
@@ -177,7 +239,7 @@ function renderPlayerList(players, currentPlayerName) {
                 <div class="pl-name">${escHtml(p.name)}</div>
                 <div class="pl-chips">$${p.chips}${p.currentBet>0?` <span class="pl-bet">+$${p.currentBet}</span>`:''}</div>
             </div>
-            ${p.hasFolded?'<span class="pl-status">FOLD</span>':''}`;
+            ${statusHtml}`;
         container.appendChild(row);
     });
 }
@@ -194,8 +256,15 @@ function toggleRaiseInput() {
 }
 
 function confirmRaise() {
-    const amount=parseInt(document.getElementById('raise-input').value,10);
+    const inp=document.getElementById('raise-input');
+    const minVal=parseInt(inp.min,10)||100;
+    const maxVal=parseInt(inp.max,10)||0;
+    let amount=parseInt(inp.value,10);
     if (!amount||amount<=0) return;
+    // Clamp între min și max
+    if (amount<minVal) amount=minVal;
+    if (maxVal>0 && amount>maxVal) amount=maxVal;
+    inp.value=amount;
     sendAction('raise',amount);
 }
 
@@ -203,6 +272,13 @@ function sendAction(actionName, raiseAmount) {
     if (!document.getElementById('actions').classList.contains('visible')) return;
     if (typeof mp!=='undefined') mp.trigger('Poker_PlayerAction',actionName,raiseAmount||0);
     else console.log('[TEST] Action:',actionName,raiseAmount||'');
+    
+    // Hide cards when folding
+    if (actionName === 'fold') {
+        setCardData('pc1', '', '');
+        setCardData('pc2', '', '');
+    }
+    
     toggleActionButtons(false);
     document.getElementById('timer-wrap').classList.remove('visible');
 }
@@ -216,6 +292,24 @@ function showToast(msg, duration) {
 
 function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let winnerBannerTimeout = null;
+function showWinnerBanner(winnerNames, pot, handName) {
+    const el = document.getElementById('winner-banner');
+    clearTimeout(winnerBannerTimeout);
+    const names = winnerNames.map(n => escHtml(n)).join(', ');
+    if (winnerNames.length === 1) {
+        el.innerHTML = `<div class="wb-name">🏆 ${names}</div><div class="wb-detail">a câștigat <span class="wb-pot">$${pot.toLocaleString('en-US')}</span></div><div class="wb-hand">${escHtml(handName)}</div>`;
+    } else {
+        el.innerHTML = `<div class="wb-name">🏆 ${names}</div><div class="wb-detail">split pot <span class="wb-pot">$${pot.toLocaleString('en-US')}</span></div><div class="wb-hand">${escHtml(handName)}</div>`;
+    }
+    el.classList.add('visible');
+    winnerBannerTimeout = setTimeout(() => { el.classList.remove('visible'); }, 5000);
+}
+function hideWinnerBanner() {
+    clearTimeout(winnerBannerTimeout);
+    document.getElementById('winner-banner').classList.remove('visible');
 }
 
 // Blochează Space/Enter pe butoane ca să nu activeze click prin tastatură

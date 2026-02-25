@@ -5,9 +5,7 @@ let pokerBrowser = null;
 const KEY_E   = 0x45;
 const KEY_ESC = 0x1B;
 const KEY_F3 = 0x72; 
-// ──────────────────────────────────────────
-// Key bindings
-// ──────────────────────────────────────────
+
 mp.keys.bind(KEY_E, true, () => {
     mp.events.callRemote('Server_PlayerAction', 'interact');
 });
@@ -24,9 +22,6 @@ mp.keys.bind(KEY_F3, true, () => {
     mp.gui.cursor.show(!cursorState, !cursorState);
 });
 
-// ──────────────────────────────────────────
-// UI management
-// ──────────────────────────────────────────
 mp.events.add('openPokerUI', () => {
     if (pokerBrowser === null) {
         pokerBrowser = mp.browsers.new('package://poker/index.html');
@@ -44,57 +39,44 @@ function closePokerUI() {
 
 mp.events.add('closePokerUI', closePokerUI);
 
-// ──────────────────────────────────────────
-// Receive cards from server — r1, s1, r2, s2
-// ──────────────────────────────────────────
 mp.events.add('pokerDealCards', (r1, s1, r2, s2) => {
-    mp.gui.chat.push(`[POKER] Cărțile tale: ${r1}${s1} ${r2}${s2}`);
     if (pokerBrowser !== null) {
         pokerBrowser.execute(`updateMyCards('${r1}', '${s1}', '${r2}', '${s2}');`);
     }
 });
 
-// ──────────────────────────────────────────
-// Game state update from server
-// ──────────────────────────────────────────
 mp.events.add('pokerUpdateState', (state) => {
     if (pokerBrowser !== null) {
-        // stateJson already serialized by RAGE; pass it straight to the HTML
-        pokerBrowser.execute(`updateGameState('${JSON.stringify(state)}');`);
+        let stateJson = JSON.stringify(state);
+        pokerBrowser.execute(`updateGameState('${stateJson}');`);
     }
 });
 
-// ──────────────────────────────────────────
-// Your turn notification
-// ──────────────────────────────────────────
 mp.events.add('pokerYourTurn', (currentBet, myBet, myChips) => {
     if (pokerBrowser !== null) {
         pokerBrowser.execute(`onYourTurn(${currentBet}, ${myBet}, ${myChips});`);
     }
 });
 
-// ──────────────────────────────────────────
-// Turn timer countdown
-// ──────────────────────────────────────────
 mp.events.add('pokerTurnTimer', (playerName, timeLeft) => {
     if (pokerBrowser !== null) {
         pokerBrowser.execute(`updateTurnTimer('${playerName}', ${timeLeft});`);
     }
 });
 
-// ──────────────────────────────────────────
-// Lobby countdown (before game starts)
-// ──────────────────────────────────────────
 mp.events.add('pokerLobbyCountdown', (secondsLeft) => {
     if (pokerBrowser !== null) {
         pokerBrowser.execute(`updateLobbyCountdown(${secondsLeft});`);
     }
 });
 
-// ──────────────────────────────────────────
-// Action buttons from HTML UI → server
-// ──────────────────────────────────────────
+mp.events.add('pokerShowWinner', (winnerNames, pot, handName) => {
+    if (pokerBrowser !== null) {
+        const namesJson = JSON.stringify(winnerNames);
+        pokerBrowser.execute(`showWinnerBanner(${namesJson}, ${pot}, '${handName}')`);
+    }
+});
+
 mp.events.add('Poker_PlayerAction', (actionName, raiseAmount) => {
-    mp.gui.chat.push(`[Client] Ai apăsat: ${actionName}`);
     mp.events.callRemote('Server_ReceivePokerAction', actionName, raiseAmount || 0);
 });

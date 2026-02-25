@@ -92,8 +92,9 @@ function autoBotAction(lobby) {
             else                  action = 'fold';
         }
 
+        // Trimite doar INCREMENTUL (serverul adaugă la currentBet)
         const raiseAmount = action === 'raise'
-            ? lobby.currentBet + (Math.floor(Math.random() * 3) + 1) * 100
+            ? (Math.floor(Math.random() * 3) + 1) * 100
             : 0;
 
         processAction(slot.player, action, raiseAmount);

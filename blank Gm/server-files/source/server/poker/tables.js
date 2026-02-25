@@ -1,4 +1,3 @@
-// tables.js — Table creation, loading, and colshape events (server-side)
 
 const fs   = require('fs');
 const path = require('path');
@@ -6,9 +5,10 @@ const path = require('path');
 const savePath = path.join(process.cwd(), 'poker_tables.json');
 
 // References by tableIndex
-const tableLabels    = {};  // index → mp.TextLabel
-const tableColshapes = {};  // index → mp.Colshape
-const tableBlips     = {};  // index → mp.Blip
+const tableLabels         = {};  // index → mp.TextLabel
+const tableColshapes      = {};  // index → mp.Colshape
+const tableBlips          = {};  // index → mp.Blip
+const tableLeaveColshapes = {};  // index → mp.Colshape (leave zone, raza 10)
 
 function getMarkerText(index, state, players, maxPlayers) {
     let statusLine;
@@ -19,7 +19,7 @@ function getMarkerText(index, state, players, maxPlayers) {
     } else {
         statusLine = `~y~Asteapta jucatori`;
     }
-    return `~g~Masa Poker ~w~#${index}\n${statusLine} ~w~(${players}/${maxPlayers})\n~y~Apasa E pentru joc`;
+    return `~g~Masa Poker ~w~#${index}\n${statusLine} ~w~(${players}/${maxPlayers})\n~y~Apasa ~g~E ~w~pentru a juca`;
 }
 
 function updateTableMarker(tableIndex, state, players, maxPlayers) {
@@ -34,9 +34,9 @@ function updateTableMarker(tableIndex, state, players, maxPlayers) {
     );
 }
 
-// ──────────────────────────────────────────
-// Load saved tables on startup
-// ──────────────────────────────────────────
+
+
+// Load data on server start and create colshapes + markers
 function loadPokerTables() {
     if (!fs.existsSync(savePath)) return;
 
@@ -46,16 +46,16 @@ function loadPokerTables() {
     tables.forEach((table, index) => {
         createBlip(table, index);
         createColshape(table, index, table.name);
+        createLeaveColshape(table, index);
         createMarker(table, index);
         console.log(`  Masa #${index}. ${table.name}: X:${table.x}, Y:${table.y}, Z:${table.z}`);
     });
 }
 
 loadPokerTables();
+ 
+//Commands
 
-// ──────────────────────────────────────────
-// Command: /createpoker <name>
-// ──────────────────────────────────────────
 mp.events.addCommand('createpoker', (player, _, name) => {
     const pos = player.position;
     const rot = player.heading;
@@ -84,31 +84,67 @@ mp.events.addCommand('createpoker', (player, _, name) => {
     const newIndex = tables.length - 1;
     createMarker(newTable, newIndex);
     createColshape(newTable, newIndex, newTable.name);
+    createLeaveColshape(newTable, newIndex);
     createBlip(newTable, newIndex);
 
     player.outputChatBox(`!{Green}[POKER] Masa "${newTable.name}" salvată la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
 });
+mp.events.addCommand('deletepoker', (player, _, idStr) => {
+    const index = parseInt(idStr);
+    if (isNaN(index)) {
+        player.outputChatBox('!{Red}[POKER] Folosire: /deletepoker <id>');
+        return;
+    }
 
-// ──────────────────────────────────────────
-// Colshape events
-// ──────────────────────────────────────────
+    if (tableLabels[index]) { tableLabels[index].destroy(); delete tableLabels[index]; }
+
+    if (tableColshapes[index]) { tableColshapes[index].destroy(); delete tableColshapes[index]; }
+
+    if (tableBlips[index]) { tableBlips[index].destroy(); delete tableBlips[index]; }
+
+    if (tableLeaveColshapes[index]) { tableLeaveColshapes[index].destroy(); delete tableLeaveColshapes[index]; }
+
+    if (fs.existsSync(savePath)) {
+        const tables = JSON.parse(fs.readFileSync(savePath, 'utf8'));
+        if (index < 0 || index >= tables.length) {
+            player.outputChatBox(`!{Red}[POKER] Nu există masa cu ID-ul ${index}.`);
+            return;
+        }
+        const removed = tables.splice(index, 1)[0];
+        fs.writeFileSync(savePath, JSON.stringify(tables, null, 4));
+        player.outputChatBox(`!{Green}[POKER] Masa #${index} "${removed.name}" a fost ștearsă.`);
+        mp.players.forEach(p => p.outputChatBox(`!{Red}[POKER] Masa #${index} "${removed.name}" a fost eliminată de un admin.`));
+    } else {
+        player.outputChatBox('!{Red}[POKER] Nu există tabele salvate.');
+    }
+});
+
+//Events
 mp.events.add('playerEnterColshape', (player, colshape) => {
     if (colshape.getVariable('isPokerTable')) {
-        player.outputChatBox('!{Yellow}[POKER]!{White} Ai intrat în zona mesei. Apasă !{Green}E!{White} pentru a juca.');
+        player.outputChatBox('!{Orange}[POKER]!{White} Ai intrat în zona mesei. Apasă !{Green}E!{White} pentru a juca.');
         player.currentTable = colshape;
     }
 });
 
 mp.events.add('playerExitColshape', (player, colshape) => {
     if (colshape.getVariable('isPokerTable')) {
-        player.outputChatBox('!{Yellow}[POKER]!{White} Ai părăsit zona mesei.');
+        //player.outputChatBox('!{Yellow}[POKER]!{White} Ai părăsit zona mesei.');
         player.currentTable = null;
+    }
+
+    // Auto-leave 
+    if (colshape.getVariable('isPokerLeaveZone')) {
+        const { leaveLobby, getLobbyByPlayer } = require('./poker_server');
+        const lobby = getLobbyByPlayer(player);
+
+        if (lobby && lobby.id === colshape.getVariable('tableIndex')) {
+            player.outputChatBox('!{Orange}[POKER] !{Red}Te-ai îndepărtat prea mult de masă — ai fost scos automat.');
+            leaveLobby(player);
+        }
     }
 });
 
-// ──────────────────────────────────────────
-// Player interact (E key → join table)
-// ──────────────────────────────────────────
 mp.events.add('Server_PlayerAction', (player, actionName) => {
     console.log(`[POKER] ${player.name} a acționat: ${actionName}`);
 
@@ -116,7 +152,7 @@ mp.events.add('Server_PlayerAction', (player, actionName) => {
         if (player.currentTable) {
             const tableIndex = player.currentTable.getVariable('tableIndex');
             const tableName  = player.currentTable.getVariable('tableName');
-            // Redirect to the join event (handled in poker_server.js)
+
             mp.events.call('Server_JoinPokerTable', player, tableIndex, tableName);
         } else {
             player.outputChatBox('!{Red}Nu ești lângă nicio masă de poker.');
@@ -156,42 +192,15 @@ function createColshape(position, index, name) {
     return colShape;
 }
 
-// ──────────────────────────────────────────
-// Event: update marker text from poker_server
-// ──────────────────────────────────────────
+function createLeaveColshape(position, index) {
+    const colShape = mp.colshapes.newCircle(position.x, position.y, 10.0, 0);
+    colShape.setVariable('isPokerLeaveZone', true);
+    colShape.setVariable('tableIndex', index);
+    tableLeaveColshapes[index] = colShape;
+    return colShape;
+}
+
 mp.events.add('_poker_updateMarker', (tableIndex, state, players, maxPlayers) => {
     updateTableMarker(tableIndex, state, players, maxPlayers);
 });
 
-// ──────────────────────────────────────────
-// /deletepoker <id>
-// ──────────────────────────────────────────
-mp.events.addCommand('deletepoker', (player, _, idStr) => {
-    const index = parseInt(idStr);
-    if (isNaN(index)) {
-        player.outputChatBox('!{Red}[POKER] Folosire: /deletepoker <id>');
-        return;
-    }
-
-    // Destroy marker
-    if (tableLabels[index]) { tableLabels[index].destroy(); delete tableLabels[index]; }
-    // Destroy colshape
-    if (tableColshapes[index]) { tableColshapes[index].destroy(); delete tableColshapes[index]; }
-    // Destroy blip
-    if (tableBlips[index]) { tableBlips[index].destroy(); delete tableBlips[index]; }
-
-    // Remove from JSON
-    if (fs.existsSync(savePath)) {
-        const tables = JSON.parse(fs.readFileSync(savePath, 'utf8'));
-        if (index < 0 || index >= tables.length) {
-            player.outputChatBox(`!{Red}[POKER] Nu există masa cu ID-ul ${index}.`);
-            return;
-        }
-        const removed = tables.splice(index, 1)[0];
-        fs.writeFileSync(savePath, JSON.stringify(tables, null, 4));
-        player.outputChatBox(`!{Green}[POKER] Masa #${index} "${removed.name}" a fost ștearsă.`);
-        mp.players.forEach(p => p.outputChatBox(`!{Red}[POKER] Masa #${index} "${removed.name}" a fost eliminată de un admin.`));
-    } else {
-        player.outputChatBox('!{Red}[POKER] Nu există tabele salvate.');
-    }
-});
