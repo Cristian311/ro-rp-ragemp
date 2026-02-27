@@ -52,11 +52,12 @@
   </div>
 </div>
 
+<!-- Cărțile jucătorului sunt ascunse inițial, apar doar prin animație -->
 <div id="player-hand">
 <!--<div class="label">Cărțile tale</div> -->
   <div class="cards" id="hand-cards">
-    <div class="card back" id="pc1"></div>
-    <div class="card back" id="pc2"></div>
+    <div class="card" id="pc1" style="display:none"></div>
+    <div class="card" id="pc2" style="display:none"></div>
   </div>
 </div>
 
@@ -90,33 +91,96 @@ const CIRCUMFERENCE = 2 * Math.PI * 26;
 
 let timerTotal   = 30;
 let toastTimeout = null;
+let currentCommunityCount = 0;
+
+/**
+ * Animează o carte: o ascunde instant, aplică delay-ul, apoi rulează animația.
+ * Dupã animație, clasa card-deal e eliminatã și cartea rãmâne vizibilã normal.
+ */
+function animateCard(elementId, delaySec) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    // Oprește orice animație în curs
+    el.classList.remove('card-deal');
+    // Forțăm cartea invizibilă pe durata delay-ului
+    el.style.opacity = '0';
+    // Forțat reflow ca browser-ul să reseteze starea animației
+    void el.offsetWidth;
+
+    el.style.animationDelay = delaySec + 's';
+    el.classList.add('card-deal');
+
+    // Dupã ce animația se termina, curãță clasele și inline styles
+    el.addEventListener('animationend', function handler() {
+        el.removeEventListener('animationend', handler);
+        el.classList.remove('card-deal');
+        el.style.opacity = '';
+        el.style.animationDelay = '';
+    });
+}
 
 function parseCard(cardStr) {
     if (!cardStr) return { rank:'', suit:'' };
     return { suit: cardStr.slice(-1), rank: cardStr.slice(0,-1) };
 }
 
+/**
+ * Setează conținutul unei cărți.
+ * Dacã rank/suit sunt goale, ascunde cartea complet (display:none).
+ */
 function setCardData(elementId, rank, suit) {
     const el = document.getElementById(elementId);
     if (!el) return;
-    if (!rank || !suit) { el.className='card back'; el.innerHTML=''; return; }
+    if (!rank || !suit) {
+        // Ascunde cartea complet — nu mai afișa spatele
+        el.className = 'card';
+        el.innerHTML = '';
+        el.style.display = 'none';
+        el.style.opacity = '';
+        el.style.animationDelay = '';
+        return;
+    }
     const isRed = RED_SUITS.includes(suit);
-    el.className = `card face ${isRed?'red':'black'}`;
-    el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${SUIT_SYMBOLS[suit]||suit}</span>`;
+    el.className = `card face ${isRed ? 'red' : 'black'}`;
+    el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${SUIT_SYMBOLS[suit] || suit}</span>`;
 }
 
 function resetCommunityCards() {
+    currentCommunityCount = 0;
     for (let i = 1; i <= 5; i++) {
         const el = document.getElementById(`cc${i}`);
-        if (el) { el.style.display = 'none'; setCardData(`cc${i}`, '', ''); }
+        if (el) {
+            el.style.display = 'none';
+            el.style.opacity = '';
+            el.classList.remove('card-deal');
+            setCardData(`cc${i}`, '', '');
+        }
     }
 }
 
 function updateMyCards(rank1, suit1, rank2, suit2) {
     resetCommunityCards();
     hideWinnerBanner();
-    setCardData('pc1', rank1, suit1);
-    setCardData('pc2', rank2, suit2);
+
+    // Prima carte
+    const pc1 = document.getElementById('pc1');
+    const pc2 = document.getElementById('pc2');
+
+    // Setează conținutul (fără display none — animateCard va gestiona vizibilitatea)
+    const isRed1 = RED_SUITS.includes(suit1);
+    pc1.className = `card face ${isRed1 ? 'red' : 'black'}`;
+    pc1.innerHTML = `<span class="rank">${rank1}</span><span class="suit">${SUIT_SYMBOLS[suit1] || suit1}</span>`;
+    pc1.style.display = 'flex';
+
+    const isRed2 = RED_SUITS.includes(suit2);
+    pc2.className = `card face ${isRed2 ? 'red' : 'black'}`;
+    pc2.innerHTML = `<span class="rank">${rank2}</span><span class="suit">${SUIT_SYMBOLS[suit2] || suit2}</span>`;
+    pc2.style.display = 'flex';
+
+    // Animează cu delay cascadat
+    animateCard('pc1', 0.1);
+    animateCard('pc2', 0.40);
 }
 
 function updateGameState(statejson) {
@@ -124,7 +188,6 @@ function updateGameState(statejson) {
 
     document.getElementById('left-pot-value').textContent = `$${(state.pot || 0).toLocaleString('en-US')}`;
     document.getElementById('left-bet-value').textContent = `$${state.currentBet.toLocaleString('en-US')}`;
-
 
     // Arată left-info (POT + BET) doar când jocul e activ
     const leftInfo = document.getElementById('left-info');
@@ -135,20 +198,39 @@ function updateGameState(statejson) {
         leftInfo.classList.remove('visible');
     }
     
-    document.getElementById('phase-label').textContent = (state.round||'WAITING').toUpperCase();
+    document.getElementById('phase-label').textContent = roundUpper;
     const cc = state.communityCards || [];
-    for (let i=1; i<=5; i++) {
+    const prevCount = currentCommunityCount;
+
+    for (let i = 1; i <= 5; i++) {
         const el = document.getElementById(`cc${i}`);
         if (cc[i-1]) {
-            const {rank,suit} = parseCard(cc[i-1]);
-            el.style.display='flex';
-            setCardData(`cc${i}`, rank, suit);
+            const { rank, suit } = parseCard(cc[i-1]);
+            const isNew = (i > prevCount);
+
+            if (isNew) {
+                // Cartă nouă: setează conținutul, afișeaz-o (invizibilă), animează
+                const isRed = RED_SUITS.includes(suit);
+                el.className = `card face ${isRed ? 'red' : 'black'}`;
+                el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${SUIT_SYMBOLS[suit] || suit}</span>`;
+                el.style.display = 'flex';
+                const delayIndex = i - 1 - prevCount;
+                animateCard(`cc${i}`, 0.08 + delayIndex * 0.18);
+            } else if (!el.classList.contains('card-deal')) {
+                // Carte existentă deja pe masă și nu e în mijlocul animației — nu re-animăm
+                el.style.display = 'flex';
+                setCardData(`cc${i}`, rank, suit);
+                el.style.opacity = '';
+            }
+            // Dacă e card-deal (animație în curs), nu atinge nimic
         } else {
-            el.style.display='none';
-            setCardData(`cc${i}`,'','');
+            el.style.display = 'none';
+            setCardData(`cc${i}`, '', '');
         }
     }
-    renderPlayerList(state.players||[], state.currentPlayer);
+
+    currentCommunityCount = cc.length;
+    renderPlayerList(state.players || [], state.currentPlayer);
 }
 
 function onYourTurn(currentBet, myBet, myChips) {
@@ -157,6 +239,7 @@ function onYourTurn(currentBet, myBet, myChips) {
     const checkBtn = document.getElementById('btn-check');
     const raiseBtn = document.getElementById('btn-raise');
     const allinBtn = document.getElementById('btn-allin');
+
     if (toCall <= 0) {
         callBtn.style.display='none'; checkBtn.style.display='';
     } else {
@@ -164,11 +247,10 @@ function onYourTurn(currentBet, myBet, myChips) {
     }
 
     const inp=document.getElementById('raise-input');
-    const minRaise=100; // Minimum raise increment
-    const maxRaise=myChips - toCall; // Cât poate ridica peste currentBet
+    const minRaise=100;
+    const maxRaise=myChips - toCall;
 
     if (maxRaise < minRaise) {
-        // Nu-și permite raise — ascunde butonul Raise
         raiseBtn.style.display='none';
         document.getElementById('raise-wrap').classList.remove('open');
     } else {
@@ -179,7 +261,6 @@ function onYourTurn(currentBet, myBet, myChips) {
         inp.placeholder=`Min +$${minRaise}`;
     }
 
-    // Dacă nu mai are chips deloc, ascunde și All-In (nu face sens)
     if (myChips <= 0) {
         raiseBtn.style.display='none';
         allinBtn.style.display='none';
@@ -261,7 +342,6 @@ function confirmRaise() {
     const maxVal=parseInt(inp.max,10)||0;
     let amount=parseInt(inp.value,10);
     if (!amount||amount<=0) return;
-    // Clamp între min și max
     if (amount<minVal) amount=minVal;
     if (maxVal>0 && amount>maxVal) amount=maxVal;
     inp.value=amount;
@@ -273,7 +353,7 @@ function sendAction(actionName, raiseAmount) {
     if (typeof mp!=='undefined') mp.trigger('Poker_PlayerAction',actionName,raiseAmount||0);
     else console.log('[TEST] Action:',actionName,raiseAmount||'');
     
-    // Hide cards when folding
+    // Ascunde cărțile la fold — complet, fără să lase spatele cărților
     if (actionName === 'fold') {
         setCardData('pc1', '', '');
         setCardData('pc2', '', '');
@@ -326,12 +406,6 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 /*
 // TEST — decomentează pentru preview
-updateLobbyCountdown(5);
-setTimeout(()=>updateLobbyCountdown(4),1000);
-setTimeout(()=>updateLobbyCountdown(3),2000);
-setTimeout(()=>updateLobbyCountdown(2),3000);
-setTimeout(()=>updateLobbyCountdown(1),4000);
-setTimeout(()=>updateLobbyCountdown(0),5000);
 setTimeout(()=>{
     updateMyCards('A','s','K','h');
     updateGameState({ round:'flop', pot:750, currentBet:100, currentPlayer:'Bogdan',
@@ -344,7 +418,7 @@ setTimeout(()=>{
     });
     onYourTurn(100,0,1000);
     updateTurnTimer('Bogdan',25);
-},5500);
+},500);
 */
 </script>
 </body>

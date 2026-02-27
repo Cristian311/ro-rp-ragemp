@@ -12,6 +12,17 @@ mp.events.addCommand('kill', (player) => {
     player.health = 0;
 });
 
+mp.events.addCommand('veh', (player, name) => {
+    let pos = player.position;
+    let heading = player.heading;
+    let vehicle = mp.vehicles.new(mp.joaat(name), new mp.Vector3(pos.x + 3, pos.y, pos.z), {
+        heading: heading,
+        color: [[0, 0, 0], [0, 0, 0]],
+        dimension: player.dimension
+    });
+    player.outputChatBox('O masina neagra a aparut langa tine!');
+});
+
 mp.events.addCommand('savepos', (player, name) => {
     let position = player.position;
     let rotation = player.heading;

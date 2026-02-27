@@ -1,6 +1,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const server = require('./poker_server');
 
 const savePath = path.join(process.cwd(), 'poker_tables.json');
 
@@ -14,7 +15,7 @@ function getMarkerText(index, state, players, maxPlayers) {
     let statusLine;
     if (state === 'playing') {
         statusLine = `~r~In joc`;
-    } else if (players >= 2) {
+    } else if (players >= server.LOBBY_CONFIG.MIN_PLAYERS) {
         statusLine = `~g~Asteapta start`;
     } else {
         statusLine = `~y~Asteapta jucatori`;
@@ -184,7 +185,7 @@ function createMarker(table, index) {
 }
 
 function createColshape(position, index, name) {
-    const colShape = mp.colshapes.newCircle(position.x, position.y, 2.0, 0);
+    const colShape = mp.colshapes.newCircle(position.x, position.y, 3.0, 0);
     colShape.setVariable('isPokerTable', true);
     colShape.setVariable('tableIndex', index);
     colShape.setVariable('tableName', name);

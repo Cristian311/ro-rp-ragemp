@@ -10,8 +10,14 @@
 //   /botallin <seat>    — bot all-in
 //   /botstatus          — afișează toți boții la masa ta
 //   /autobots           — boții joacă automat (random) până dai iar comanda
+//   /simbots [mese] [boti] — simulare: adaugă boți pe primele X mese (auto-play)
+//   /stopsim             — oprește simularea, elimină toți boții tăi
 
-const { joinLobby, leaveLobby, processAction, lobbies } = require('./poker_server.js');
+const fs   = require('fs');
+const path = require('path');
+const { LOBBY_CONFIG, joinLobby, leaveLobby, processAction, lobbies, getBestHand, getDetailedHandName, CARD_VALUES, parseCard } = require('./poker_server.js');
+
+const TABLES_SAVE_PATH = path.join(process.cwd(), 'poker_tables.json');
 
 // ──────────────────────────────────────────
 // Fake player factory
@@ -58,7 +64,91 @@ function getBotBySeat(lobby, seat) {
 }
 
 // ────────────────────────────────────────────
-// Auto-play logic (random simplu)
+// Hand strength evaluation for bot AI
+// ────────────────────────────────────────────
+
+// Preflop hand ranking (0.0 = trash, 1.0 = premium)
+function getPreflopStrength(cards) {
+    const c1 = parseCard(cards[0]);
+    const c2 = parseCard(cards[1]);
+    const v1 = CARD_VALUES[c1.rank];
+    const v2 = CARD_VALUES[c2.rank];
+    const high = Math.max(v1, v2);
+    const low = Math.min(v1, v2);
+    const suited = c1.suit === c2.suit;
+    const gap = high - low;
+    const isPair = v1 === v2;
+
+    // Pairs
+    if (isPair) {
+        if (high >= 13) return 0.95;          // KK, AA
+        if (high >= 11) return 0.85;          // JJ, QQ
+        if (high >= 9)  return 0.70;          // 99, TT
+        if (high >= 7)  return 0.55;          // 77, 88
+        return 0.40;                           // 22-66
+    }
+
+    // High cards
+    let strength = 0;
+    if (high === 14) {      // Ax
+        if (low >= 13) strength = suited ? 0.90 : 0.85;   // AK
+        else if (low >= 12) strength = suited ? 0.80 : 0.72; // AQ
+        else if (low >= 11) strength = suited ? 0.75 : 0.65; // AJ
+        else if (low >= 10) strength = suited ? 0.68 : 0.58; // AT
+        else strength = suited ? 0.48 : 0.35;                 // A9-A2
+    } else if (high === 13) { // Kx
+        if (low >= 12) strength = suited ? 0.72 : 0.62;      // KQ
+        else if (low >= 11) strength = suited ? 0.65 : 0.55;  // KJ
+        else if (low >= 10) strength = suited ? 0.60 : 0.48;  // KT
+        else strength = suited ? 0.38 : 0.25;                  // K9-K2
+    } else if (high === 12) { // Qx
+        if (low >= 11) strength = suited ? 0.60 : 0.50;       // QJ
+        else if (low >= 10) strength = suited ? 0.55 : 0.45;  // QT
+        else strength = suited ? 0.32 : 0.22;                  // Q9-Q2
+    } else if (high === 11) { // Jx
+        if (low >= 10) strength = suited ? 0.52 : 0.42;       // JT
+        else if (low >= 9) strength = suited ? 0.42 : 0.32;   // J9
+        else strength = suited ? 0.28 : 0.18;                  // J8-J2
+    } else {
+        // Low cards
+        if (gap <= 1 && suited) strength = 0.35;        // connected suited (76s, 87s etc.)
+        else if (gap <= 2 && suited) strength = 0.28;   // 1-gap suited
+        else if (gap <= 1) strength = 0.25;              // connected offsuit
+        else strength = suited ? 0.20 : 0.12;            // trash
+    }
+
+    return strength;
+}
+
+// Post-flop hand strength (folosește evaluatorul real)
+function getPostflopStrength(holeCards, communityCards) {
+    const result = getBestHand(holeCards, communityCards);
+    const score = result.score;
+
+    // Bazat pe scor: 0=HC, 1=Pair, 2=TwoPair, 3=Trips, 4=Straight, 5=Flush, 6=FH, 7=Quads, 8=SF
+    switch (score) {
+        case 0: return 0.10 + (result.tiebreakers[0] / 14) * 0.15;  // 0.10 - 0.25 (high card)
+        case 1: {
+            // Pereche: depinde de ranking-ul perechii
+            const pairRank = result.tiebreakers[0];
+            if (pairRank >= 12) return 0.55;     // QQ+ overpair
+            if (pairRank >= 9)  return 0.48;     // 99-JJ
+            if (pairRank >= 6)  return 0.38;     // 66-88
+            return 0.30;                          // low pair
+        }
+        case 2: return 0.62;                      // two pair
+        case 3: return 0.75;                      // trips
+        case 4: return 0.82;                      // straight
+        case 5: return 0.87;                      // flush
+        case 6: return 0.92;                      // full house
+        case 7: return 0.97;                      // quads
+        case 8: return 0.99;                      // straight flush
+        default: return 0.15;
+    }
+}
+
+// ────────────────────────────────────────────
+// Smart auto-play logic
 // ────────────────────────────────────────────
 function autoBotAction(lobby) {
     if (lobby.state !== 'playing') return;
@@ -79,26 +169,90 @@ function autoBotAction(lobby) {
         if (!currentOwner || !autoMode.has(currentOwner.name)) return;
 
         const canCheck = lobby.currentBet <= slot.currentBet;
-        const roll = Math.random();
+        const toCall = lobby.currentBet - slot.currentBet;
+        const canAffordRaise = slot.chips > toCall + LOBBY_CONFIG.BIG_BLIND;
+
+        // Verifică dacă toți adversarii sunt all-in
+        const opponents = lobby.players.filter(p => p !== slot && !p.hasFolded);
+        const allOpponentsAllIn = opponents.length > 0 && opponents.every(p => p.chips === 0);
+
+        // Calculează puterea mâinii
+        const isPreflop = lobby.communityCards.length === 0;
+        const handStrength = isPreflop
+            ? getPreflopStrength(slot.cards)
+            : getPostflopStrength(slot.cards, lobby.communityCards);
+
+        // Pot odds: cât costă call-ul relativ la pot
+        const potOdds = toCall > 0 ? toCall / (lobby.pot + toCall) : 0;
+        const callRatio = slot.chips > 0 ? toCall / slot.chips : 1;
+
+        // Adaugă puțin randomness (±0.10) pentru variație
+        const noise = (Math.random() - 0.5) * 0.20;
+        const effectiveStrength = Math.max(0, Math.min(1, handStrength + noise));
+
         let action;
+        let raiseAmount = 0;
 
         if (canCheck) {
-            if (roll < 0.6)      action = 'check';
-            else if (roll < 0.9) action = 'raise';
-            else                  action = 'fold';
+            // Poți da check — nu da fold niciodată
+            if (allOpponentsAllIn) {
+                action = 'check';
+            } else if (effectiveStrength >= 0.75) {
+                // Mână puternică — raise
+                action = canAffordRaise ? 'raise' : 'check';
+            } else if (effectiveStrength >= 0.50) {
+                // Mână decentă — raise uneori
+                action = (canAffordRaise && Math.random() < 0.35) ? 'raise' : 'check';
+            } else {
+                // Mână slabă — check
+                action = 'check';
+            }
         } else {
-            if (roll < 0.6)     action = 'call';
-            else if (roll < 0.96)action = 'raise';
-            else                  action = 'fold';
+            // Nu poți da check — trebuie call/fold/raise
+            if (effectiveStrength >= 0.80) {
+                // Mână foarte puternică — raise sau all-in
+                if (canAffordRaise && !allOpponentsAllIn) {
+                    action = Math.random() < 0.65 ? 'raise' : 'call';
+                } else {
+                    action = 'call';
+                }
+            } else if (effectiveStrength >= 0.55) {
+                // Mână bună — call, poate raise
+                if (canAffordRaise && !allOpponentsAllIn && Math.random() < 0.25) {
+                    action = 'raise';
+                } else {
+                    action = 'call';
+                }
+            } else if (effectiveStrength >= 0.35) {
+                // Mână marginală — call dacă e ieftin, fold dacă e scump
+                if (callRatio > 0.4) {
+                    action = Math.random() < 0.7 ? 'fold' : 'call';
+                } else {
+                    action = Math.random() < 0.25 ? 'fold' : 'call';
+                }
+            } else {
+                // Mână slabă — fold de obicei
+                if (callRatio < 0.1 && Math.random() < 0.35) {
+                    action = 'call';  // calling station mic cu trash
+                } else {
+                    action = 'fold';
+                }
+            }
         }
 
-        // Trimite doar INCREMENTUL (serverul adaugă la currentBet)
-        const raiseAmount = action === 'raise'
-            ? (Math.floor(Math.random() * 3) + 1) * 100
-            : 0;
+        // Calculează raise amount bazat pe puterea mâinii
+        if (action === 'raise') {
+            const bigBlind = LOBBY_CONFIG.BIG_BLIND;
+            if (effectiveStrength >= 0.85) {
+                raiseAmount = bigBlind * (3 + Math.floor(Math.random() * 4));  // 3-6x BB
+            } else if (effectiveStrength >= 0.65) {
+                raiseAmount = bigBlind * (2 + Math.floor(Math.random() * 3));  // 2-4x BB
+            } else {
+                raiseAmount = bigBlind * (1 + Math.floor(Math.random() * 2));  // 1-2x BB (min raise)
+            }
+        }
 
         processAction(slot.player, action, raiseAmount);
-        // Nu mai ai nevoie de al doilea setTimeout — _poker_afterTurn va declanșa din nou
     }, 800 + Math.random() * 700);
 }
 
@@ -293,7 +447,7 @@ mp.events.addCommand('a', (player) => {
     }
 
     // Adaugă 2 boți
-    const count = Math.min(2, LOBBY_CONFIG_MAX - lobby.players.length);
+    const count = Math.min(5, LOBBY_CONFIG.MAX_PLAYERS - lobby.players.length);
     if (count <= 0) {
         player.outputChatBox('!{Red}[BOT] Masa este plină!');
         return;
@@ -320,6 +474,109 @@ mp.events.addCommand('a', (player) => {
 });
 
 // ──────────────────────────────────────────
+// /simbots [numMese] [numBoti] — simulare masivă pe mai multe mese
+//   /simbots           → toate mesele, MAX boți per masă
+//   /simbots 3         → primele 3 mese, MAX boți
+//   /simbots 3 5       → primele 3 mese, 5 boți per masă
+// ──────────────────────────────────────────
+mp.events.addCommand('simbots', (player, _, numMeseStr, numBotiStr) => {
+    if (!fs.existsSync(TABLES_SAVE_PATH)) {
+        player.outputChatBox('!{Red}[SIM] Nu există mese de poker salvate!');
+        return;
+    }
+
+    const tables = JSON.parse(fs.readFileSync(TABLES_SAVE_PATH, 'utf8'));
+    if (tables.length === 0) {
+        player.outputChatBox('!{Red}[SIM] Nu există mese de poker salvate!');
+        return;
+    }
+
+    const numMese = Math.min(parseInt(numMeseStr) || tables.length, tables.length);
+    const numBoti = Math.min(parseInt(numBotiStr) || LOBBY_CONFIG.MAX_PLAYERS, LOBBY_CONFIG.MAX_PLAYERS);
+
+    if (numBoti < LOBBY_CONFIG.MIN_PLAYERS) {
+        player.outputChatBox(`!{Red}[SIM] Minim ${LOBBY_CONFIG.MIN_PLAYERS} boți per masă pentru a porni jocul!`);
+        return;
+    }
+
+    let totalAdded = 0;
+    let mesePornite = 0;
+
+    for (let t = 0; t < numMese; t++) {
+        const table = tables[t];
+        const tableIndex = t;
+        const tableName = table.name;
+
+        // Skip mese cu joc în desfășurare
+        const existingLobby = lobbies[tableIndex];
+        if (existingLobby && existingLobby.state === 'playing') {
+            player.outputChatBox(`!{Yellow}[SIM] Masa #${t} "${tableName}" — joc în desfășurare, skip.`);
+            continue;
+        }
+
+        const currentPlayers = existingLobby ? existingLobby.players.length : 0;
+        const slotsAvailable = LOBBY_CONFIG.MAX_PLAYERS - currentPlayers;
+        const botsToAdd = Math.min(numBoti - currentPlayers, slotsAvailable);
+
+        if (botsToAdd <= 0) {
+            player.outputChatBox(`!{Yellow}[SIM] Masa #${t} "${tableName}" — plină sau deja destui, skip.`);
+            continue;
+        }
+
+        const added = [];
+        for (let b = 0; b < botsToAdd; b++) {
+            const botName    = `Bot_${botIdCounter++}`;
+            const fakePlayer = createFakePlayer(botName);
+
+            botOwner.set(fakePlayer, player);
+            if (!ownerBots.has(player.name)) ownerBots.set(player.name, []);
+            ownerBots.get(player.name).push(fakePlayer);
+
+            joinLobby(fakePlayer, tableIndex, tableName);
+            added.push(botName);
+            totalAdded++;
+        }
+
+        mesePornite++;
+        player.outputChatBox(`!{Green}[SIM] Masa #${t} "${tableName}" — ${added.length} boți: ${added.join(', ')}`);
+    }
+
+    // Pornește auto-play
+    if (!autoMode.has(player.name)) {
+        autoMode.add(player.name);
+    }
+
+    player.outputChatBox(`!{Green}[SIM] ══════════════════════════════════`);
+    player.outputChatBox(`!{Green}[SIM] Simulare pornită: ${totalAdded} boți pe ${mesePornite} mese. Auto-play ON.`);
+    player.outputChatBox(`!{Yellow}[SIM] Folosește /stopsim pentru a opri totul.`);
+});
+
+// ──────────────────────────────────────────
+// /stopsim — oprește simularea, elimină TOȚI boții adminului
+// ──────────────────────────────────────────
+mp.events.addCommand('stopsim', (player) => {
+    const bots = getPlayerBots(player);
+    if (!bots.length) {
+        player.outputChatBox('!{Red}[SIM] Nu ai niciun bot activ!');
+        return;
+    }
+
+    const count = bots.length;
+    const allBots = [...bots]; // clonă — evităm probleme la splice în leaveLobby
+
+    allBots.forEach(bot => {
+        leaveLobby(bot);
+        botOwner.delete(bot);
+    });
+
+    ownerBots.set(player.name, []);
+    autoMode.delete(player.name);
+
+    player.outputChatBox(`!{Green}[SIM] ══════════════════════════════════`);
+    player.outputChatBox(`!{Green}[SIM] Simulare oprită. ${count} boți eliminați de pe toate mesele.`);
+});
+
+// ──────────────────────────────────────────
 // Cleanup la quit
 // ──────────────────────────────────────────
 mp.events.add('playerQuit', (player) => {
@@ -332,4 +589,4 @@ mp.events.add('playerQuit', (player) => {
     autoMode.delete(player.name);
 });
 
-console.log('[POKER] poker_bots.js încărcat. Comenzi: /addbot /removebot /botfold /botcheck /botcall /botraise /botallin /botstatus /autobots');
+console.log('[POKER] poker_bots.js încărcat. Comenzi: /addbot /removebot /botfold /botcheck /botcall /botraise /botallin /botstatus /autobots /simbots /stopsim');

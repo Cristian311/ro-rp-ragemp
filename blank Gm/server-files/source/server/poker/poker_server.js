@@ -1,9 +1,11 @@
+const pokerLog = require('./poker_logger');
+
 const LOBBY_CONFIG = {
     MAX_PLAYERS: 10,
     MIN_PLAYERS: 2,
     TURN_TIME: 30,
     START_DELAY: 5,
-    END_DELAY: 5,
+    END_DELAY: 10,
     SMALL_BLIND: 50,
     BIG_BLIND: 100,
 };
@@ -42,11 +44,15 @@ function getPlayerSlot(lobby, player) {
 }
 
 function broadcastToLobby(lobby, message) {
-    lobby.players.forEach(slot => slot.player.outputChatBox(message));
+    lobby.players.forEach(slot => {
+        if (!slot._hasLeft) slot.player.outputChatBox(message);
+    });
 }
 
 function callToLobby(lobby, eventName, ...args) {
-    lobby.players.forEach(slot => slot.player.call(eventName, ...args));
+    lobby.players.forEach(slot => {
+        if (!slot._hasLeft) slot.player.call(eventName, ...args);
+    });
 }
 
 function joinLobby(player, tableIndex, tableName) {
@@ -79,16 +85,20 @@ function joinLobby(player, tableIndex, tableName) {
     lobby.players.push({
         player,
         seat,
-        chips: 1000,
+        chips: 5000,
         cards: [],
         currentBet: 0,
         hasFolded: false,
         hasActed: false,
+        totalContributed: 0,
     });
 
     player.outputChatBox(`!{Orange}[POKER] Te-ai așezat la masa pe locul ${seat + 1}.`);
     broadcastToLobby(lobby, `!{Orange}[POKER] !{Cyan}${player.name} !{White}s-a alăturat (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS})`);
+    console.log(`[POKER] JOIN: ${player.name} s-a alăturat lobby "${tableName}" (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS}), seat ${seat}`);
+    pokerLog.onPlayerJoin(tableIndex, tableName, player.name, lobby.players.length, LOBBY_CONFIG.MAX_PLAYERS);
 
+    
     player.call('openPokerUI');
     updateLobbyUI(lobby);
     callToLobby(lobby, 'pokerUpdateState', [getLobbyStateForUI(lobby)]);
@@ -106,16 +116,43 @@ function leaveLobby(player) {
     const wasPlaying = lobby.state === 'playing';
     const leavingIndex = lobby.players.findIndex(p => p.player === player);
     if (leavingIndex === -1) return;
+    console.log(`[POKER] LEAVE: ${player.name} părăsește lobby "${lobby.name}" (wasPlaying: ${wasPlaying}, index: ${leavingIndex})`);
+    pokerLog.onPlayerLeave(lobby.id, lobby.name, player.name, wasPlaying ? 'mid-hand' : 'manual');
 
-    // Închide UI-ul pentru cel care pleacă ÎNAINTE de a-l scoate
     player.call('closePokerUI');
+    player.outputChatBox('!{Orange}[POKER] !{White}Ai părăsit masa.');
 
+    if (wasPlaying) {
+        // Mid-hand: NU scoatem din array — păstrăm pentru calculul corect al side pots
+        const slot = lobby.players[leavingIndex];
+        slot.hasFolded = true;
+        slot.hasActed = true;
+        slot._hasLeft = true;
+
+        broadcastToLobby(lobby, `!{Orange}[POKER] !{Cyan}${player.name} !{White}a părăsit masa.`);
+        console.log(`[POKER] LEAVE_MID_HAND: ${player.name} marcat ca folded+left (rămâne în array pentru pot)`);
+
+        const isCurrentPlayer = (leavingIndex === lobby.currentPlayerIndex);
+
+        if (isCurrentPlayer) {
+            // Era rândul lui — avansăm
+            nextTurn(lobby);
+        } else {
+            // Verificăm dacă mai e un singur jucător activ
+            const activePlayers = lobby.players.filter(p => !p.hasFolded);
+            if (activePlayers.length === 1) {
+                if (lobby.turnTimer) { clearInterval(lobby.turnTimer); lobby.turnTimer = null; }
+                endRound(lobby, activePlayers[0]);
+            }
+        }
+        updateLobbyUI(lobby);
+        return;
+    }
+
+    // Nu e în joc — scoatem normal
     lobby.players.splice(leavingIndex, 1);
-
-    // Re-indexează seat-urile în ordine 0,1,2,...
     lobby.players.forEach((p, i) => { p.seat = i; });
 
-    player.outputChatBox('!{Orange}[POKER] !{White}Ai părăsit masa.');
     broadcastToLobby(lobby, `!{Orange}[POKER] !{Cyan}${player.name} !{White}a părăsit masa.`);
 
     if (lobby.players.length < LOBBY_CONFIG.MIN_PLAYERS) {
@@ -124,7 +161,6 @@ function leaveLobby(player) {
         lobby.state = 'waiting';
         broadcastToLobby(lobby, '!{Red}[POKER] Nu mai sunt suficienți jucători. Jocul s-a oprit.');
 
-        // Scoate toți jucătorii rămași din lobby și închide UI-ul lor
         const remaining = [...lobby.players];
         remaining.forEach(slot => {
             slot.player.call('closePokerUI');
@@ -133,29 +169,16 @@ function leaveLobby(player) {
         lobby.players = [];
     }
 
-    // Ajustează dealerIndex și currentPlayerIndex după eliminare
     if (lobby.dealerIndex >= lobby.players.length) {
         lobby.dealerIndex = 0;
     }
 
     updateLobbyUI(lobby);
-
-    if (wasPlaying && lobby.players.length >= LOBBY_CONFIG.MIN_PLAYERS) {
-        // Dacă cel care a plecat era la rând sau indexul e acum invalid, ajustează
-        if (leavingIndex <= lobby.currentPlayerIndex) {
-            lobby.currentPlayerIndex = leavingIndex >= lobby.players.length
-                ? 0
-                : leavingIndex;
-        }
-        if (lobby.currentPlayerIndex >= lobby.players.length) {
-            lobby.currentPlayerIndex = 0;
-        }
-        nextTurn(lobby);
-    }
 }
 
 function startCountdown(lobby) {
     let secondsLeft = LOBBY_CONFIG.START_DELAY;
+    console.log(`[POKER] COUNTDOWN: Lobby "${lobby.name}" — pornește numărătoarea (${secondsLeft}s), ${lobby.players.length} jucători`);
     broadcastToLobby(lobby, `!{Orange}[POKER] !{White}Jocul începe în ${secondsLeft} secunde!`);
 
     lobby.startTimer = setInterval(() => {
@@ -191,10 +214,42 @@ function createShuffledDeck() {
 
 function dealFromDeck(lobby, count) {
     if (lobby.deck.length < count) {
-        console.warn('[POKER] Deck epuizat, se recreează!');
-        lobby.deck = createShuffledDeck();
+        console.error(`[POKER] BUG: Deck epuizat! Rămase: ${lobby.deck.length}, cerute: ${count}. Lobby: "${lobby.name}"`);
+        const remaining = lobby.deck.splice(0, lobby.deck.length);
+        return remaining;
     }
     return lobby.deck.splice(0, count);
+}
+
+function validateNoDuplicateCards(lobby) {
+    const allCards = [];
+
+    // Colectează toate cărțile jucătorilor
+    lobby.players.forEach(slot => {
+        slot.cards.forEach(c => allCards.push({ card: c, source: `player ${slot.player.name}` }));
+    });
+
+    // Colectează cărțile din community
+    lobby.communityCards.forEach(c => allCards.push({ card: c, source: 'community' }));
+
+    // Verifică duplicate
+    const seen = {};
+    let hasDuplicates = false;
+    allCards.forEach(({ card, source }) => {
+        if (seen[card]) {
+            console.error(`[POKER] BUG DUPLICATE: "${card}" apare la ${seen[card]} ȘI la ${source}! Lobby: "${lobby.name}"`);
+            hasDuplicates = true;
+        } else {
+            seen[card] = source;
+        }
+    });
+
+    if (hasDuplicates) {
+        console.error(`[POKER] DECK CORRUPTION DETECTED! Alle dealt cards: ${allCards.map(c => `${c.card}(${c.source})`).join(', ')}`);
+        console.error(`[POKER] Deck remaining: ${lobby.deck.length} cards`);
+    }
+
+    return !hasDuplicates;
 }
 
 function parseCard(cardStr) {
@@ -207,21 +262,35 @@ function startGame(lobby) {
     lobby.state = 'playing';
     lobby.pot = 0;
     lobby.communityCards = [];
-    lobby.currentBet = 0; // Se setează la bbAmount după blind-uri
+    lobby.currentBet = 0;
     lobby.round = 'preflop';
 
     lobby.deck = createShuffledDeck();
 
     lobby.players.forEach(slot => {
-        slot.cards      = dealFromDeck(lobby, 2);
-        slot.currentBet = 0;
-        slot.hasFolded  = false;
-        slot.hasActed   = false;
-        slot.lastAction = null;
+        slot.cards             = dealFromDeck(lobby, 2);
+        slot.currentBet        = 0;
+        slot.hasFolded         = false;
+        slot.hasActed          = false;
+        slot.lastAction        = null;
+        slot.totalContributed  = 0;
     });
 
-    const sbIndex = (lobby.dealerIndex + 1) % lobby.players.length;
-    const bbIndex = (lobby.dealerIndex + 2) % lobby.players.length;
+    // Validare: verifică dacă există cărți duplicate după dealing
+    validateNoDuplicateCards(lobby);
+
+    console.log(`[POKER] ====== START GAME ====== Lobby "${lobby.name}", ${lobby.players.length} jucători, dealer index: ${lobby.dealerIndex}`);
+    pokerLog.onGameStart(lobby);
+
+    // Heads-up: dealer=SB, celalalt=BB. 3+ jucători: SB=dealer+1, BB=dealer+2
+    let sbIndex, bbIndex;
+    if (lobby.players.length === 2) {
+        sbIndex = lobby.dealerIndex;
+        bbIndex = (lobby.dealerIndex + 1) % lobby.players.length;
+    } else {
+        sbIndex = (lobby.dealerIndex + 1) % lobby.players.length;
+        bbIndex = (lobby.dealerIndex + 2) % lobby.players.length;
+    }
     const sbSlot  = lobby.players[sbIndex];
     const bbSlot  = lobby.players[bbIndex];
 
@@ -229,22 +298,28 @@ function startGame(lobby) {
     const sbAmount = Math.min(LOBBY_CONFIG.SMALL_BLIND, sbSlot.chips);
     sbSlot.chips -= sbAmount;
     sbSlot.currentBet = sbAmount;
+    sbSlot.totalContributed += sbAmount;
     lobby.pot += sbAmount;
 
     const bbAmount = Math.min(LOBBY_CONFIG.BIG_BLIND, bbSlot.chips);
     bbSlot.chips -= bbAmount;
     bbSlot.currentBet = bbAmount;
+    bbSlot.totalContributed += bbAmount;
     lobby.pot += bbAmount;
     lobby.currentBet = bbAmount;
 
-    broadcastToLobby(lobby, `!{Green}====== POKER ROUND START ======`);
+    console.log(`[POKER] BLINDS: SB=${sbSlot.player.name} ($${sbAmount}), BB=${bbSlot.player.name} ($${bbAmount}), pot=$${lobby.pot}`);
+    pokerLog.onBlinds(lobby, sbSlot.player.name, sbAmount, bbSlot.player.name, bbAmount);
+
+    broadcastToLobby(lobby, `!{Green}====== Incepe runda ======`);
 
     lobby.players.forEach(slot => {
         const [c1, c2] = slot.cards;
         const { rank: r1, suit: s1 } = parseCard(c1);
         const { rank: r2, suit: s2 } = parseCard(c2);
         slot.player.call('pokerDealCards', [r1, s1, r2, s2]);
-        console.log(`[POKER] ${slot.player.name} primește cărțile: ${r1}${s1} și ${r2}${s2}`);
+        console.log(`[POKER] DEAL: ${slot.player.name} → ${c1} ${c2} (chips: $${slot.chips})`);
+        pokerLog.onDealCards(lobby, slot.player.name, [c1, c2]);
     });
 
     updateLobbyUI(lobby);
@@ -268,9 +343,16 @@ function startTurn(lobby) {
     }
 
     const currentSlot = lobby.players[lobby.currentPlayerIndex];
-    if (!currentSlot) return;
+    if (!currentSlot || currentSlot.hasFolded) return;
+
+    // Dacă jucătorul curent e all-in (chips=0), nu porni timer — treci direct la nextTurn
+    if (currentSlot.chips === 0) {
+        nextTurn(lobby);
+        return;
+    }
 
     lobby.turnTimeLeft = LOBBY_CONFIG.TURN_TIME;
+    console.log(`[POKER] TURN: ${currentSlot.player.name} (index ${lobby.currentPlayerIndex}) | round: ${lobby.round} | pot: $${lobby.pot} | currentBet: $${lobby.currentBet} | chips: $${currentSlot.chips} | playerBet: $${currentSlot.currentBet}`);
 
     broadcastToLobby(lobby,
         `!{Orange}[POKER] !{White}Rândul lui !{Cyan}${currentSlot.player.name} !{White}| Pot: !{Green}$${lobby.pot}`
@@ -287,9 +369,23 @@ function startTurn(lobby) {
 
         if (lobby.turnTimeLeft <= 0) {
             clearInterval(lobby.turnTimer);
-            broadcastToLobby(lobby, `!{Red}[POKER] ${currentSlot.player.name} a picat timpul — Fold automat!`);
-            currentSlot.hasFolded = true;
-            currentSlot.hasActed  = true;
+            const canCheck = lobby.currentBet <= currentSlot.currentBet;
+            if (canCheck) {
+                // Auto-check — nu pierzi chips-urile deja investite
+                currentSlot.hasActed   = true;
+                currentSlot.lastAction = 'check';
+                broadcastToLobby(lobby, `!{Red}[POKER] ${currentSlot.player.name} a picat timpul — Check automat!`);
+                console.log(`[POKER] ACTION: ${currentSlot.player.name} → check (timeout) | chips=$${currentSlot.chips}, bet=$${currentSlot.currentBet}, lobbyBet=$${lobby.currentBet}, pot=$${lobby.pot}`);
+                pokerLog.onTimeout(lobby, currentSlot.player.name, 'check');
+            } else {
+                // Auto-fold — trebuie să pună bani, deci fold
+                currentSlot.hasFolded  = true;
+                currentSlot.hasActed   = true;
+                currentSlot.lastAction = 'fold';
+                broadcastToLobby(lobby, `!{Red}[POKER] ${currentSlot.player.name} a picat timpul — Fold automat!`);
+                console.log(`[POKER] ACTION: ${currentSlot.player.name} → fold (timeout) | chips=$${currentSlot.chips}, bet=$${currentSlot.currentBet}, lobbyBet=$${lobby.currentBet}, pot=$${lobby.pot}`);
+                pokerLog.onTimeout(lobby, currentSlot.player.name, 'fold');
+            }
             nextTurn(lobby);
         }
     }, 1000);
@@ -301,9 +397,12 @@ function nextTurn(lobby) {
         lobby.turnTimer = null;
     }
     lobby.players.forEach(p => {
-        updatePlayerDebugInfo(p.player, lobby);
+        if (!p._hasLeft) updatePlayerDebugInfo(p.player, lobby);
     });
     const activePlayers = lobby.players.filter(p => !p.hasFolded);
+    console.log(`[POKER] NEXT_TURN: activi=${activePlayers.length}, pot=$${lobby.pot}, currentBet=$${lobby.currentBet}`);
+    const playerStatus = lobby.players.map(p => `${p.player.name}(fold:${p.hasFolded},acted:${p.hasActed},bet:$${p.currentBet},chips:$${p.chips})`);
+    console.log(`[POKER] PLAYERS: ${playerStatus.join(' | ')}`);
 
     if (activePlayers.length === 1) {
         endRound(lobby, activePlayers[0]);
@@ -328,12 +427,30 @@ const ROUND_ORDER = ['preflop', 'flop', 'turn', 'river'];
 function nextRound(lobby) {
     lobby.players.forEach(p => {
         p.hasActed   = false;
-        // NU resetăm p.currentBet — bet-ul total per jucător se păstrează între street-uri
     });
-    // NU resetăm lobby.currentBet — bet-ul de la masă rămâne și se adaugă la el
+
+    // Fast-forward: dacă max 1 jucător mai poate acționa, deal remaining cards + showdown
+    const activeNonFolded = lobby.players.filter(p => !p.hasFolded);
+    const canActPlayers = activeNonFolded.filter(p => p.chips > 0);
+    if (canActPlayers.length <= 1 && activeNonFolded.length >= 2) {
+        if (lobby.communityCards.length === 0) {
+            lobby.communityCards = dealFromDeck(lobby, 3);
+        }
+        while (lobby.communityCards.length < 5) {
+            lobby.communityCards.push(...dealFromDeck(lobby, 1));
+        }
+        lobby.round = 'river';
+        validateNoDuplicateCards(lobby);
+        console.log(`[POKER] FAST_FORWARD: All-in → Community: [${lobby.communityCards.join(', ')}] | Pot: $${lobby.pot}`);
+        pokerLog.onNewRound(lobby, 'river (fast-forward)', lobby.communityCards);
+        callToLobby(lobby, 'pokerUpdateState', [getLobbyStateForUI(lobby)]);
+        showdown(lobby);
+        return;
+    }
 
     const currentRoundIdx = ROUND_ORDER.indexOf(lobby.round);
     if (currentRoundIdx >= ROUND_ORDER.length - 1) {
+        console.log(`[POKER] NEXT_ROUND: river terminat → SHOWDOWN`);
         showdown(lobby);
         return;
     }
@@ -345,17 +462,16 @@ function nextRound(lobby) {
     } else {
         lobby.communityCards.push(...dealFromDeck(lobby, 1));
     }
-
-    //broadcastToLobby(lobby,
-    //    `!{Green}[POKER] ══ ${lobby.round.toUpperCase()} ══ Cărți: ${lobby.communityCards.join(' ')}`
-    //);
+    validateNoDuplicateCards(lobby);
+    console.log(`[POKER] NEXT_ROUND: → ${lobby.round.toUpperCase()} | Community: [${lobby.communityCards.join(', ')}] | Pot: $${lobby.pot}`);
+    pokerLog.onNewRound(lobby, lobby.round, lobby.communityCards);
 
     callToLobby(lobby, 'pokerUpdateState', [getLobbyStateForUI(lobby)]);
 
     lobby.currentPlayerIndex = (lobby.dealerIndex + 1) % lobby.players.length;
     startTurn(lobby);
 
-    // ✅ FIX #2: lipsea _poker_afterTurn după nextRound — boții nu primeau semnalul să acționeze
+    // pentru boti
     mp.events.call('_poker_afterTurn', lobby);
 }
 
@@ -374,6 +490,10 @@ function processAction(player, action, raiseAmount = 0) {
     }
 
     const slot = getPlayerSlot(lobby, player);
+    console.log(`[POKER] ACTION: ${player.name} → ${action}${action === 'raise' ? ` (amount: ${raiseAmount})` : ''} | chips=$${slot.chips}, bet=$${slot.currentBet}, lobbyBet=$${lobby.currentBet}, pot=$${lobby.pot}`);
+
+    const _preActionChips = slot.chips;
+    const _preActionPot   = lobby.pot;
 
     switch (action) {
         case 'fold':
@@ -409,10 +529,11 @@ function processAction(player, action, raiseAmount = 0) {
                 break;
             }
             const actualCall = Math.min(toCall, slot.chips);
-            slot.chips      -= actualCall;
-            slot.currentBet += actualCall;
-            lobby.pot       += actualCall;
-            slot.hasActed    = true;
+            slot.chips            -= actualCall;
+            slot.currentBet       += actualCall;
+            slot.totalContributed += actualCall;
+            lobby.pot             += actualCall;
+            slot.hasActed          = true;
             
             if (actualCall < toCall && slot.chips === 0) {
                 // All-in call (nu avea destule chipuri)
@@ -437,7 +558,16 @@ function processAction(player, action, raiseAmount = 0) {
             // Calculează maximul pe care și-l permite (chips rămase după call)
             const maxAfford = slot.chips - (lobby.currentBet - slot.currentBet);
             if (maxAfford <= 0) {
-                player.outputChatBox('!{Red}Nu ai destui chips pentru raise! Folosește All-In.');
+                // Nu poate raise → convertim automat în all-in dacă are chips
+                if (slot.chips > 0) {
+                    processAction(player, 'allin');
+                } else {
+                    slot.hasActed = true;
+                    slot.lastAction = 'check';
+                    updatePlayerDebugInfo(player, lobby);
+                    updateLobbyUI(lobby);
+                    nextTurn(lobby);
+                }
                 return;
             }
 
@@ -446,17 +576,18 @@ function processAction(player, action, raiseAmount = 0) {
                 raiseIncrement = maxAfford;
             }
 
-            // Dacă nu-și permite nici minimul de raise, respinge
+            // Dacă nu-și permite nici minimul de raise → all-in automat
             if (raiseIncrement < minRaiseIncrement && maxAfford < minRaiseIncrement) {
-                player.outputChatBox('!{Red}Nu ai destui chips pentru raise minim! Folosește All-In.');
+                processAction(player, 'allin');
                 return;
             }
 
             const newBet = lobby.currentBet + raiseIncrement;
-            const toAdd      = newBet - slot.currentBet;
-            slot.chips      -= toAdd;
-            lobby.pot       += toAdd;
-            slot.currentBet  = newBet;
+            const toAdd           = newBet - slot.currentBet;
+            slot.chips           -= toAdd;
+            lobby.pot            += toAdd;
+            slot.totalContributed += toAdd;
+            slot.currentBet       = newBet;
             lobby.currentBet = newBet;
             slot.hasActed    = true;
             slot.lastAction  = 'raise';
@@ -468,10 +599,11 @@ function processAction(player, action, raiseAmount = 0) {
         }
 
         case 'allin': {
-            const allInAmount = slot.chips + slot.currentBet;
-            lobby.pot        += slot.chips;
-            slot.currentBet  += slot.chips;
-            slot.chips        = 0;
+            const allInAmount      = slot.chips + slot.currentBet;
+            slot.totalContributed += slot.chips;
+            lobby.pot             += slot.chips;
+            slot.currentBet       += slot.chips;
+            slot.chips             = 0;
             if (slot.currentBet > lobby.currentBet) {
                 lobby.currentBet = slot.currentBet;
                 lobby.players.forEach(p => { if (p !== slot && !p.hasFolded && p.chips > 0) p.hasActed = false; });
@@ -488,6 +620,10 @@ function processAction(player, action, raiseAmount = 0) {
             player.outputChatBox('!{Red}Acțiune invalidă.');
             return;
     }
+    // Log acțiunea în fișier
+    const actionAmount = _preActionPot !== lobby.pot ? (lobby.pot - _preActionPot) : 0;
+    pokerLog.onPlayerAction(lobby, player.name, action, actionAmount, slot.chips, lobby.pot);
+
     updatePlayerDebugInfo(player, lobby);
     updateLobbyUI(lobby);
     nextTurn(lobby);
@@ -502,6 +638,26 @@ const HAND_NAMES = [
     'High Card', 'One Pair', 'Two Pair', 'Three of a Kind',
     'Straight', 'Flush', 'Full House', 'Four of a Kind', 'Straight Flush'
 ];
+
+const VALUE_TO_RANK = { 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7', 8:'8', 9:'9', 10:'10', 11:'J', 12:'Q', 13:'K', 14:'A' };
+
+function getDetailedHandName(result) {
+    const { score, tiebreakers } = result;
+    const r = (v) => VALUE_TO_RANK[v] || v;
+
+    switch (score) {
+        case 8: return `Straight Flush (${r(tiebreakers[0])}-high)`;
+        case 7: return `Four of a Kind (${r(tiebreakers[0])}s) - ${r(tiebreakers[1])}`;
+        case 6: return `Full House (${r(tiebreakers[0])}s full of ${r(tiebreakers[1])}s)`;
+        case 5: return `Flush (${tiebreakers.map(r).join(' ')})`;
+        case 4: return `Straight (${r(tiebreakers[0])}-high)`;
+        case 3: return `Three of a Kind (${r(tiebreakers[0])}s) - ${tiebreakers.slice(1).map(r).join(' ')}`;
+        case 2: return `Two Pair (${r(tiebreakers[0])}s & ${r(tiebreakers[1])}s) - ${r(tiebreakers[2])}`;
+        case 1: return `One Pair (${r(tiebreakers[0])}s) - ${tiebreakers.slice(1).map(r).join(' ')}`;
+        case 0: return `High Card (${tiebreakers.map(r).join(' ')})`;
+        default: return HAND_NAMES[score] || 'Unknown';
+    }
+}
 
 function getCombinations(arr, k) {
     if (k === 0) return [[]];
@@ -577,70 +733,174 @@ function getBestHand(holeCards, communityCards) {
     return best;
 }
 
-function showdown(lobby) {
-    broadcastToLobby(lobby, '!{Green}[POKER] ══ SHOWDOWN ══');
+// Calculează main pot + side pot-uri bazate pe totalContributed al fiecărui jucător
+function calculateSidePots(players) {
+    // Sortăm toți jucătorii (inclusiv folded) după contribuție ascendent
+    const sorted = [...players].sort((a, b) => a.totalContributed - b.totalContributed);
+    const rawPots = [];
+    let prevLevel = 0;
 
-    const active = lobby.players.filter(p => !p.hasFolded);
-    let bestResult = null;
-    let winners    = [];
+    for (let i = 0; i < sorted.length; i++) {
+        const level = sorted[i].totalContributed;
+        if (level <= prevLevel) continue;
 
-    active.forEach(slot => {
-        const result = getBestHand(slot.cards, lobby.communityCards);
-        broadcastToLobby(
-            lobby,
-            `!{White}${slot.player.name}: ${slot.cards.join(' ')} — ${HAND_NAMES[result.score]}`
-        );
-        const cmp = bestResult ? compareHands(result, bestResult) : 1;
-        if (cmp > 0) {
-            bestResult = result;
-            winners    = [slot];
-        } else if (cmp === 0) {
-            winners.push(slot);
+        const increment = level - prevLevel;
+        // Jucătorii de la index i în sus au contribuit >= level (sortare ascendentă)
+        const count = sorted.length - i;
+        const potAmount = increment * count;
+
+        // Eligibili să câștige acest pot = non-folded cu contribuție >= level
+        const eligiblePlayers = sorted.slice(i).filter(p => !p.hasFolded);
+
+        if (potAmount > 0) {
+            if (eligiblePlayers.length === 0) {
+                // Toți cei care au contribuit la acest nivel au foldat — adaugă la potu anterior
+                if (rawPots.length > 0) rawPots[rawPots.length - 1].amount += potAmount;
+            } else {
+                rawPots.push({ amount: potAmount, eligiblePlayers });
+            }
         }
-    });
 
-    const share = Math.floor(lobby.pot / winners.length);
-    if (winners.length === 1) {
-        broadcastToLobby(
-            lobby,
-            `!{Orange}[POKER] !{Yellow}${winners[0].player.name} !{White}a câștigat !{Green}$${lobby.pot} !{White}cu ${HAND_NAMES[bestResult.score]}!`
-        );
-    } else {
-        broadcastToLobby(
-            lobby,
-            `!{Orange}[POKER] !{White}Split pot (${HAND_NAMES[bestResult.score]})! ${winners.map(w => `!{Yellow}${w.player.name}`).join(', ')} !{White}primesc !{Green}$${share} !{White}fiecare.`
-        );
+        prevLevel = level;
     }
 
-    winners.forEach(slot => { slot.chips += share; });
+    // Merge consecutive pots cu aceiași eligibili
+    const pots = [];
+    for (const pot of rawPots) {
+        const eligibleNames = pot.eligiblePlayers.map(p => p.player.name).sort().join(',');
+        if (pots.length > 0) {
+            const lastPot = pots[pots.length - 1];
+            const lastNames = lastPot.eligiblePlayers.map(p => p.player.name).sort().join(',');
+            if (eligibleNames === lastNames) {
+                // Aceiași jucători — merge poturile
+                lastPot.amount += pot.amount;
+                continue;
+            }
+        }
+        pots.push({ amount: pot.amount, eligiblePlayers: pot.eligiblePlayers });
+    }
+
+    return pots;
+}
+
+function showdown(lobby) {
+    broadcastToLobby(lobby, '!{Green}[POKER] ══ SHOWDOWN ══');
+    console.log(`[POKER] ====== SHOWDOWN ====== Lobby "${lobby.name}" | Pot: $${lobby.pot} | Community: [${lobby.communityCards.join(', ')}]`);
+
+    const active = lobby.players.filter(p => !p.hasFolded);
+
+    // Afișează mâinile tuturor jucătorilor activi
+    const showdownResults = [];
+    active.forEach(slot => {
+        const result = getBestHand(slot.cards, lobby.communityCards);
+        const detailedName = getDetailedHandName(result);
+        console.log(`[POKER] SHOWDOWN: ${slot.player.name} → ${slot.cards.join(' ')} = ${detailedName} (score: ${result.score}, tiebreakers: [${result.tiebreakers.join(',')}])`);
+        broadcastToLobby(lobby,
+            `!{White}${slot.player.name}: ${slot.cards.join(' ')} — !{Yellow}${detailedName}`
+        );
+        showdownResults.push({
+            playerName: slot.player.name,
+            cards: [...slot.cards],
+            handName: detailedName,
+            score: result.score,
+        });
+    });
+    pokerLog.onShowdown(lobby, showdownResults);
+
+    // Calculează poturile (main + side pots)
+    const sidePots = calculateSidePots(lobby.players);
+    console.log(`[POKER] SIDE_POTS: ${sidePots.length} pot(uri)`);
+    sidePots.forEach((pot, i) => {
+        console.log(`[POKER]   Pot ${i}: $${pot.amount} | Eligibili: ${pot.eligiblePlayers.map(p => p.player.name).join(', ')}`);
+    });
+
+    let totalAwarded = 0;
+    const allWinnerNames = [];
+
+    sidePots.forEach((pot, potIndex) => {
+        const { amount, eligiblePlayers } = pot;
+        const potLabel = sidePots.length > 1
+            ? (potIndex === 0 ? 'Main Pot' : `Side Pot ${potIndex}`)
+            : 'Pot';
+
+        // Găsește câștigătorul(ii) pentru acest pot
+        let bestResult = null;
+        let potWinners = [];
+
+        eligiblePlayers.forEach(slot => {
+            const res = getBestHand(slot.cards, lobby.communityCards);
+            const cmp = bestResult ? compareHands(res, bestResult) : 1;
+            if (cmp > 0) {
+                bestResult = res;
+                potWinners = [slot];
+            } else if (cmp === 0) {
+                potWinners.push(slot);
+            }
+        });
+
+        const share = Math.floor(amount / potWinners.length);
+        potWinners.forEach(slot => { slot.chips += share; });
+        totalAwarded += share * potWinners.length;
+        const winDetailedName = getDetailedHandName(bestResult);
+        console.log(`[POKER] POT_WINNER: ${potLabel} ($${amount}) → ${potWinners.map(w => w.player.name).join(', ')} (câte $${share}) — ${winDetailedName}`);
+        pokerLog.onPotWinner(lobby, potLabel, amount, potWinners.map(w => w.player.name), winDetailedName, share);
+
+        if (potWinners.length === 1) {
+            broadcastToLobby(lobby,
+                `!{Orange}[POKER] !{Yellow}${potWinners[0].player.name} !{White}câștigă ${potLabel} (!{Green}$${amount}!{White}) cu !{Yellow}${winDetailedName}!{White}!`
+            );
+        } else {
+            broadcastToLobby(lobby,
+                `!{Orange}[POKER] !{White}Split ${potLabel} (!{Green}$${amount}!{White})! ${potWinners.map(w => `!{Yellow}${w.player.name}`).join(', ')} !{White}primesc !{Green}$${share}!{White} fiecare (!{Yellow}${winDetailedName}!{White}).`
+            );
+        }
+
+        potWinners.forEach(w => {
+            if (!allWinnerNames.includes(w.player.name)) allWinnerNames.push(w.player.name);
+        });
+    });
+
+    // Rest din rotunjire (Math.floor) — îl dăm primului câștigător
+    const remainder = lobby.pot - totalAwarded;
+    if (remainder > 0 && sidePots.length > 0 && sidePots[0].eligiblePlayers.length > 0) {
+        sidePots[0].eligiblePlayers[0].chips += remainder;
+    }
 
     // Trimite winner banner la UI
-    const winnerNames = winners.map(w => w.player.name);
-    callToLobby(lobby, 'pokerShowWinner', [winnerNames, lobby.pot, HAND_NAMES[bestResult.score]]);
+    callToLobby(lobby, 'pokerShowWinner', [allWinnerNames, lobby.pot, '']);
 
-    endRound(lobby, winners[0], true);
+    pokerLog.onGameEnd(lobby, lobby.pot);
+
+    const firstWinner = lobby.players.find(p => allWinnerNames.includes(p.player.name)) || lobby.players[0];
+    endRound(lobby, firstWinner, true);
 }
 
 function endRound(lobby, winnerSlot, chipsAlreadyAdded = false) {
     const potWon = lobby.pot;
+    console.log(`[POKER] ====== END ROUND ====== Lobby "${lobby.name}" | Pot câștigat: $${potWon} | Winner: ${winnerSlot.player.name} | chipsAlreadyAdded: ${chipsAlreadyAdded}`);
     if (!chipsAlreadyAdded) {
+        pokerLog.onFoldWin(lobby, winnerSlot.player.name, lobby.pot);
+        pokerLog.onGameEnd(lobby, lobby.pot);
         winnerSlot.chips += lobby.pot;
         broadcastToLobby(lobby, `!{Orange}[POKER] !{Yellow}${winnerSlot.player.name} !{White}a câștigat runda și !{Green}$${lobby.pot}!`);
-        // Trimite winner banner (fold win)
         callToLobby(lobby, 'pokerShowWinner', [[winnerSlot.player.name], potWon, 'Fold Win']);
     }
 
     if (lobby.turnTimer) { clearInterval(lobby.turnTimer); lobby.turnTimer = null; }
 
-    const eliminated = lobby.players.filter(p => p.chips <= 0);
+    // Curăță jucătorii care au plecat mid-hand
+    const leftPlayers = lobby.players.filter(p => p._hasLeft);
+    if (leftPlayers.length > 0) console.log(`[POKER] LEFT_CLEANUP: ${leftPlayers.map(p => p.player.name).join(', ')}`);
+
+    const eliminated = lobby.players.filter(p => p.chips <= 0 && !p._hasLeft);
+    if (eliminated.length > 0) console.log(`[POKER] ELIMINATI: ${eliminated.map(p => p.player.name).join(', ')}`);
     eliminated.forEach(slot => {
         slot.player.outputChatBox('!{Red}[POKER] Nu mai ai chips! Ai fost eliminat.');
         slot.player.call('closePokerUI');
         broadcastToLobby(lobby, `!{Red}[POKER] ${slot.player.name} a fost eliminat (0 chips).`);
     });
-    lobby.players = lobby.players.filter(p => p.chips > 0);
+    lobby.players = lobby.players.filter(p => p.chips > 0 && !p._hasLeft);
 
-    // Re-indexează seat-urile după eliminare
     lobby.players.forEach((p, i) => { p.seat = i; });
     if (lobby.dealerIndex >= lobby.players.length) {
         lobby.dealerIndex = 0;
@@ -648,29 +908,35 @@ function endRound(lobby, winnerSlot, chipsAlreadyAdded = false) {
 
     updateLobbyUI(lobby);
 
-    lobby.state = 'waiting';
+    console.log(`[POKER] POST_ROUND: ${lobby.players.length} jucători rămași: ${lobby.players.map(p => `${p.player.name}($${p.chips})`).join(', ')}`);
     if (lobby.players.length >= LOBBY_CONFIG.MIN_PLAYERS) {
+        lobby.state = 'starting'; // Previne joinLobby să pornească un al doilea countdown
         const delay = LOBBY_CONFIG.END_DELAY * 1000;
         broadcastToLobby(lobby, `!{Orange}[POKER] !{White}Runda nouă în ${LOBBY_CONFIG.END_DELAY} secunde...`);
         setTimeout(() => {
             if (lobby.players.length >= LOBBY_CONFIG.MIN_PLAYERS) {
                 lobby.dealerIndex = (lobby.dealerIndex + 1) % lobby.players.length;
                 startGame(lobby);
+            } else {
+                lobby.state = 'waiting';
+                broadcastToLobby(lobby, '!{Red}[POKER] Nu sunt suficienți jucători pentru o nouă rundă.');
             }
         }, delay);
     } else {
+        lobby.state = 'waiting';
         broadcastToLobby(lobby, '!{Red}[POKER] Nu sunt suficienți jucători pentru o nouă rundă.');
     }
 }
 
 function getLobbyStateForUI(lobby) {
+    const visiblePlayers = lobby.players.filter(p => !p._hasLeft);
     return {
         round:          lobby.round,
         pot:            lobby.pot,
         currentBet:     lobby.currentBet,
         communityCards: lobby.communityCards,
         currentPlayer:  lobby.players[lobby.currentPlayerIndex]?.player?.name || '',
-        players: lobby.players.map(p => ({
+        players: visiblePlayers.map(p => ({
             name:       p.player.name,
             chips:      p.chips,
             seat:       p.seat,
@@ -682,14 +948,12 @@ function getLobbyStateForUI(lobby) {
 }
 
 function updateLobbyUI(lobby) {
+    const visibleCount = lobby.players.filter(p => !p._hasLeft).length;
 
     callToLobby(lobby, 'pokerUpdateState', [getLobbyStateForUI(lobby)]);
-    lobby.players.filter(p => p.player === lobby.players[lobby.currentPlayerIndex]?.player).forEach(slot => {
-        //slot.player.outputChatBox(`!{Blue}[POKER] Lobby "${lobby.name}" actualizat.`);
-    });
-    console.log(`[POKER] Lobby "${lobby.name}" actualizat. Stare: ${lobby.state}, Jucători: ${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS}`);
+    console.log(`[POKER] Lobby "${lobby.name}" actualizat. Stare: ${lobby.state}, Jucători: ${visibleCount}/${LOBBY_CONFIG.MAX_PLAYERS}`);
 
-    mp.events.call('_poker_updateMarker', lobby.id, lobby.state, lobby.players.length, LOBBY_CONFIG.MAX_PLAYERS);
+    mp.events.call('_poker_updateMarker', lobby.id, lobby.state, visibleCount, LOBBY_CONFIG.MAX_PLAYERS);
 }
 
 //Events
@@ -731,7 +995,7 @@ function generateDebugString(lobby) {
     if (lobby.players.length === 0) {
         debugStr += `Scaune libere: 10\n`;
     } else {
-        lobby.players.forEach(slot => {
+        lobby.players.filter(p => !p._hasLeft).forEach(slot => {
             const isTurn = lobby.players[lobby.currentPlayerIndex] === slot;
             const turnMarker = isTurn ? " <- RANDUL LUI" : "";
             const cardsStr = slot.cards.length > 0 ? `[${slot.cards.join(' ')}]` : '[ascunse/gol]';
@@ -755,4 +1019,4 @@ function generateDebugString(lobby) {
     return debugStr;
 }
 
-module.exports = { joinLobby, leaveLobby, processAction, lobbies, getLobbyByPlayer, updatePlayerDebugInfo, generateDebugString };
+module.exports = { LOBBY_CONFIG, joinLobby, leaveLobby, processAction, lobbies, getLobbyByPlayer, updatePlayerDebugInfo, generateDebugString, getBestHand, getDetailedHandName, CARD_VALUES, HAND_NAMES, parseCard };
