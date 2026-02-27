@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="styles.css">
+<title>Blackjack HUD – RageMP</title>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">♠ BLACKJACK HUD</div>
+  <div class="sep"></div>
+  <div class="info" id="phase-label">WAITING</div>
+  <div class="info">RageMP v1.0</div>
+</div>
+
+<!-- Dealer area -->
+<div id="dealer-area">
+  <div class="label">Dealer</div>
+  <div id="dealer-value"></div>
+  <div id="dealer-cards"></div>
+</div>
+
+<!-- Player hand -->
+<div id="player-hand">
+  <div id="player-value"></div>
+  <div class="cards" id="hand-cards"></div>
+</div>
+
+<!-- Action buttons -->
+<div id="actions">
+  <button class="btn-action" id="btn-hit"        onclick="sendAction('hit')">Hit</button>
+  <button class="btn-action" id="btn-stand"       onclick="sendAction('stand')">Stand</button>
+  <button class="btn-action" id="btn-doubledown"  onclick="sendAction('doubledown')" style="display:none">Double Down</button>
+  <button class="btn-action" id="btn-split"        onclick="sendAction('split')" style="display:none">Split</button>
+</div>
+
+<!-- Betting overlay -->
+<div id="betting-overlay">
+  <div id="betting-title">PLASEAZĂ PARIUL</div>
+  <div id="betting-timer">15</div>
+  <div class="bet-chips">
+    <div class="bet-chip" data-amount="100" onclick="selectBet(100)">$100</div>
+    <div class="bet-chip" data-amount="250" onclick="selectBet(250)">$250</div>
+    <div class="bet-chip" data-amount="500" onclick="selectBet(500)">$500</div>
+    <div class="bet-chip" data-amount="1000" onclick="selectBet(1000)">$1K</div>
+    <div class="bet-chip" data-amount="2500" onclick="selectBet(2500)">$2.5K</div>
+    <div class="bet-chip" data-amount="5000" onclick="selectBet(5000)">$5K</div>
+  </div>
+  <div id="bet-current">Pariu selectat: $100</div>
+  <button id="btn-place-bet" onclick="confirmBet()">PARIAZĂ</button>
+</div>
+
+<!-- Player list -->
+<div id="player-list">
+  <div class="pl-header">
+    <span>Jucători</span>
+    <span class="pot" id="table-info">Min $100</span>
+  </div>
+  <div id="pl-rows"></div>
+</div>
+
+<!-- Right panel with timer -->
+<div id="right-panel">
+  <div id="timer-wrap">
+    <div id="timer-ring">
+      <svg width="60" height="60" viewBox="0 0 60 60">
+        <circle id="track" cx="30" cy="30" r="26"/>
+        <circle id="fill"  cx="30" cy="30" r="26"/>
+      </svg>
+      <div id="timer-num">20</div>
+    </div>
+    <div id="timer-label">Aşteptare...</div>
+  </div>
+</div>
+
+<!-- Result banner -->
+<div id="result-banner">
+  <div class="rb-title" id="rb-title"></div>
+  <div class="rb-detail" id="rb-detail"></div>
+  <div class="rb-result" id="rb-results"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUIT_SYMBOLS  = { s:'♠', h:'♥', d:'♦', c:'♣' };
+const RED_SUITS     = ['h', 'd'];
+const CIRCUMFERENCE = 2 * Math.PI * 26;
+
+let timerTotal   = 20;
+let toastTimeout = null;
+let selectedBet  = 100;
+let hasBet       = false;
+let resultTimeout = null;
+
+// ── Card helpers ──
+function animateCard(el, delaySec) {
+    if (!el) return;
+    el.classList.remove('card-deal');
+    el.style.opacity = '0';
+    void el.offsetWidth;
+    el.style.animationDelay = delaySec + 's';
+    el.classList.add('card-deal');
+    el.addEventListener('animationend', function handler() {
+        el.removeEventListener('animationend', handler);
+        el.classList.remove('card-deal');
+        el.style.opacity = '';
+        el.style.animationDelay = '';
+    });
+}
+
+function createCardElement(rank, suit, options) {
+    const el = document.createElement('div');
+    if (!rank || !suit) {
+        el.className = 'card back';
+        return el;
+    }
+    const isRed = RED_SUITS.includes(suit);
+    el.className = `card face ${isRed ? 'red' : 'black'}`;
+    el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${SUIT_SYMBOLS[suit] || suit}</span>`;
+    return el;
+}
+
+// ── Dealer cards ──
+function clearDealerCards() {
+    document.getElementById('dealer-cards').innerHTML = '';
+    document.getElementById('dealer-value').textContent = '';
+}
+
+function updateDealerCard(rank, suit, hasHidden) {
+    const container = document.getElementById('dealer-cards');
+    container.innerHTML = '';
+
+    const card1 = createCardElement(rank, suit);
+    card1.style.display = 'flex';
+    container.appendChild(card1);
+    animateCard(card1, 0.1);
+
+    if (hasHidden) {
+        const hiddenCard = document.createElement('div');
+        hiddenCard.className = 'card back';
+        hiddenCard.id = 'dealer-hidden';
+        container.appendChild(hiddenCard);
+        animateCard(hiddenCard, 0.35);
+    }
+}
+
+function revealDealerCards(cards, value) {
+    const container = document.getElementById('dealer-cards');
+    container.innerHTML = '';
+
+    cards.forEach((c, i) => {
+        const el = createCardElement(c.rank, c.suit);
+        el.style.display = 'flex';
+        container.appendChild(el);
+        animateCard(el, i * 0.15);
+    });
+
+    document.getElementById('dealer-value').textContent = value;
+}
+
+function addDealerHitCard(rank, suit, value) {
+    const container = document.getElementById('dealer-cards');
+    const el = createCardElement(rank, suit);
+    el.style.display = 'flex';
+    container.appendChild(el);
+    animateCard(el, 0.1);
+    document.getElementById('dealer-value').textContent = value;
+}
+
+// ── Player cards ──
+function clearPlayerCards() {
+    document.getElementById('hand-cards').innerHTML = '';
+    document.getElementById('player-value').textContent = '';
+}
+
+function updateMyCards(r1, s1, r2, s2) {
+    clearPlayerCards();
+    hideResultBanner();
+
+    const container = document.getElementById('hand-cards');
+
+    const card1 = createCardElement(r1, s1);
+    card1.style.display = 'flex';
+    container.appendChild(card1);
+    animateCard(card1, 0.1);
+
+    const card2 = createCardElement(r2, s2);
+    card2.style.display = 'flex';
+    container.appendChild(card2);
+    animateCard(card2, 0.40);
+}
+
+function addHitCard(rank, suit, value) {
+    const container = document.getElementById('hand-cards');
+    const el = createCardElement(rank, suit);
+    el.style.display = 'flex';
+    container.appendChild(el);
+    animateCard(el, 0.1);
+    document.getElementById('player-value').textContent = value;
+}
+
+// ── Game state ──
+function updateGameState(stateJson) {
+    const state = JSON.parse(stateJson);
+    const phaseLabel = document.getElementById('phase-label');
+
+    switch (state.state) {
+        case 'waiting': phaseLabel.textContent = 'WAITING'; break;
+        case 'betting': phaseLabel.textContent = 'BETTING'; break;
+        case 'playing': phaseLabel.textContent = 'PLAYING'; break;
+        case 'dealer_turn': phaseLabel.textContent = 'DEALER TURN'; break;
+        case 'resolving': phaseLabel.textContent = 'RESULTS'; break;
+        default: phaseLabel.textContent = state.state.toUpperCase();
+    }
+
+    renderPlayerList(state.players || [], state.currentPlayer);
+}
+
+// ── Betting ──
+function showBettingOverlay(minBet, maxBet) {
+    hasBet = false;
+    selectedBet = minBet;
+    document.getElementById('bet-current').textContent = `Pariu selectat: $${selectedBet}`;
+    document.getElementById('betting-overlay').classList.add('visible');
+
+    // Update care chips sunt valide
+    document.querySelectorAll('.bet-chip').forEach(chip => {
+        const amt = parseInt(chip.dataset.amount);
+        chip.style.opacity = (amt >= minBet && amt <= maxBet) ? '1' : '0.3';
+        chip.style.pointerEvents = (amt >= minBet && amt <= maxBet) ? 'all' : 'none';
+        chip.classList.toggle('selected', amt === selectedBet);
+    });
+}
+
+function hideBettingOverlay() {
+    document.getElementById('betting-overlay').classList.remove('visible');
+}
+
+function selectBet(amount) {
+    selectedBet = amount;
+    document.getElementById('bet-current').textContent = `Pariu selectat: $${amount.toLocaleString('en-US')}`;
+    document.querySelectorAll('.bet-chip').forEach(chip => {
+        chip.classList.toggle('selected', parseInt(chip.dataset.amount) === amount);
+    });
+}
+
+function confirmBet() {
+    if (hasBet) return;
+    hasBet = true;
+    hideBettingOverlay();
+    showToast(`Ai pariat $${selectedBet}`);
+    if (typeof mp !== 'undefined') mp.trigger('Blackjack_PlaceBet', selectedBet);
+    else console.log('[TEST] Bet:', selectedBet);
+}
+
+function updateBetTimer(secondsLeft) {
+    document.getElementById('betting-timer').textContent = secondsLeft;
+    if (secondsLeft <= 3) {
+        document.getElementById('betting-timer').style.color = '#e74c3c';
+    } else {
+        document.getElementById('betting-timer').style.color = '#fff';
+    }
+}
+
+// ── Turn ──
+function onYourTurn(handValue, canDoubleDown, canSplit) {
+    document.getElementById('player-value').textContent = handValue;
+    document.getElementById('btn-doubledown').style.display = canDoubleDown ? '' : 'none';
+    document.getElementById('btn-split').style.display = canSplit ? '' : 'none';
+    toggleActionButtons(true);
+    showToast('Rândul tău!');
+}
+
+function updateTurnTimer(playerName, timeLeft) {
+    const wrap = document.getElementById('timer-wrap');
+    const fillEl = document.getElementById('fill');
+    const numEl = document.getElementById('timer-num');
+    const lblEl = document.getElementById('timer-label');
+    if (timeLeft <= 0) { wrap.classList.remove('visible'); return; }
+    wrap.classList.add('visible');
+    lblEl.textContent = playerName;
+    numEl.textContent = timeLeft;
+    fillEl.style.strokeDasharray = CIRCUMFERENCE;
+    const ratio = timeLeft / timerTotal;
+    fillEl.style.strokeDashoffset = CIRCUMFERENCE * (1 - ratio);
+    if (ratio < 0.34) fillEl.style.stroke = '#e74c3c';
+    else if (ratio < 0.67) fillEl.style.stroke = '#f39c12';
+    else fillEl.style.stroke = 'var(--gold)';
+}
+
+// ── Player list ──
+function renderPlayerList(players, currentPlayerName) {
+    const container = document.getElementById('pl-rows');
+    container.innerHTML = '';
+
+    const STATUS_LABELS = {
+        waiting:   'WAITING',
+        betting:   'BETTING',
+        playing:   'PLAYING',
+        stand:     'STAND',
+        bust:      'BUST',
+        blackjack: 'BLACKJACK',
+        win:       'WIN',
+        lose:      'LOSE',
+        push:      'PUSH',
+    };
+
+    players.forEach(p => {
+        const isActive = p.name === currentPlayerName;
+        const isBust = p.status === 'bust' || p.status === 'lose';
+        const row = document.createElement('div');
+        row.className = `pl-row${isActive ? ' active' : ''}${isBust ? ' bust' : ''}`;
+
+        let statusHtml = '';
+        if (STATUS_LABELS[p.status]) {
+            statusHtml = `<span class="pl-status ${p.status}">${STATUS_LABELS[p.status]}</span>`;
+        }
+
+        row.innerHTML = `
+            <div class="pl-arrow"></div>
+            <div class="pl-avatar">${escHtml(p.name.charAt(0).toUpperCase())}</div>
+            <div class="pl-info">
+                <div class="pl-name">${escHtml(p.name)}</div>
+                <div class="pl-chips">$${p.chips.toLocaleString('en-US')}${p.bet > 0 ? ` <span class="pl-bet">Bet: $${p.bet}</span>` : ''}</div>
+            </div>
+            ${statusHtml}`;
+        container.appendChild(row);
+    });
+}
+
+// ── Actions ──
+function toggleActionButtons(visible) {
+    document.getElementById('actions').classList.toggle('visible', visible);
+}
+
+function sendAction(actionName) {
+    if (!document.getElementById('actions').classList.contains('visible')) return;
+    if (typeof mp !== 'undefined') mp.trigger('Blackjack_PlayerAction', actionName);
+    else console.log('[TEST] Action:', actionName);
+    toggleActionButtons(false);
+    document.getElementById('timer-wrap').classList.remove('visible');
+}
+
+// ── Results ──
+function showResults(resultsJson, dealerValue, dealerBust) {
+    const results = JSON.parse(resultsJson);
+    const banner = document.getElementById('result-banner');
+    const title = document.getElementById('rb-title');
+    const detail = document.getElementById('rb-detail');
+    const rows = document.getElementById('rb-results');
+
+    clearTimeout(resultTimeout);
+
+    let hasWin = results.some(r => r.outcome === 'win' || r.outcome === 'blackjack');
+
+    title.textContent = dealerBust ? '🎉 DEALER BUST!' : '📊 REZULTATE';
+    detail.textContent = `Dealer: ${dealerValue}${dealerBust ? ' (BUST)' : ''}`;
+
+    rows.innerHTML = '';
+    results.forEach(r => {
+        const outcomeLabel = r.outcome === 'blackjack' ? '🏆 BLACKJACK'
+            : r.outcome === 'win' ? '✅ WIN'
+            : r.outcome === 'push' ? '↔️ PUSH'
+            : '❌ LOSE';
+        const payoutStr = r.payout > 0 ? `+$${r.payout}` : `-$${r.bet}`;
+        const div = document.createElement('div');
+        div.className = `rb-row ${r.outcome}`;
+        div.textContent = `${r.name}: ${outcomeLabel} (${payoutStr})`;
+        rows.appendChild(div);
+    });
+
+    banner.classList.add('visible');
+    resultTimeout = setTimeout(() => { banner.classList.remove('visible'); }, 6000);
+}
+
+function hideResultBanner() {
+    clearTimeout(resultTimeout);
+    document.getElementById('result-banner').classList.remove('visible');
+}
+
+// ── Utilities ──
+function showToast(msg, duration) {
+    clearTimeout(toastTimeout);
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    toastTimeout = setTimeout(() => el.classList.remove('show'), duration || 2500);
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Blochează Space/Enter pe butoane
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') {
+        if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+            e.preventDefault();
+        }
+    }
+});
+
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+</script>
+</body>
+</html>

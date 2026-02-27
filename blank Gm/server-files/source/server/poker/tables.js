@@ -46,7 +46,7 @@ function loadPokerTables() {
 
     tables.forEach((table, index) => {
         createBlip(table, index);
-        createColshape(table, index, table.name);
+        createColshape(table, index, table.name, table.casinoId);
         createLeaveColshape(table, index);
         createMarker(table, index);
         console.log(`  Masa #${index}. ${table.name}: X:${table.x}, Y:${table.y}, Z:${table.z}`);
@@ -71,7 +71,8 @@ mp.events.addCommand('createpoker', (player, _, name) => {
         x:       parseFloat(pos.x.toFixed(2)),
         y:       parseFloat(pos.y.toFixed(2)),
         z:       parseFloat(pos.z.toFixed(2)),
-        heading: parseFloat(rot.toFixed(2))
+        heading: parseFloat(rot.toFixed(2)),
+        casinoId: null  // Setează manual ID-ul cazinoului (null = fără cazinou)
     };
 
     let tables = [];
@@ -84,7 +85,7 @@ mp.events.addCommand('createpoker', (player, _, name) => {
 
     const newIndex = tables.length - 1;
     createMarker(newTable, newIndex);
-    createColshape(newTable, newIndex, newTable.name);
+    createColshape(newTable, newIndex, newTable.name, newTable.casinoId);
     createLeaveColshape(newTable, newIndex);
     createBlip(newTable, newIndex);
 
@@ -153,8 +154,9 @@ mp.events.add('Server_PlayerAction', (player, actionName) => {
         if (player.currentTable) {
             const tableIndex = player.currentTable.getVariable('tableIndex');
             const tableName  = player.currentTable.getVariable('tableName');
+            const casinoId   = player.currentTable.getVariable('casinoId');
 
-            mp.events.call('Server_JoinPokerTable', player, tableIndex, tableName);
+            mp.events.call('Server_JoinPokerTable', player, tableIndex, tableName, casinoId);
         } else {
             player.outputChatBox('!{Red}Nu ești lângă nicio masă de poker.');
         }
@@ -184,11 +186,12 @@ function createMarker(table, index) {
     return label;
 }
 
-function createColshape(position, index, name) {
+function createColshape(position, index, name, casinoId) {
     const colShape = mp.colshapes.newCircle(position.x, position.y, 3.0, 0);
     colShape.setVariable('isPokerTable', true);
     colShape.setVariable('tableIndex', index);
     colShape.setVariable('tableName', name);
+    colShape.setVariable('casinoId', casinoId || null);
     tableColshapes[index] = colShape;
     return colShape;
 }
@@ -204,4 +207,7 @@ function createLeaveColshape(position, index) {
 mp.events.add('_poker_updateMarker', (tableIndex, state, players, maxPlayers) => {
     updateTableMarker(tableIndex, state, players, maxPlayers);
 });
+
+// Exportăm funcțiile pentru test server
+module.exports = { createBlip, createColshape, createLeaveColshape, createMarker, loadPokerTables };
 

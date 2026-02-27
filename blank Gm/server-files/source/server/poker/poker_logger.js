@@ -1,24 +1,17 @@
-// poker_logger.js — Sistem de logare ASYNC + BUFFERED pentru poker
-// Scrierile pe disk se fac în background, nu blochează game loop-ul
-
 const fs   = require('fs');
 const path = require('path');
 
-// ──────────────────────────────────────────
-// Directoare pentru loguri
-// ──────────────────────────────────────────
 const LOGS_DIR       = path.join(process.cwd(), 'poker_logs');
 const TABLES_DIR     = path.join(LOGS_DIR, 'tables');
 const GAMES_DIR      = path.join(LOGS_DIR, 'games');
 const SUMMARY_FILE   = path.join(LOGS_DIR, 'all_games_history.log');
 
-// Creează directoarele sincron (doar la startup, o singură dată)
 [LOGS_DIR, TABLES_DIR, GAMES_DIR].forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
 // ──────────────────────────────────────────
-// ASYNC WRITE BUFFER — acumulează text și scrie periodic
+// ASYNC WRITE BUFFER 
 // ──────────────────────────────────────────
 const writeBuffers = {};       // filePath → string[]
 let flushTimer     = null;
@@ -37,7 +30,6 @@ function flushAllBuffers() {
     const entries = Object.entries(writeBuffers);
     if (entries.length === 0) { isFlushing = false; return; }
 
-    // Scoatem tot din buffer înainte de scriere
     const toWrite = {};
     for (const [fp, lines] of entries) {
         if (lines.length > 0) {
@@ -46,7 +38,6 @@ function flushAllBuffers() {
         }
     }
 
-    // Scriem async în paralel
     const promises = Object.entries(toWrite).map(([fp, content]) => {
         return new Promise((resolve) => {
             fs.appendFile(fp, content, 'utf8', (err) => {
@@ -65,7 +56,6 @@ flushTimer = setInterval(flushAllBuffers, FLUSH_INTERVAL_MS);
 // Flush la oprirea serverului
 function shutdownFlush() {
     if (flushTimer) { clearInterval(flushTimer); flushTimer = null; }
-    // Scriere sincronă la shutdown — nu vrem să pierdem date
     for (const [fp, lines] of Object.entries(writeBuffers)) {
         if (lines.length > 0) {
             try { fs.appendFileSync(fp, lines.join('\n') + '\n', 'utf8'); } catch (e) { /* ignore */ }
@@ -120,7 +110,6 @@ function loadCounter() {
 }
 
 function saveCounter() {
-    // Async — counter-ul nu e critic, dacă pierdem 1 la crash nu e problemă
     fs.writeFile(COUNTER_FILE, JSON.stringify({ counter: gameCounter }, null, 2), 'utf8', (err) => {
         if (err) console.error('[POKER_LOG] Eroare salvare counter:', err.message);
     });
@@ -177,6 +166,7 @@ function onGameStart(lobby) {
         gameId,
         tableId:   lobby.id,
         tableName: lobby.name,
+        casinoId:  lobby.casinoId || null,
         startTime: timestamp(),
         players:   playerList,
         blinds:    { small: null, big: null },
@@ -281,7 +271,7 @@ function onShowdown(lobby, showdownResults) {
 /**
  * Logare câștigător(i) per pot
  */
-function onPotWinner(lobby, potLabel, potAmount, winnerNames, handName, shareEach) {
+function onPotWinner(lobby, potLabel, potAmount, winnerNames, handName, shareEach, rake) {
     const game = activeGames[lobby.id];
     if (!game) return;
 
@@ -291,9 +281,11 @@ function onPotWinner(lobby, potLabel, potAmount, winnerNames, handName, shareEac
         winners: winnerNames,
         hand: handName,
         share: shareEach,
+        rake: rake || 0,
     });
 
-    logToTable(lobby.id, lobby.name, `  ${potLabel} ($${potAmount}) → ${winnerNames.join(', ')} (${handName}) — câte $${shareEach}`);
+    const rakeStr = rake > 0 ? ` | Rake: $${rake}` : '';
+    logToTable(lobby.id, lobby.name, `  ${potLabel} ($${potAmount}${rakeStr}) → ${winnerNames.join(', ')} (${handName}) — câte $${shareEach}`);
 }
 
 /**
@@ -321,19 +313,21 @@ function onGameEnd(lobby, totalPot) {
 /**
  * Logare fold win (un singur jucător rămâne)
  */
-function onFoldWin(lobby, winnerName, potAmount) {
+function onFoldWin(lobby, winnerName, potAmount, rake) {
     const game = activeGames[lobby.id];
     if (!game) return;
 
     game.winners.push({
         pot: 'Fold Win',
-        amount: potAmount,
+        amount: potAmount + (rake || 0),
         winners: [winnerName],
         hand: 'Fold Win',
         share: potAmount,
+        rake: rake || 0,
     });
 
-    logToTable(lobby.id, lobby.name, `  FOLD WIN: ${winnerName} câștigă $${potAmount} (toți ceilalți au dat fold)`);
+    const rakeStr = rake > 0 ? ` (rake: $${rake})` : '';
+    logToTable(lobby.id, lobby.name, `  FOLD WIN: ${winnerName} câștigă $${potAmount}${rakeStr} (toți ceilalți au dat fold)`);
 }
 
 // ──────────────────────────────────────────
@@ -344,7 +338,7 @@ function writeGameToHistory(game) {
     const sep = '═'.repeat(70);
 
     let text = `\n${sep}\n`;
-    text += `JOC #${game.gameId} | Masa: "${game.tableName}" (ID: ${game.tableId})\n`;
+    text += `JOC #${game.gameId} | Masa: "${game.tableName}" (ID: ${game.tableId}) | Cazinou: ${game.casinoId || 'none'}\n`;
     text += `Start: ${game.startTime} | End: ${game.endTime}\n`;
     text += `Pot total: $${game.pot}\n`;
     text += `${'-'.repeat(40)}\n`;
@@ -380,7 +374,8 @@ function writeGameToHistory(game) {
     // Câștigători
     text += `\nREZULTAT:\n`;
     game.winners.forEach(w => {
-        text += `  ${w.pot}: ${w.winners.join(', ')} câștigă $${w.share} fiecare — ${w.hand}\n`;
+        const rakeStr = w.rake > 0 ? ` (rake: $${w.rake})` : '';
+        text += `  ${w.pot}: ${w.winners.join(', ')} câștigă $${w.share} fiecare — ${w.hand}${rakeStr}\n`;
     });
 
     text += `${sep}\n`;
@@ -392,10 +387,14 @@ function writeGameToHistory(game) {
 // Summary global (one-liner per joc)
 // ──────────────────────────────────────────
 function writeGameToSummary(game) {
-    const winnersStr = game.winners.map(w => `${w.winners.join('+')} ($${w.share}, ${w.hand})`).join(' | ');
+    const winnersStr = game.winners.map(w => {
+        const rakeStr = w.rake > 0 ? `, rake:$${w.rake}` : '';
+        return `${w.winners.join('+')} ($${w.share}, ${w.hand}${rakeStr})`;
+    }).join(' | ');
     const playersStr = game.players.map(p => p.name).join(', ');
+    const casinoStr = game.casinoId ? ` | Casino: ${game.casinoId}` : '';
 
-    const line = `[${game.endTime}] JOC #${game.gameId} | Masa: "${game.tableName}" (ID:${game.tableId}) | Pot: $${game.pot} | Jucatori: ${playersStr} | Castigatori: ${winnersStr}`;
+    const line = `[${game.endTime}] JOC #${game.gameId} | Masa: "${game.tableName}" (ID:${game.tableId})${casinoStr} | Pot: $${game.pot} | Jucatori: ${playersStr} | Castigatori: ${winnersStr}`;
     appendToFile(SUMMARY_FILE, line);
 }
 

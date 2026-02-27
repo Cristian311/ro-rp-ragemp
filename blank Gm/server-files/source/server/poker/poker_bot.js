@@ -49,7 +49,7 @@ const autoMode  = new Set();   // realPlayer.name → auto play activ
 // ──────────────────────────────────────────
 function getLobbyByPlayer(player) {
     for (const key in lobbies) {
-        const found = lobbies[key].players.find(p => p.player === player);
+        const found = lobbies[key].players.find(p => p.player === player && !p._hasLeft);
         if (found) return lobbies[key];
     }
     return null;
@@ -120,29 +120,56 @@ function getPreflopStrength(cards) {
     return strength;
 }
 
-// Post-flop hand strength (folosește evaluatorul real)
+// Post-flop hand strength (folosește evaluatorul real + detectează contribuția cărților din mână)
 function getPostflopStrength(holeCards, communityCards) {
     const result = getBestHand(holeCards, communityCards);
     const score = result.score;
 
+    // Detectează dacă cărțile din mână contribuie la cea mai bună combinație de 5
+    const usesHole = result.cards
+        ? holeCards.some(hc => result.cards.includes(hc))
+        : true; // fallback: presupune că da
+
     // Bazat pe scor: 0=HC, 1=Pair, 2=TwoPair, 3=Trips, 4=Straight, 5=Flush, 6=FH, 7=Quads, 8=SF
     switch (score) {
-        case 0: return 0.10 + (result.tiebreakers[0] / 14) * 0.15;  // 0.10 - 0.25 (high card)
-        case 1: {
-            // Pereche: depinde de ranking-ul perechii
-            const pairRank = result.tiebreakers[0];
-            if (pairRank >= 12) return 0.55;     // QQ+ overpair
-            if (pairRank >= 9)  return 0.48;     // 99-JJ
-            if (pairRank >= 6)  return 0.38;     // 66-88
-            return 0.30;                          // low pair
+        case 0: {
+            // High Card — dacă hole cards contribuie la top card, puțin mai bine
+            const highCard = result.tiebreakers[0];
+            if (usesHole && highCard >= 12) return 0.22; // Q+ high din mână
+            return 0.08 + (highCard / 14) * 0.12;       // 0.08 - 0.20
         }
-        case 2: return 0.62;                      // two pair
-        case 3: return 0.75;                      // trips
-        case 4: return 0.82;                      // straight
-        case 5: return 0.87;                      // flush
-        case 6: return 0.92;                      // full house
-        case 7: return 0.97;                      // quads
-        case 8: return 0.99;                      // straight flush
+        case 1: {
+            // One Pair — contează MULT dacă perechea e din mână vs doar de pe board
+            const pairRank = result.tiebreakers[0];
+            const topKicker = result.tiebreakers[1] || 0;
+            const kickerBonus = (topKicker / 14) * 0.05;
+
+            if (usesHole) {
+                // Perechea folosește cel puțin o carte din mână — pereche reală
+                if (pairRank >= 13) return 0.70 + kickerBonus; // KK/AA
+                if (pairRank >= 11) return 0.62 + kickerBonus; // JJ/QQ
+                if (pairRank >= 9)  return 0.55 + kickerBonus; // 99/TT
+                if (pairRank >= 6)  return 0.48 + kickerBonus; // 66-88
+                return 0.40 + kickerBonus;                      // 22-55
+            } else {
+                // Board pair — toți au această pereche, doar kicker-ul contează
+                return 0.18 + (topKicker / 14) * 0.15; // 0.18 - 0.33
+            }
+        }
+        case 2: {
+            // Two Pair — diferență mare între board two pair și two pair cu mâna
+            const highPair = result.tiebreakers[0];
+            if (usesHole) {
+                return highPair >= 10 ? 0.75 : 0.70; // strong / medium two pair
+            }
+            return 0.40; // board two pair, doar kicker contează
+        }
+        case 3: return usesHole ? 0.82 : 0.50; // Trips — board trips sunt slabe relativ
+        case 4: return usesHole ? 0.85 : 0.65; // Straight
+        case 5: return usesHole ? 0.90 : 0.72; // Flush
+        case 6: return usesHole ? 0.93 : 0.80; // Full House
+        case 7: return 0.97;                     // Quads (mereu puternică)
+        case 8: return 0.99;                     // Straight Flush
         default: return 0.15;
     }
 }
@@ -197,33 +224,33 @@ function autoBotAction(lobby) {
             // Poți da check — nu da fold niciodată
             if (allOpponentsAllIn) {
                 action = 'check';
-            } else if (effectiveStrength >= 0.75) {
-                // Mână puternică — raise
+            } else if (effectiveStrength >= 0.70) {
+                // Mână puternică — raise agresiv
                 action = canAffordRaise ? 'raise' : 'check';
-            } else if (effectiveStrength >= 0.50) {
-                // Mână decentă — raise uneori
-                action = (canAffordRaise && Math.random() < 0.35) ? 'raise' : 'check';
+            } else if (effectiveStrength >= 0.45) {
+                // Mână decentă — raise uneori, altfel check
+                action = (canAffordRaise && Math.random() < 0.40) ? 'raise' : 'check';
             } else {
                 // Mână slabă — check
                 action = 'check';
             }
         } else {
             // Nu poți da check — trebuie call/fold/raise
-            if (effectiveStrength >= 0.80) {
+            if (effectiveStrength >= 0.75) {
                 // Mână foarte puternică — raise sau all-in
                 if (canAffordRaise && !allOpponentsAllIn) {
                     action = Math.random() < 0.65 ? 'raise' : 'call';
                 } else {
                     action = 'call';
                 }
-            } else if (effectiveStrength >= 0.55) {
+            } else if (effectiveStrength >= 0.50) {
                 // Mână bună — call, poate raise
-                if (canAffordRaise && !allOpponentsAllIn && Math.random() < 0.25) {
+                if (canAffordRaise && !allOpponentsAllIn && Math.random() < 0.30) {
                     action = 'raise';
                 } else {
                     action = 'call';
                 }
-            } else if (effectiveStrength >= 0.35) {
+            } else if (effectiveStrength >= 0.30) {
                 // Mână marginală — call dacă e ieftin, fold dacă e scump
                 if (callRatio > 0.4) {
                     action = Math.random() < 0.7 ? 'fold' : 'call';
@@ -588,5 +615,107 @@ mp.events.add('playerQuit', (player) => {
     ownerBots.delete(player.name);
     autoMode.delete(player.name);
 });
+
+// ──────────────────────────────────────────
+// TEST SERVER — creează automat 10 mese + 10 boți per masă
+// ──────────────────────────────────────────
+function initTestServer() {
+    if (!LOBBY_CONFIG.TEST_SERVER) return;
+
+    console.log('[POKER][TEST] TEST_SERVER activat — se creează 10 mese cu 10 boți fiecare...');
+
+    const tables = require('./tables');
+
+    // Poziții de test (zona portului LS, distanțate)
+    const TEST_POSITIONS = [
+        { x: -1835.50, y: -643.50, z: 11.25, heading: 0 },
+        { x: -1825.50, y: -643.50, z: 11.25, heading: 0 },
+        { x: -1815.50, y: -643.50, z: 11.25, heading: 0 },
+        { x: -1805.50, y: -643.50, z: 11.25, heading: 0 },
+        { x: -1795.50, y: -643.50, z: 11.25, heading: 0 },
+        { x: -1835.50, y: -653.50, z: 11.25, heading: 0 },
+        { x: -1825.50, y: -653.50, z: 11.25, heading: 0 },
+        { x: -1815.50, y: -653.50, z: 11.25, heading: 0 },
+        { x: -1805.50, y: -653.50, z: 11.25, heading: 0 },
+        { x: -1795.50, y: -653.50, z: 11.25, heading: 0 },
+    ];
+
+    // Creează tabelele în JSON dacă nu există sau sunt prea puține
+    let savedTables = [];
+    if (fs.existsSync(TABLES_SAVE_PATH)) {
+        savedTables = JSON.parse(fs.readFileSync(TABLES_SAVE_PATH, 'utf8'));
+    }
+
+    const needTables = 10 - savedTables.length;
+    if (needTables > 0) {
+        for (let i = 0; i < needTables; i++) {
+            const pos = TEST_POSITIONS[savedTables.length + i] || TEST_POSITIONS[i];
+            const newTable = {
+                name: `TestTable_${savedTables.length + i}`,
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+                heading: pos.heading
+            };
+            savedTables.push(newTable);
+
+            // Creează obiectele fizice în joc
+            const idx = savedTables.length - 1;
+            mp.objects.new(mp.joaat('prop_poker_table_02'), new mp.Vector3(pos.x, pos.y, pos.z), {
+                rotation: new mp.Vector3(0, 0, pos.heading),
+                dimension: 0
+            });
+            tables.createBlip(pos, idx);
+            tables.createColshape(pos, idx, newTable.name);
+            tables.createLeaveColshape(pos, idx);
+            tables.createMarker(newTable, idx);
+        }
+        fs.writeFileSync(TABLES_SAVE_PATH, JSON.stringify(savedTables, null, 4));
+        console.log(`[POKER][TEST] ${needTables} mese noi create.`);
+    }
+
+    // Creează un owner virtual pentru boții de test
+    const testOwner = createFakePlayer('__TestServerOwner__');
+    testOwner._isTestOwner = true;
+    ownerBots.set(testOwner.name, []);
+
+    // Adaugă 10 boți la fiecare din primele 10 mese
+    const totalMese = Math.min(10, savedTables.length);
+    let totalBots = 0;
+
+    for (let t = 0; t < totalMese; t++) {
+        const table = savedTables[t];
+        const tableIndex = t;
+        const tableName = table.name;
+
+        // Verifică câte sloturi sunt libere
+        const existingLobby = lobbies[tableIndex];
+        const currentPlayers = existingLobby ? existingLobby.players.length : 0;
+        const botsToAdd = Math.min(LOBBY_CONFIG.MAX_PLAYERS, LOBBY_CONFIG.MAX_PLAYERS - currentPlayers);
+
+        for (let b = 0; b < botsToAdd; b++) {
+            const botName = `TestBot_${botIdCounter++}`;
+            const fakePlayer = createFakePlayer(botName);
+
+            botOwner.set(fakePlayer, testOwner);
+            ownerBots.get(testOwner.name).push(fakePlayer);
+
+            joinLobby(fakePlayer, tableIndex, tableName);
+            totalBots++;
+        }
+    }
+
+    // Activează auto-play
+    autoMode.add(testOwner.name);
+
+    console.log(`[POKER][TEST] ══════════════════════════════════`);
+    console.log(`[POKER][TEST] Simulare test pornită: ${totalBots} boți pe ${totalMese} mese. Auto-play ON.`);
+    console.log(`[POKER][TEST] Setează TEST_SERVER: false în poker_server.js pentru a dezactiva.`);
+}
+
+// Pornește test server-ul după ce totul s-a încărcat (2 secunde delay)
+setTimeout(() => {
+    initTestServer();
+}, 2000);
 
 console.log('[POKER] poker_bots.js încărcat. Comenzi: /addbot /removebot /botfold /botcheck /botcall /botraise /botallin /botstatus /autobots /simbots /stopsim');
