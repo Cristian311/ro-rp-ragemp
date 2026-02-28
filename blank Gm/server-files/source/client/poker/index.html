@@ -13,6 +13,7 @@
   <div class="sep"></div>
   <div class="info" id="phase-label">WAITING</div>
   <div class="info">RageMP v1.1</div>
+  <button id="btn-leave" onclick="leaveTable()">✕ LEAVE</button>
 </div>
 
 
@@ -390,6 +391,10 @@ function showWinnerBanner(winnerNames, pot, handName) {
 function hideWinnerBanner() {
     clearTimeout(winnerBannerTimeout);
     document.getElementById('winner-banner').classList.remove('visible');
+}
+
+function leaveTable() {
+    mp.trigger('Poker_LeaveTable');
 }
 
 // Blochează Space/Enter pe butoane ca să nu activeze click prin tastatură

@@ -80,3 +80,8 @@ mp.events.add('pokerShowWinner', (winnerNames, pot, handName) => {
 mp.events.add('Poker_PlayerAction', (actionName, raiseAmount) => {
     mp.events.callRemote('Server_ReceivePokerAction', actionName, raiseAmount || 0);
 });
+
+mp.events.add('Poker_LeaveTable', () => {
+    closePokerUI();
+    mp.events.callRemote('Server_LeavePokerTable');
+});

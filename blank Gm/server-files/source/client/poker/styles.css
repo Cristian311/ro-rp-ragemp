@@ -63,6 +63,29 @@ html, body {
     letter-spacing: 1px;
 }
 
+#btn-leave {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    padding: 3px 14px;
+    margin-left: 8px;
+    border: 1px solid rgba(192, 57, 43, 0.5);
+    border-radius: 4px;
+    background: rgba(192, 57, 43, 0.25);
+    color: #fbd5d0;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, transform .15s;
+}
+
+#btn-leave:hover {
+    background: rgba(192, 57, 43, 0.5);
+    border-color: rgba(192, 57, 43, 0.8);
+}
+
+#btn-leave:active {
+    transform: scale(0.95);
+}
+
 /* ── COMMUNITY CARDS — centru ecran ── */
 #community {
     position: fixed;

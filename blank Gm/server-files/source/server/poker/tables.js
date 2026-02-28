@@ -45,7 +45,7 @@ function loadPokerTables() {
     console.log(`[POKER] S-au găsit ${tables.length} mese salvate:`);
 
     tables.forEach((table, index) => {
-        createBlip(table, index);
+        //createBlip(table, index);
         createColshape(table, index, table.name, table.casinoId);
         createLeaveColshape(table, index);
         createMarker(table, index);
