@@ -98,7 +98,7 @@ function joinLobby(player, tableIndex, tableName, casinoId) {
 
     player.outputChatBox(`!{Orange}[POKER] Te-ai așezat la masa pe locul ${seat + 1}.`);
     broadcastToLobby(lobby, `!{Orange}[POKER] !{Cyan}${player.name} !{White}s-a alăturat (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS})`);
-    console.log(`[POKER] JOIN: ${player.name} s-a alăturat lobby "${tableName}" (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS}), seat ${seat}`);
+    //(`[POKER] JOIN: ${player.name} s-a alăturat lobby "${tableName}" (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS}), seat ${seat}`);
     pokerLog.onPlayerJoin(tableIndex, tableName, player.name, lobby.players.length, LOBBY_CONFIG.MAX_PLAYERS);
 
     
@@ -154,7 +154,7 @@ function leaveLobby(player) {
     const leavingSlot = lobby.players[leavingIndex];
     if (!player._isBot) {
         mp.events.call('poker:updatePlayerMoney', player, leavingSlot.chips);
-        //console.log(`[POKER] MONEY_UPDATE (leave): ${player.name} → $${leavingSlot.chips}`);
+        console.log(`[POKER] MONEY_UPDATE (leave): ${player.name} → $${leavingSlot.chips}`);
     }
 
     lobby.players.splice(leavingIndex, 1);
@@ -863,7 +863,7 @@ function showdown(lobby) {
         const winDetailedName = getDetailedHandName(bestResult);
         pokerLog.onPotWinner(lobby, potLabel, amount, potWinners.map(w => w.player.name), winDetailedName, share, rake);
         
-        //console.log(`[POKER] POT_WINNER: ${potLabel} ($${amount}, rake: $${rake}, net: $${netAmount}) → ${potWinners.map(w => w.player.name).join(', ')} (câte $${share}) — ${winDetailedName}`);
+        console.log(`[POKER] POT_WINNER: ${potLabel} ($${amount}, rake: $${rake}, net: $${netAmount}) → ${potWinners.map(w => w.player.name).join(', ')} (câte $${share}) — ${winDetailedName}`);
         
         // Notifică jucătorii și trimite rake-ul cazinoului
         if (rake > 0) {
@@ -960,7 +960,7 @@ function endRound(lobby, winnerSlot, chipsAlreadyAdded = false) {
 
     updateLobbyUI(lobby);
 
-    //console.log(`[POKER] POST_ROUND: ${lobby.players.length} jucători rămași: ${lobby.players.map(p => `${p.player.name}($${p.chips})`).join(', ')}`);
+    console.log(`[POKER] POST_ROUND: ${lobby.players.length} jucători rămași: ${lobby.players.map(p => `${p.player.name}($${p.chips})`).join(', ')}`);
     if (lobby.players.length >= LOBBY_CONFIG.MIN_PLAYERS) {
         lobby.state = 'starting'; 
         const delay = LOBBY_CONFIG.END_DELAY * 1000;

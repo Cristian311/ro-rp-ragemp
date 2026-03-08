@@ -13,6 +13,7 @@
   <div class="sep"></div>
   <div class="info" id="phase-label">WAITING</div>
   <div class="info">RageMP v1.0</div>
+  <button id="btn-exit" onclick="leaveTable()">✕ EXIT</button>
 </div>
 
 <!-- Dealer area -->
@@ -404,6 +405,11 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+function leaveTable() {
+    if (typeof mp !== 'undefined') mp.trigger('Blackjack_LeaveTable');
+    else console.log('[TEST] Leave table');
+}
 </script>
 </body>
 </html>

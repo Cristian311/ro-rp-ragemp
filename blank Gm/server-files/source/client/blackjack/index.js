@@ -110,3 +110,14 @@ mp.events.add('Blackjack_PlayerAction', (actionName) => {
 mp.events.add('Blackjack_PlaceBet', (amount) => {
     mp.events.callRemote('Server_BlackjackPlaceBet', amount);
 });
+
+// ── Leave table (ESC or Exit button) ──
+mp.events.add('Blackjack_LeaveTable', () => {
+    mp.events.callRemote('Server_LeaveBlackjackTable');
+});
+
+mp.keys.bind(KEY_ESC, false, () => {
+    if (bjBrowser !== null) {
+        mp.events.callRemote('Server_LeaveBlackjackTable');
+    }
+});

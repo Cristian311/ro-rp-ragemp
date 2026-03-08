@@ -9,6 +9,7 @@ const tableLabels         = {};
 const tableColshapes      = {};
 const tableBlips          = {};
 const tableLeaveColshapes = {};
+const tableObjects        = {};
 
 function getMarkerText(index, state, players, maxPlayers) {
     let statusLine;
@@ -47,7 +48,10 @@ function loadBlackjackTables() {
         createColshape(table, index, table.name, table.casinoId);
         createLeaveColshape(table, index);
         createMarker(table, index);
-        console.log(`  Masa BJ #${index}. ${table.name}: X:${table.x}, Y:${table.y}, Z:${table.z}`);
+        if (table.spawnTable !== false) {
+            spawnTableObject(table, index);
+        }
+        console.log(`  Masa BJ #${index}. ${table.name}: X:${table.x}, Y:${table.y}, Z:${table.z} (object: ${table.spawnTable !== false})`);
     });
 }
 
@@ -56,22 +60,40 @@ loadBlackjackTables();
 // ──────────────────────────────────────────
 // Commands
 // ──────────────────────────────────────────
-mp.events.addCommand('createblackjack', (player, _, name) => {
+// Folosire: /createblackjack [nume] [true/false]
+// Exemplu: /createblackjack VIPTable true   — creează masa cu obiect fizic
+// Exemplu: /createblackjack VIPTable false  — creează masa FĂRĂ obiect fizic
+// Default: true (se spawn-ează masa verde)
+mp.events.addCommand('createblackjack', (player, fullText) => {
+    const args = (fullText || '').trim().split(/\s+/);
+    let name = null;
+    let spawnTable = true;
+
+    // Parsăm argumentele
+    if (args.length >= 2) {
+        name = args[0];
+        if (args[1].toLowerCase() === 'false' || args[1] === '0') spawnTable = false;
+    } else if (args.length === 1 && args[0] !== '') {
+        if (args[0].toLowerCase() === 'false' || args[0] === '0') {
+            spawnTable = false;
+        } else if (args[0].toLowerCase() === 'true' || args[0] === '1') {
+            spawnTable = true;
+        } else {
+            name = args[0];
+        }
+    }
+
     const pos = player.position;
     const rot = player.heading;
 
-    mp.objects.new(mp.joaat('prop_casino_table_01'), pos, {
-        rotation: new mp.Vector3(0, 0, rot),
-        dimension: 0
-    });
-
     const newTable = {
-        name:    name || `BlackjackTable_${Date.now()}`,
-        x:       parseFloat(pos.x.toFixed(2)),
-        y:       parseFloat(pos.y.toFixed(2)),
-        z:       parseFloat(pos.z.toFixed(2)),
-        heading: parseFloat(rot.toFixed(2)),
-        casinoId: null,
+        name:       name || `BlackjackTable_${Date.now()}`,
+        x:          parseFloat(pos.x.toFixed(2)),
+        y:          parseFloat(pos.y.toFixed(2)),
+        z:          parseFloat(pos.z.toFixed(2)),
+        heading:    parseFloat(rot.toFixed(2)),
+        casinoId:   null,
+        spawnTable: spawnTable,
     };
 
     let tables = [];
@@ -88,7 +110,12 @@ mp.events.addCommand('createblackjack', (player, _, name) => {
     createLeaveColshape(newTable, newIndex);
     createBlip(newTable, newIndex);
 
-    player.outputChatBox(`!{Green}[BLACKJACK] Masa "${newTable.name}" salvată la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
+    if (spawnTable) {
+        spawnTableObject(newTable, newIndex);
+        player.outputChatBox(`!{Green}[BLACKJACK] Masa "${newTable.name}" salvată cu obiect fizic la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
+    } else {
+        player.outputChatBox(`!{Green}[BLACKJACK] Masa "${newTable.name}" salvată FĂRĂ obiect fizic la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
+    }
 });
 
 mp.events.addCommand('deleteblackjack', (player, _, idStr) => {
@@ -102,6 +129,7 @@ mp.events.addCommand('deleteblackjack', (player, _, idStr) => {
     if (tableColshapes[index]) { tableColshapes[index].destroy(); delete tableColshapes[index]; }
     if (tableBlips[index]) { tableBlips[index].destroy(); delete tableBlips[index]; }
     if (tableLeaveColshapes[index]) { tableLeaveColshapes[index].destroy(); delete tableLeaveColshapes[index]; }
+    if (tableObjects[index]) { tableObjects[index].destroy(); delete tableObjects[index]; }
 
     if (fs.existsSync(savePath)) {
         const tables = JSON.parse(fs.readFileSync(savePath, 'utf8'));
@@ -198,8 +226,17 @@ function createLeaveColshape(position, index) {
     return colShape;
 }
 
+function spawnTableObject(table, index) {
+    const obj = mp.objects.new(mp.joaat('prop_casino_table_01'), new mp.Vector3(table.x, table.y, table.z), {
+        rotation: new mp.Vector3(0, 0, table.heading || 0),
+        dimension: 0
+    });
+    tableObjects[index] = obj;
+    return obj;
+}
+
 mp.events.add('_blackjack_updateMarker', (tableIndex, state, players, maxPlayers) => {
     updateTableMarker(tableIndex, state, players, maxPlayers);
 });
 
-module.exports = { createBlip, createColshape, createLeaveColshape, createMarker, loadBlackjackTables };
+module.exports = { createBlip, createColshape, createLeaveColshape, createMarker, spawnTableObject, loadBlackjackTables };

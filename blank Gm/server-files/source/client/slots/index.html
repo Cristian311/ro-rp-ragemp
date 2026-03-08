@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="styles.css">
+<title>Shining Crown – Slots</title>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<div id="topbar">
+    <div class="logo">👑 SLOT MACHINE 👑</div>
+    <div class="sep"></div>
+    <div class="info" id="state-label">IDLE</div>
+    <button id="btn-leave" onclick="leaveTable()">✕ LEAVE</button>
+</div>
+
+<!-- ═══ MAIN MACHINE FRAME ═══ -->
+<div id="machine">
+
+    <!-- Crown decorations -->
+    <div class="crown-deco left">👑</div>
+    <div class="crown-deco right">👑</div>
+
+    <!-- Title -->
+    <div id="machine-title">
+        <span class="title-glow">SLOT MACHINE</span>
+    </div>
+
+    <!-- Paylines indicator (left) -->
+    <div id="paylines-left">
+        <div class="pl-num" data-line="0">1</div>
+        <div class="pl-num" data-line="1">2</div>
+        <div class="pl-num" data-line="2">3</div>
+        <div class="pl-num" data-line="3">4</div>
+        <div class="pl-num" data-line="4">5</div>
+    </div>
+
+    <!-- Paylines indicator (right) -->
+    <div id="paylines-right">
+        <div class="pl-num" data-line="5">6</div>
+        <div class="pl-num" data-line="6">7</div>
+        <div class="pl-num" data-line="7">8</div>
+        <div class="pl-num" data-line="8">9</div>
+        <div class="pl-num" data-line="9">10</div>
+    </div>
+
+    <!-- ═══ REELS VIEWPORT ═══ -->
+    <div id="reels-frame">
+        <div id="reels-viewport">
+            <div class="reel" id="reel-0"><div class="reel-strip"></div></div>
+            <div class="reel" id="reel-1"><div class="reel-strip"></div></div>
+            <div class="reel" id="reel-2"><div class="reel-strip"></div></div>
+            <div class="reel" id="reel-3"><div class="reel-strip"></div></div>
+            <div class="reel" id="reel-4"><div class="reel-strip"></div></div>
+        </div>
+        <!-- Win line overlay -->
+        <canvas id="winline-canvas" width="580" height="270"></canvas>
+    </div>
+
+    <!-- ═══ WIN DISPLAY ═══ -->
+    <div id="win-display">
+        <div id="win-label">CÂȘTIG</div>
+        <div id="win-amount">0</div>
+    </div>
+
+    <!-- ═══ FREE SPINS BANNER ═══ -->
+    <div id="freespin-banner">
+        <div class="fs-glow"></div>
+        <div class="fs-text">🎉 ROTIRI GRATUITE</div>
+        <div class="fs-count" id="fs-count">15</div>
+        <div class="fs-total">Total: $<span id="fs-total-win">0</span></div>
+    </div>
+
+    <!-- ═══ BOTTOM PANEL ═══ -->
+    <div id="bottom-panel">
+        <div class="panel-box">
+            <div class="panel-label">CREDIT</div>
+            <div class="panel-value" id="credit-value">0</div>
+        </div>
+
+        <div class="panel-box">
+            <div class="panel-label">PARIU / LINIE</div>
+            <div class="bet-controls">
+                <button class="bet-btn" onclick="changeBet(-10)">◄</button>
+                <div class="panel-value" id="bet-per-line">10</div>
+                <button class="bet-btn" onclick="changeBet(10)">►</button>
+            </div>
+        </div>
+
+        <div class="panel-box">
+            <div class="panel-label">LINII</div>
+            <div class="panel-value" id="lines-value">10</div>
+        </div>
+
+        <div class="panel-box">
+            <div class="panel-label">PARIU TOTAL</div>
+            <div class="panel-value" id="total-bet-value">100</div>
+        </div>
+
+        <div class="panel-box">
+            <div class="panel-label">ULTIMUL CÂȘTIG</div>
+            <div class="panel-value win-color" id="last-win-value">0</div>
+        </div>
+    </div>
+
+    <!-- ═══ ACTION BUTTONS ═══ -->
+    <div id="action-bar">
+        <button class="action-btn btn-paytable" onclick="togglePaytable()">📋 TABEL</button>
+        <button class="action-btn btn-spin" id="btn-spin" onclick="doSpin()">
+            <div class="spin-icon">▶</div>
+            <div class="spin-text">SPIN</div>
+        </button>
+        <button class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoSpin()">🔄 AUTO</button>
+        <button class="action-btn btn-gamble" id="btn-gamble" onclick="doGamble()" style="display:none">
+            <span>🃏 GAMBLE</span>
+        </button>
+        <button class="action-btn btn-collect" id="btn-collect" onclick="doCollect()" style="display:none">
+            <span>💰 COLLECT</span>
+        </button>
+    </div>
+</div>
+
+<!-- ═══ GAMBLE OVERLAY ═══ -->
+<div id="gamble-overlay">
+    <div id="gamble-box">
+        <div class="gamble-title">🃏 GAMBLE — DUBLEAZĂ SAU PIERZI</div>
+        <div class="gamble-amount">$<span id="gamble-amount">0</span></div>
+        <div id="gamble-card">
+            <div class="card-face">?</div>
+        </div>
+        <div class="gamble-buttons">
+            <button class="gamble-choice red" onclick="gambleChoice('red')">♥ ROȘU</button>
+            <button class="gamble-choice black" onclick="gambleChoice('black')">♠ NEGRU</button>
+        </div>
+        <button class="gamble-collect-btn" onclick="gambleCollect()">💰 COLLECT $<span id="gamble-collect-amt">0</span></button>
+    </div>
+</div>
+
+<!-- ═══ PAYTABLE OVERLAY ═══ -->
+<div id="paytable-overlay" onclick="togglePaytable()">
+    <div id="paytable-box" onclick="event.stopPropagation()">
+        <div class="pt-title">📋 TABEL DE PLĂȚI</div>
+        <div class="pt-close" onclick="togglePaytable()">✕</div>
+        <div class="pt-grid" id="pt-grid">
+            <!-- Built by JS -->
+        </div>
+        <div class="pt-section">
+            <div class="pt-subtitle">👑 SCATTER (Crown)</div>
+            <div class="pt-scatter-row">3x Crown = 5x Total Bet + 15 FREE SPINS</div>
+            <div class="pt-scatter-row">4x Crown = 20x Total Bet + 15 FREE SPINS</div>
+            <div class="pt-scatter-row">5x Crown = 100x Total Bet + 15 FREE SPINS</div>
+        </div>
+        <div class="pt-section">
+            <div class="pt-subtitle">⭐ WILD (Star)</div>
+            <div class="pt-scatter-row">Star înlocuiește toate simbolurile (excepție Crown)</div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ CONFETTI ═══ -->
+<div id="confetti-container"></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// SYMBOL CONFIG
+// ══════════════════════════════════════════
+const SYMBOLS = {
+    crown:      { emoji: '👑', name: 'Crown',      color: '#ffd700' },
+    star:       { emoji: '⭐', name: 'Star',        color: '#ffd700' },
+    seven:      { emoji: '7️⃣',  name: 'Seven',       color: '#e74c3c' },
+    bell:       { emoji: '🔔', name: 'Bell',        color: '#f39c12' },
+    grapes:     { emoji: '🍇', name: 'Grapes',      color: '#8e44ad' },
+    watermelon: { emoji: '🍉', name: 'Watermelon',  color: '#27ae60' },
+    plum:       { emoji: '🍑', name: 'Plum',        color: '#e67e22' },
+    orange:     { emoji: '🍊', name: 'Orange',      color: '#f39c12' },
+    lemon:      { emoji: '🍋', name: 'Lemon',       color: '#f1c40f' },
+    cherry:     { emoji: '🍒', name: 'Cherry',      color: '#c0392b' },
+};
+
+const PAYTABLE = {
+    star:       [50, 200, 1000],
+    seven:      [40, 150, 750],
+    bell:       [25, 100, 400],
+    grapes:     [20, 80,  300],
+    watermelon: [15, 60,  200],
+    plum:       [10, 40,  150],
+    orange:     [8,  30,  100],
+    lemon:      [5,  20,  75],
+    cherry:     [5,  15,  50],
+};
+
+const PAYLINES = [
+    [1,1,1,1,1],[0,0,0,0,0],[2,2,2,2,2],
+    [0,1,2,1,0],[2,1,0,1,2],[1,0,0,0,1],
+    [1,2,2,2,1],[0,0,1,2,2],[2,2,1,0,0],
+    [0,1,1,1,0],
+];
+
+const PAYLINE_COLORS = [
+    '#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6',
+    '#1abc9c','#e67e22','#e91e63','#00bcd4','#8bc34a'
+];
+
+// Full reel strips for animation
+const REEL_STRIPS = [
+    ['cherry','lemon','orange','plum','seven','bell','grapes','watermelon','lemon','cherry',
+     'orange','star','plum','bell','lemon','cherry','grapes','crown','orange','cherry',
+     'seven','lemon','plum','cherry','watermelon','bell','orange','lemon','cherry','grapes'],
+    ['lemon','cherry','bell','orange','plum','cherry','watermelon','grapes','lemon','seven',
+     'cherry','orange','crown','plum','lemon','bell','cherry','orange','grapes','cherry',
+     'lemon','star','watermelon','plum','cherry','orange','lemon','bell','cherry','seven'],
+    ['orange','lemon','cherry','grapes','bell','plum','cherry','lemon','watermelon','orange',
+     'cherry','seven','lemon','plum','bell','crown','orange','cherry','grapes','lemon',
+     'cherry','star','plum','bell','orange','cherry','lemon','watermelon','seven','cherry'],
+    ['plum','cherry','lemon','orange','bell','cherry','grapes','lemon','watermelon','cherry',
+     'orange','seven','plum','lemon','crown','cherry','bell','orange','lemon','cherry',
+     'grapes','star','plum','watermelon','cherry','lemon','orange','bell','cherry','seven'],
+    ['cherry','orange','lemon','bell','plum','cherry','seven','grapes','lemon','orange',
+     'cherry','watermelon','plum','lemon','bell','cherry','orange','crown','lemon','cherry',
+     'grapes','star','bell','plum','orange','lemon','cherry','watermelon','seven','cherry'],
+];
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let state = {
+    chips: 0,
+    betPerLine: 10,
+    lines: 10,
+    lastWin: 0,
+    totalWin: 0,
+    freeSpinsLeft: 0,
+    freeSpinsTotalWin: 0,
+    state: 'idle',
+};
+
+let isSpinning = false;
+let autoSpin = false;
+let autoSpinTimer = null;
+const SYMBOL_HEIGHT = 90;
+const VISIBLE_ROWS = 3;
+let currentReelPositions = [0, 0, 0, 0, 0];
+let toastTimeout = null;
+let winlineAnimFrame = null;
+
+// ══════════════════════════════════════════
+// SOUND ENGINE (Web Audio API)
+// ══════════════════════════════════════════
+const SFX = (() => {
+    let ctx = null;
+    function getCtx() {
+        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') ctx.resume();
+        return ctx;
+    }
+
+    function playTone(freq, duration, type = 'sine', vol = 0.15, delay = 0) {
+        const c = getCtx();
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol, c.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.start(c.currentTime + delay);
+        osc.stop(c.currentTime + delay + duration);
+    }
+
+    function playNoise(duration, vol = 0.08, filterFreq = 3000, delay = 0) {
+        const c = getCtx();
+        const bufSize = Math.max(1, Math.floor(c.sampleRate * duration));
+        const buf = c.createBuffer(1, bufSize, c.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        const src = c.createBufferSource();
+        src.buffer = buf;
+        const filter = c.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = filterFreq;
+        const gain = c.createGain();
+        gain.gain.setValueAtTime(vol, c.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(c.destination);
+        src.start(c.currentTime + delay);
+    }
+
+    return {
+        spinStart() {
+            playNoise(0.25, 0.1, 2500);
+            playTone(180, 0.12, 'square', 0.07);
+            playTone(240, 0.1, 'square', 0.05, 0.08);
+        },
+        reelTick() {
+            playTone(900 + Math.random() * 600, 0.025, 'square', 0.03);
+        },
+        reelStop(index) {
+            const freq = 130 - index * 8;
+            playTone(freq, 0.2, 'sine', 0.18);
+            playTone(freq * 1.5, 0.08, 'triangle', 0.09);
+            playNoise(0.08, 0.12, 800);
+        },
+        winSmall() {
+            [523, 659, 784].forEach((f, i) =>
+                playTone(f, 0.3, 'sine', 0.12, i * 0.12));
+        },
+        winBig() {
+            [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => {
+                playTone(f, 0.4, 'sine', 0.14, i * 0.14);
+                playTone(f * 0.5, 0.35, 'triangle', 0.07, i * 0.14);
+            });
+        },
+        freeSpins() {
+            [392,440,494,523,587,659,784,880,1047].forEach((f, i) => {
+                playTone(f, 0.45, 'sine', 0.12, i * 0.09);
+                if (i % 2 === 0) playTone(f * 1.5, 0.25, 'triangle', 0.05, i * 0.09);
+            });
+        },
+        coinTick() {
+            playTone(2200 + Math.random() * 800, 0.04, 'sine', 0.07);
+        },
+        cardFlip() {
+            playNoise(0.12, 0.09, 5000);
+            playTone(450, 0.08, 'sine', 0.07);
+            playTone(650, 0.06, 'sine', 0.05, 0.07);
+        },
+        gambleWin() {
+            playTone(523, 0.25, 'sine', 0.12);
+            playTone(784, 0.25, 'sine', 0.12, 0.14);
+            playTone(1047, 0.35, 'sine', 0.14, 0.28);
+        },
+        gambleLose() {
+            playTone(300, 0.35, 'sawtooth', 0.09);
+            playTone(200, 0.45, 'sawtooth', 0.07, 0.18);
+        },
+        click() {
+            playTone(1200, 0.04, 'sine', 0.05);
+        },
+    };
+})();
+
+// ══════════════════════════════════════════
+// INIT REELS
+// ══════════════════════════════════════════
+const reelStripEls = [];
+
+function initReels() {
+    for (let r = 0; r < 5; r++) {
+        const strip = document.querySelector(`#reel-${r} .reel-strip`);
+        strip.innerHTML = '';
+        // 4 copies for seamless wrapping during requestAnimationFrame scroll
+        for (let copy = 0; copy < 4; copy++) {
+            REEL_STRIPS[r].forEach(sym => {
+                const cell = document.createElement('div');
+                cell.className = 'sym-cell';
+                cell.innerHTML = `<span class="sym-emoji">${SYMBOLS[sym].emoji}</span>`;
+                cell.dataset.symbol = sym;
+                strip.appendChild(cell);
+            });
+        }
+        strip.style.transform = 'translateY(0px)';
+        reelStripEls[r] = strip;
+        currentReelPositions[r] = 0;
+    }
+}
+initReels();
+
+// ══════════════════════════════════════════
+// SPIN ANIMATION (requestAnimationFrame)
+// ══════════════════════════════════════════
+function animateReels(grid, reelStops, spinTime, callback) {
+    isSpinning = true;
+    SFX.spinStart();
+
+    const STRIP_LEN = REEL_STRIPS[0].length;         // 30 symbols
+    const CYCLE_PX  = STRIP_LEN * SYMBOL_HEIGHT;      // 2700px
+    const MAX_SPEED = 48;                              // px per frame at 60fps
+    const ACCEL_MS  = 350;                             // ramp-up time
+    const DECEL_MS  = 650;                             // per-reel deceleration
+    const STOP_DELAYS = [0, 220, 440, 660, 880];      // staggered stop offsets
+    const SPIN_MS   = spinTime * 1000;                 // base spin before first stop
+
+    const startTime = performance.now();
+    let tickTimer = 0;
+    let stoppedCount = 0;
+
+    // Per-reel animation state
+    const reels = [];
+    for (let r = 0; r < 5; r++) {
+        reels.push({
+            offset: currentReelPositions[r] * SYMBOL_HEIGHT,
+            phase: 'accel',   // accel → spin → decel → done
+            speed: 0,
+            decelStartOffset: 0,
+            decelTargetOffset: 0,
+            decelStartTime: 0,
+        });
+    }
+
+    function frame(now) {
+        const elapsed = now - startTime;
+        let allDone = true;
+
+        for (let r = 0; r < 5; r++) {
+            const rl = reels[r];
+            if (rl.phase === 'done') continue;
+            allDone = false;
+
+            switch (rl.phase) {
+                case 'accel': {
+                    const t = Math.min(elapsed / ACCEL_MS, 1);
+                    rl.speed = MAX_SPEED * (t * t);
+                    if (t >= 1) rl.phase = 'spin';
+                    rl.offset += rl.speed;
+                    break;
+                }
+                case 'spin': {
+                    rl.speed = MAX_SPEED;
+                    rl.offset += rl.speed;
+                    if (elapsed >= SPIN_MS + STOP_DELAYS[r]) {
+                        rl.phase = 'decel';
+                        rl.decelStartTime = now;
+                        rl.decelStartOffset = rl.offset;
+                        // Target: land on reelStops[r], at least 1 full cycle ahead
+                        const targetPx = reelStops[r] * SYMBOL_HEIGHT;
+                        const minTarget = rl.decelStartOffset + CYCLE_PX;
+                        const cycles = Math.ceil((minTarget - targetPx) / CYCLE_PX);
+                        rl.decelTargetOffset = targetPx + cycles * CYCLE_PX;
+                    }
+                    break;
+                }
+                case 'decel': {
+                    const dt = now - rl.decelStartTime;
+                    const t = Math.min(dt / DECEL_MS, 1);
+                    // Cubic ease-out for natural deceleration
+                    const eased = 1 - Math.pow(1 - t, 3);
+                    rl.offset = rl.decelStartOffset +
+                        (rl.decelTargetOffset - rl.decelStartOffset) * eased;
+                    if (t >= 1) {
+                        rl.offset = rl.decelTargetOffset;
+                        rl.phase = 'done';
+                        stoppedCount++;
+                        SFX.reelStop(r);
+                        // Snap to canonical position in first copy
+                        const snapPx = reelStops[r] * SYMBOL_HEIGHT;
+                        reelStripEls[r].style.transform = `translateY(-${snapPx}px)`;
+                        currentReelPositions[r] = reelStops[r];
+                        continue;
+                    }
+                    break;
+                }
+            }
+
+            // Apply smooth transform with modulo wrapping
+            const wrappedPx = rl.offset % CYCLE_PX;
+            reelStripEls[r].style.transform = `translateY(-${wrappedPx}px)`;
+        }
+
+        // Subtle tick sound every ~6 frames while spinning
+        tickTimer++;
+        if (tickTimer % 6 === 0 && stoppedCount < 5) {
+            SFX.reelTick();
+        }
+
+        if (allDone) {
+            isSpinning = false;
+            if (callback) callback();
+        } else {
+            requestAnimationFrame(frame);
+        }
+    }
+
+    requestAnimationFrame(frame);
+}
+
+// ══════════════════════════════════════════
+// WIN LINE ANIMATION
+// ══════════════════════════════════════════
+function drawWinLines(winLines, lineWins) {
+    if (winlineAnimFrame) { cancelAnimationFrame(winlineAnimFrame); winlineAnimFrame = null; }
+
+    const canvas = document.getElementById('winline-canvas');
+    const ctx = canvas.getContext('2d');
+    const cellW = 580 / 5;
+    const cellH = 270 / 3;
+
+    let currentLineIdx = 0;
+    let frameCount = 0;
+
+    function frame() {
+        ctx.clearRect(0, 0, 580, 270);
+
+        if (winLines.length === 0) return;
+
+        // Cycle through winning lines
+        const lineIdx = winLines[currentLineIdx % winLines.length];
+        const color = PAYLINE_COLORS[lineIdx];
+        const positions = PAYLINES[lineIdx];
+
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+        ctx.globalAlpha = 0.7 + Math.sin(frameCount * 0.1) * 0.3;
+
+        for (let c = 0; c < 5; c++) {
+            const x = c * cellW + cellW / 2;
+            const y = positions[c] * cellH + cellH / 2;
+            if (c === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Highlight symbols on the line
+        for (let c = 0; c < 5; c++) {
+            const x = c * cellW + cellW / 2;
+            const y = positions[c] * cellH + cellH / 2;
+            ctx.beginPath();
+            ctx.arc(x, y, 18, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.2 + Math.sin(frameCount * 0.15) * 0.15;
+            ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+
+        frameCount++;
+        if (frameCount % 90 === 0) currentLineIdx++;
+
+        winlineAnimFrame = requestAnimationFrame(frame);
+    }
+
+    winlineAnimFrame = requestAnimationFrame(frame);
+
+    // Stop after a while
+    setTimeout(() => {
+        if (winlineAnimFrame) { cancelAnimationFrame(winlineAnimFrame); winlineAnimFrame = null; }
+        ctx.clearRect(0, 0, 580, 270);
+    }, 8000);
+}
+
+// ══════════════════════════════════════════
+// CONFETTI
+// ══════════════════════════════════════════
+function spawnConfetti(count) {
+    const container = document.getElementById('confetti-container');
+    container.innerHTML = '';
+    const colors = ['#ffd700','#ff6b6b','#4ecdc4','#fff','#f39c12','#e74c3c','#9b59b6','#2ecc71'];
+    for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        const size = 4 + Math.random() * 8;
+        el.style.width = size + 'px';
+        el.style.height = Math.random() > 0.5 ? size + 'px' : size * 2.5 + 'px';
+        el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+        el.style.background = colors[Math.floor(Math.random() * colors.length)];
+        el.style.left = (5 + Math.random() * 90) + '%';
+        el.style.top = '-10px';
+        el.style.setProperty('--confetti-x', (Math.random() - 0.5) * 400 + 'px');
+        el.style.setProperty('--confetti-r', (Math.random() * 720 - 360) + 'deg');
+        el.style.animationDuration = (2 + Math.random() * 2.5) + 's';
+        el.style.animationDelay = (Math.random() * 0.5) + 's';
+        container.appendChild(el);
+    }
+    setTimeout(() => { container.innerHTML = ''; }, 5000);
+}
+
+// ══════════════════════════════════════════
+// UPDATE FROM SERVER
+// ══════════════════════════════════════════
+function updateState(stateJson) {
+    state = JSON.parse(stateJson);
+    renderUI();
+}
+
+function renderUI() {
+    document.getElementById('credit-value').textContent = (state.chips || 0).toLocaleString('en-US');
+    document.getElementById('bet-per-line').textContent = state.betPerLine || 10;
+    document.getElementById('lines-value').textContent = state.lines || 10;
+    document.getElementById('total-bet-value').textContent = ((state.betPerLine || 10) * (state.lines || 10)).toLocaleString('en-US');
+    document.getElementById('last-win-value').textContent = (state.lastWin || 0).toLocaleString('en-US');
+
+    const stateUpper = (state.state || 'idle').toUpperCase();
+    document.getElementById('state-label').textContent =
+        stateUpper === 'FREESPIN' ? `FREE SPIN (${state.freeSpinsLeft})` :
+        stateUpper === 'GAMBLE' ? 'GAMBLE' :
+        stateUpper === 'SPINNING' ? 'SPINNING...' : 'GATA';
+
+    // Free spin banner
+    const fsBanner = document.getElementById('freespin-banner');
+    if (state.freeSpinsLeft > 0 || state.state === 'freespin') {
+        fsBanner.classList.add('visible');
+        document.getElementById('fs-count').textContent = state.freeSpinsLeft;
+        document.getElementById('fs-total-win').textContent = (state.freeSpinsTotalWin || 0).toLocaleString('en-US');
+    } else {
+        fsBanner.classList.remove('visible');
+    }
+
+    // Gamble / collect buttons
+    const btnGamble = document.getElementById('btn-gamble');
+    const btnCollect = document.getElementById('btn-collect');
+    if (state.totalWin > 0 && state.state === 'idle') {
+        btnGamble.style.display = 'flex';
+        btnCollect.style.display = 'none'; // collect happens automatically now
+    } else {
+        btnGamble.style.display = 'none';
+        btnCollect.style.display = 'none';
+    }
+
+    // Spin button state
+    const btnSpin = document.getElementById('btn-spin');
+    if (state.state === 'freespin') {
+        btnSpin.querySelector('.spin-text').textContent = 'FREE SPIN';
+        btnSpin.classList.add('free');
+    } else {
+        btnSpin.querySelector('.spin-text').textContent = 'SPIN';
+        btnSpin.classList.remove('free');
+    }
+}
+
+// ══════════════════════════════════════════
+// SPIN RESULT FROM SERVER
+// ══════════════════════════════════════════
+function onSpinResult(spinDataJson, chips) {
+    const data = JSON.parse(spinDataJson);
+    state.chips = chips;
+
+    // Hide gamble button during spin
+    document.getElementById('btn-gamble').style.display = 'none';
+
+    // Animate reels
+    animateReels(data.grid, data.reelStops, 2.5, () => {
+        // Show win
+        if (data.totalWin > 0) {
+            animateWinCounter(data.totalWin);
+            document.getElementById('win-display').classList.add('visible');
+
+            if (data.totalWin >= state.betPerLine * state.lines * 10) {
+                spawnConfetti(80);
+                document.getElementById('win-display').classList.add('big-win');
+                SFX.winBig();
+            } else {
+                SFX.winSmall();
+            }
+
+            drawWinLines(data.winLines, data.lineWins);
+        } else {
+            document.getElementById('win-display').classList.remove('visible', 'big-win');
+            document.getElementById('win-amount').textContent = '0';
+        }
+
+        // Free spins
+        if (data.freeSpinsWon > 0) {
+            showToast(`🎉 ${data.freeSpinsWon} ROTIRI GRATUITE!`, 3000);
+            spawnConfetti(50);
+            SFX.freeSpins();
+        }
+
+        state.lastWin = data.totalWin;
+        state.totalWin = data.totalWin;
+        state.freeSpinsLeft = data.freeSpinsLeft;
+        state.freeSpinsTotalWin = data.freeSpinsTotalWin;
+
+        // Auto-spin during free spins
+        if (data.freeSpinsLeft > 0) {
+            setTimeout(() => {
+                if (state.freeSpinsLeft > 0) doSpin();
+            }, 1500);
+        } else if (autoSpin && data.totalWin === 0) {
+            setTimeout(() => doSpin(), 1000);
+        }
+
+        renderUI();
+    });
+}
+
+function animateWinCounter(targetWin) {
+    const el = document.getElementById('win-amount');
+    let current = 0;
+    const step = Math.ceil(targetWin / 30);
+    let tickCount = 0;
+    const interval = setInterval(() => {
+        current = Math.min(current + step, targetWin);
+        el.textContent = current.toLocaleString('en-US');
+        if (tickCount++ % 3 === 0) SFX.coinTick();
+        if (current >= targetWin) clearInterval(interval);
+    }, 40);
+}
+
+// ══════════════════════════════════════════
+// GAMBLE
+// ══════════════════════════════════════════
+function onGambleStart(amount) {
+    document.getElementById('gamble-overlay').classList.add('visible');
+    document.getElementById('gamble-amount').textContent = amount.toLocaleString('en-US');
+    document.getElementById('gamble-collect-amt').textContent = amount.toLocaleString('en-US');
+    document.getElementById('gamble-card').className = '';
+    document.querySelector('#gamble-card .card-face').textContent = '?';
+}
+
+function onGambleResult(resultJson) {
+    const r = JSON.parse(resultJson);
+    const card = document.getElementById('gamble-card');
+    const face = card.querySelector('.card-face');
+
+    const suits = ['♥','♦','♣','♠'];
+    const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    const suit = suits[r.cardValue % 4];
+    const rank = ranks[Math.floor(r.cardValue / 4) % 13];
+
+    card.classList.add('flip');
+    SFX.cardFlip();
+    setTimeout(() => {
+        face.textContent = `${rank}${suit}`;
+        face.className = `card-face ${r.resultColor}`;
+        card.classList.add(r.won ? 'won' : 'lost');
+        if (r.won) SFX.gambleWin(); else SFX.gambleLose();
+    }, 300);
+
+    if (r.won) {
+        document.getElementById('gamble-amount').textContent = r.newAmount.toLocaleString('en-US');
+        document.getElementById('gamble-collect-amt').textContent = r.newAmount.toLocaleString('en-US');
+    } else {
+        setTimeout(() => {
+            document.getElementById('gamble-overlay').classList.remove('visible');
+        }, 1500);
+    }
+
+    state.chips = r.chips;
+    renderUI();
+}
+
+// ══════════════════════════════════════════
+// USER ACTIONS
+// ══════════════════════════════════════════
+function doSpin() {
+    if (isSpinning) return;
+    SFX.click();
+
+    document.getElementById('win-display').classList.remove('visible', 'big-win');
+    document.getElementById('win-amount').textContent = '0';
+
+    // Clear win lines
+    const ctx = document.getElementById('winline-canvas').getContext('2d');
+    ctx.clearRect(0, 0, 580, 270);
+    if (winlineAnimFrame) { cancelAnimationFrame(winlineAnimFrame); winlineAnimFrame = null; }
+
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_Spin');
+    } else {
+        console.log('[TEST] Spin');
+    }
+}
+
+function changeBet(delta) {
+    if (isSpinning || state.state === 'freespin') return;
+    SFX.click();
+    let newBet = (state.betPerLine || 10) + delta;
+    newBet = Math.max(1, Math.min(500, newBet));
+    state.betPerLine = newBet;
+    renderUI();
+
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_SetBet', newBet);
+    }
+}
+
+function doGamble() {
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_Gamble');
+    }
+}
+
+function doCollect() {
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_CollectGamble');
+    }
+}
+
+function gambleChoice(choice) {
+    SFX.click();
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_GambleChoice', choice);
+    }
+}
+
+function gambleCollect() {
+    document.getElementById('gamble-overlay').classList.remove('visible');
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_CollectGamble');
+    }
+}
+
+function toggleAutoSpin() {
+    autoSpin = !autoSpin;
+    document.getElementById('btn-auto').classList.toggle('active', autoSpin);
+    if (autoSpin && !isSpinning && state.state === 'idle') {
+        doSpin();
+    }
+}
+
+function leaveTable() {
+    autoSpin = false;
+    if (typeof mp !== 'undefined') mp.trigger('Slots_LeaveTable');
+}
+
+function togglePaytable() {
+    document.getElementById('paytable-overlay').classList.toggle('visible');
+}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+function showToast(msg, duration) {
+    clearTimeout(toastTimeout);
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    toastTimeout = setTimeout(() => el.classList.remove('show'), duration || 2500);
+}
+
+// ══════════════════════════════════════════
+// BUILD PAYTABLE
+// ══════════════════════════════════════════
+function buildPaytable() {
+    const grid = document.getElementById('pt-grid');
+    grid.innerHTML = '';
+
+    for (const [sym, pays] of Object.entries(PAYTABLE)) {
+        const row = document.createElement('div');
+        row.className = 'pt-row';
+        row.innerHTML = `
+            <div class="pt-sym">${SYMBOLS[sym].emoji} ${SYMBOLS[sym].name}</div>
+            <div class="pt-pay">3x = <b>${pays[0]}x</b></div>
+            <div class="pt-pay">4x = <b>${pays[1]}x</b></div>
+            <div class="pt-pay">5x = <b>${pays[2]}x</b></div>
+        `;
+        grid.appendChild(row);
+    }
+}
+buildPaytable();
+
+// ══════════════════════════════════════════
+// KEYBOARD
+// ══════════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); doSpin(); }
+});
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+</script>
+</body>
+</html>
