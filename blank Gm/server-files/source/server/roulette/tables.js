@@ -144,11 +144,15 @@ mp.events.add('playerExitColshape', (player, colshape) => {
 mp.events.add('Server_PlayerAction', (player, actionName) => {
     if (actionName === 'interact') {
         if (player.currentRouletteTable) {
-            const tableIndex = player.currentRouletteTable.getVariable('tableIndex');
-            const tableName  = player.currentRouletteTable.getVariable('tableName');
-            const casinoId   = player.currentRouletteTable.getVariable('casinoId');
+            const tableIndex    = player.currentRouletteTable.getVariable('tableIndex');
+            const tableName     = player.currentRouletteTable.getVariable('tableName');
+            const casinoId      = player.currentRouletteTable.getVariable('casinoId');
+            const tableX        = player.currentRouletteTable.getVariable('tableX');
+            const tableY        = player.currentRouletteTable.getVariable('tableY');
+            const tableZ        = player.currentRouletteTable.getVariable('tableZ');
+            const tableHeading  = player.currentRouletteTable.getVariable('tableHeading');
 
-            mp.events.call('Server_JoinRouletteTable', player, tableIndex, tableName, casinoId);
+            mp.events.call('Server_JoinRouletteTable', player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading);
         }
     }
 });
@@ -181,6 +185,10 @@ function createColshape(position, index, name, casinoId) {
     colShape.setVariable('tableIndex', index);
     colShape.setVariable('tableName', name);
     colShape.setVariable('casinoId', casinoId || null);
+    colShape.setVariable('tableX', position.x);
+    colShape.setVariable('tableY', position.y);
+    colShape.setVariable('tableZ', position.z);
+    colShape.setVariable('tableHeading', position.heading || 0);
     tableColshapes[index] = colShape;
     return colShape;
 }

@@ -16,7 +16,7 @@ function getMarkerText(index, state, players, maxPlayers) {
     if (state === 'playing' || state === 'dealer_turn' || state === 'resolving') {
         statusLine = `~r~In joc`;
     } else if (state === 'betting') {
-        statusLine = `~g~Se pariază`;
+        statusLine = `~g~Se pariaza`;
     } else if (players >= server.LOBBY_CONFIG.MIN_PLAYERS) {
         statusLine = `~g~Asteapta start`;
     } else {
@@ -25,13 +25,21 @@ function getMarkerText(index, state, players, maxPlayers) {
     return `~g~Masa Blackjack ~w~#${index}\n${statusLine} ~w~(${players}/${maxPlayers})\n~y~Apasa ~g~E ~w~pentru a juca`;
 }
 
+const tableLastText = {};
+
 function updateTableMarker(tableIndex, state, players, maxPlayers) {
     const old = tableLabels[tableIndex];
     if (!old) return;
+
+    const newText = getMarkerText(tableIndex, state, players, maxPlayers);
+    // Nu re-crea label-ul dacă textul e identic
+    if (tableLastText[tableIndex] === newText) return;
+    tableLastText[tableIndex] = newText;
+
     const pos = old.position;
     old.destroy();
     tableLabels[tableIndex] = mp.labels.new(
-        getMarkerText(tableIndex, state, players, maxPlayers),
+        newText,
         pos,
         { los: true, font: 4, drawDistance: 10, dimension: 0 }
     );

@@ -191,9 +191,19 @@ function joinLobby(player, tableIndex, tableName, casinoId) {
     player.call('openBlackjackUI');
     updateLobbyUI(lobby);
 
+    // Dacă betting-ul e deja activ, trimite overlay-ul la jucătorul nou
+    if (lobby.state === 'betting') {
+        setTimeout(() => {
+            player.call('bjBettingPhase', [LOBBY_CONFIG.MIN_BET, LOBBY_CONFIG.MAX_BET]);
+        }, 500);
+    }
+
     if (lobby.players.length >= LOBBY_CONFIG.MIN_PLAYERS && lobby.state === 'waiting') {
         lobby.state = 'betting';
-        startBettingPhase(lobby);
+        // Delay mic pentru ca browser-ul să se încarce
+        setTimeout(() => {
+            startBettingPhase(lobby);
+        }, 500);
     }
 }
 
@@ -218,10 +228,7 @@ function leaveLobby(player) {
 
         broadcastToLobby(lobby, `!{Orange}[BLACKJACK] !{Cyan}${player.name} !{White}a părăsit masa.`);
 
-        const isCurrentPlayer = (leavingIndex === lobby.currentPlayerIndex);
-        if (isCurrentPlayer) {
-            nextPlayerTurn(lobby);
-        }
+        checkAllPlayersDone(lobby);
         updateLobbyUI(lobby);
         return;
     }
@@ -382,75 +389,71 @@ function startGame(lobby) {
 
     updateLobbyUI(lobby);
 
-    // Începe tururile jucătorilor
-    lobby.currentPlayerIndex = 0;
-    startPlayerTurn(lobby);
+    // Activează toți jucătorii simultan (joc paralel)
+    activateAllPlayers(lobby);
 }
 
-function startPlayerTurn(lobby) {
-    // Sari peste jucătorii care au stand, bust, blackjack sau au plecat
-    let safetyCounter = 0;
-    while (
-        lobby.currentPlayerIndex < lobby.players.length &&
-        safetyCounter < lobby.players.length
-    ) {
-        const slot = lobby.players[lobby.currentPlayerIndex];
-        if (!slot._hasLeft && slot.status === 'playing') break;
-        lobby.currentPlayerIndex++;
-        safetyCounter++;
-    }
+function activateAllPlayers(lobby) {
+    lobby.turnTimeLeft = LOBBY_CONFIG.TURN_TIME;
 
-    if (lobby.currentPlayerIndex >= lobby.players.length) {
+    // Trimite bjYourTurn la toți jucătorii activi
+    lobby.players.forEach(slot => {
+        if (slot._hasLeft || slot.status !== 'playing') return;
+
+        const handValue = calculateHandValue(slot.cards);
+        const canDoubleDown = slot.cards.length === 2 && slot.chips >= slot.bet;
+        const canSplit = slot.cards.length === 2 &&
+            parseCard(slot.cards[0]).rank === parseCard(slot.cards[1]).rank &&
+            slot.chips >= slot.bet &&
+            !slot.hasSplit;
+
+        console.log(`[BLACKJACK] TURN: ${slot.player.name} | cards: ${slot.cards.join(' ')} = ${handValue} | chips: $${slot.chips}`);
+        broadcastToLobby(lobby,
+            `!{Orange}[BLACKJACK] !{White}Rândul lui !{Cyan}${slot.player.name} !{White}| Mâna: ${handValue}`
+        );
+
+        slot.player.call('bjYourTurn', [handValue, canDoubleDown, canSplit]);
+    });
+
+    callToLobby(lobby, 'bjUpdateState', [getLobbyStateForUI(lobby)]);
+
+    // Dacă nimeni nu mai are status 'playing' (toți au blackjack/bust), treci direct la dealer
+    const stillPlaying = lobby.players.some(p => !p._hasLeft && p.status === 'playing');
+    if (!stillPlaying) {
         dealerTurn(lobby);
         return;
     }
 
-    const currentSlot = lobby.players[lobby.currentPlayerIndex];
-    const handValue = calculateHandValue(currentSlot.cards);
-
-    lobby.turnTimeLeft = LOBBY_CONFIG.TURN_TIME;
-    console.log(`[BLACKJACK] TURN: ${currentSlot.player.name} | cards: ${currentSlot.cards.join(' ')} = ${handValue} | chips: $${currentSlot.chips}`);
-
-    broadcastToLobby(lobby,
-        `!{Orange}[BLACKJACK] !{White}Rândul lui !{Cyan}${currentSlot.player.name} !{White}| Mâna: ${handValue}`
-    );
-
-    // Determină acțiunile disponibile
-    const canDoubleDown = currentSlot.cards.length === 2 && currentSlot.chips >= currentSlot.bet;
-    const canSplit = currentSlot.cards.length === 2 &&
-        parseCard(currentSlot.cards[0]).rank === parseCard(currentSlot.cards[1]).rank &&
-        currentSlot.chips >= currentSlot.bet &&
-        !currentSlot.hasSplit;
-
-    callToLobby(lobby, 'bjUpdateState', [getLobbyStateForUI(lobby)]);
-    currentSlot.player.call('bjYourTurn', [handValue, canDoubleDown, canSplit]);
-
+    // Timer partajat pentru toată runda
     if (lobby.turnTimer) clearInterval(lobby.turnTimer);
-
     lobby.turnTimer = setInterval(() => {
         lobby.turnTimeLeft--;
-        callToLobby(lobby, 'bjTurnTimer', [currentSlot.player.name, lobby.turnTimeLeft]);
+        callToLobby(lobby, 'bjTurnTimer', ['Acționează!', lobby.turnTimeLeft]);
 
         if (lobby.turnTimeLeft <= 0) {
             clearInterval(lobby.turnTimer);
             lobby.turnTimer = null;
-            // Auto-stand la timeout
-            currentSlot.status = 'stand';
-            broadcastToLobby(lobby, `!{Red}[BLACKJACK] ${currentSlot.player.name} a picat timpul — Stand automat!`);
-            bjLog.onTimeout(lobby, currentSlot.player.name, 'stand');
-            nextPlayerTurn(lobby);
+            // Auto-stand pe toți jucătorii rămași
+            lobby.players.forEach(slot => {
+                if (!slot._hasLeft && slot.status === 'playing') {
+                    slot.status = 'stand';
+                    broadcastToLobby(lobby, `!{Red}[BLACKJACK] ${slot.player.name} a picat timpul — Stand automat!`);
+                    bjLog.onTimeout(lobby, slot.player.name, 'stand');
+                }
+            });
+            dealerTurn(lobby);
         }
     }, 1000);
 }
 
-function nextPlayerTurn(lobby) {
-    if (lobby.turnTimer) {
-        clearInterval(lobby.turnTimer);
-        lobby.turnTimer = null;
+function checkAllPlayersDone(lobby) {
+    const stillPlaying = lobby.players.some(p => !p._hasLeft && p.status === 'playing');
+    if (!stillPlaying) {
+        if (lobby.turnTimer) { clearInterval(lobby.turnTimer); lobby.turnTimer = null; }
+        dealerTurn(lobby);
+    } else {
+        callToLobby(lobby, 'bjUpdateState', [getLobbyStateForUI(lobby)]);
     }
-
-    lobby.currentPlayerIndex++;
-    startPlayerTurn(lobby);
 }
 
 // ──────────────────────────────────────────
@@ -463,13 +466,11 @@ function processAction(player, action) {
         return;
     }
 
-    const currentSlot = lobby.players[lobby.currentPlayerIndex];
-    if (!currentSlot || currentSlot.player !== player) {
-        player.outputChatBox('!{Red}Nu este rândul tău!');
+    const slot = getPlayerSlot(lobby, player);
+    if (!slot || slot.status !== 'playing') {
+        player.outputChatBox('!{Red}Nu poți acționa acum!');
         return;
     }
-
-    const slot = getPlayerSlot(lobby, player);
     console.log(`[BLACKJACK] ACTION: ${player.name} → ${action} | cards: ${slot.cards.join(' ')} = ${calculateHandValue(slot.cards)} | chips: $${slot.chips}`);
 
     switch (action) {
@@ -482,17 +483,17 @@ function processAction(player, action) {
             broadcastToLobby(lobby, `!{Orange}[BLACKJACK] !{Cyan}${player.name} !{White}a tras o carte: !{Yellow}${newCard} !{White}(Total: ${handValue})`);
             bjLog.onPlayerAction(lobby, player.name, 'hit', slot.cards, handValue);
 
-            callToLobby(lobby, 'bjHitCard', [player.name, pc.rank, pc.suit, handValue]);
+            slot.player.call('bjHitCard', [player.name, pc.rank, pc.suit, handValue]);
 
             if (handValue > 21) {
                 slot.status = 'bust';
                 broadcastToLobby(lobby, `!{Red}[BLACKJACK] !{Cyan}${player.name} !{White}a dat BUST! (${handValue})`);
                 bjLog.onPlayerAction(lobby, player.name, 'bust', slot.cards, handValue);
-                nextPlayerTurn(lobby);
+                checkAllPlayersDone(lobby);
             } else if (handValue === 21) {
                 slot.status = 'stand';
                 broadcastToLobby(lobby, `!{Green}[BLACKJACK] !{Cyan}${player.name} !{White}are 21!`);
-                nextPlayerTurn(lobby);
+                checkAllPlayersDone(lobby);
             } else {
                 // Mai poate acționa
                 const canDoubleDown = false; // Nu mai poți double down după hit
@@ -505,7 +506,7 @@ function processAction(player, action) {
             slot.status = 'stand';
             broadcastToLobby(lobby, `!{Orange}[BLACKJACK] !{Cyan}${player.name} !{White}a dat !{Yellow}Stand !{White}(${calculateHandValue(slot.cards)})`);
             bjLog.onPlayerAction(lobby, player.name, 'stand', slot.cards, calculateHandValue(slot.cards));
-            nextPlayerTurn(lobby);
+            checkAllPlayersDone(lobby);
             break;
         }
 
@@ -531,7 +532,7 @@ function processAction(player, action) {
             broadcastToLobby(lobby, `!{Orange}[BLACKJACK] !{Cyan}${player.name} !{White}a dat !{Pink}Double Down!{White} ($${slot.bet})! Carte: !{Yellow}${newCard} !{White}(Total: ${handValue})`);
             bjLog.onPlayerAction(lobby, player.name, 'doubledown', slot.cards, handValue);
 
-            callToLobby(lobby, 'bjHitCard', [player.name, pc.rank, pc.suit, handValue]);
+            slot.player.call('bjHitCard', [player.name, pc.rank, pc.suit, handValue]);
 
             if (handValue > 21) {
                 slot.status = 'bust';
@@ -539,7 +540,7 @@ function processAction(player, action) {
             } else {
                 slot.status = 'stand';
             }
-            nextPlayerTurn(lobby);
+            checkAllPlayersDone(lobby);
             break;
         }
 
@@ -841,7 +842,7 @@ function getLobbyStateForUI(lobby) {
         dealerValue: lobby.state === 'dealer_turn' || lobby.state === 'resolving'
             ? calculateHandValue(lobby.dealerCards)
             : getCardValue(lobby.dealerCards[0] || ''),
-        currentPlayer: lobby.players[lobby.currentPlayerIndex]?.player?.name || '',
+        currentPlayer: '',
         players: visiblePlayers.map(p => ({
             name:       p.player.name,
             chips:      p.chips,

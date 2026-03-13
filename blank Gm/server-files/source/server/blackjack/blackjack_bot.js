@@ -100,26 +100,28 @@ function checkBotTurn() {
     for (const key in lobbies) {
         const lobby = lobbies[key];
         if (lobby.state === 'playing') {
-            const currentSlot = lobby.players[lobby.currentPlayerIndex];
-            if (!currentSlot) continue;
+            // Joc paralel — verifică toți boții cu status 'playing'
+            lobby.players.forEach(slot => {
+                if (slot._hasLeft || slot.status !== 'playing') return;
 
-            const owner = botOwner.get(currentSlot.player);
-            if (!owner || !autoMode.has(owner.name)) continue;
+                const owner = botOwner.get(slot.player);
+                if (!owner || !autoMode.has(owner.name)) return;
 
-            // Bot auto-action
-            setTimeout(() => {
-                const slot = lobby.players[lobby.currentPlayerIndex];
-                if (!slot) return;
+                // Previne acțiuni duble
+                if (slot._botActing) return;
+                slot._botActing = true;
 
-                const currentOwner = botOwner.get(slot.player);
-                if (!currentOwner || !autoMode.has(currentOwner.name)) return;
+                setTimeout(() => {
+                    slot._botActing = false;
+                    if (slot.status !== 'playing') return;
 
-                const dealerUpCard = lobby.dealerCards[0];
-                if (!dealerUpCard) return;
+                    const dealerUpCard = lobby.dealerCards[0];
+                    if (!dealerUpCard) return;
 
-                const decision = getBotDecision(slot, dealerUpCard);
-                processAction(slot.player, decision);
-            }, 600 + Math.random() * 800);
+                    const decision = getBotDecision(slot, dealerUpCard);
+                    processAction(slot.player, decision);
+                }, 600 + Math.random() * 800);
+            });
         }
 
         // Faza de pariuri — boții pariază automat

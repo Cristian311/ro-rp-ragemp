@@ -6,7 +6,7 @@ const rouletteLog = require('./roulette_logger');
 const ROULETTE_CONFIG = {
     MAX_PLAYERS: 8,
     MIN_PLAYERS: 1,
-    BET_TIME: 30,           // secunde pentru plasarea pariurilor
+    BET_TIME: 10,           // secunde pentru plasarea pariurilor
     SPIN_TIME: 8,           // secunde animație spin
     RESULT_DELAY: 6,        // secunde afișare rezultat înainte de runda nouă
     MIN_BET: 10,
@@ -96,7 +96,7 @@ function getBetNumbers(betType, betValue) {
 // ──────────────────────────────────────────
 // LOBBY MANAGEMENT
 // ──────────────────────────────────────────
-function createLobby(tableIndex, tableName, casinoId) {
+function createLobby(tableIndex, tableName, casinoId, tablePos) {
     return {
         id: tableIndex,
         name: tableName,
@@ -107,6 +107,7 @@ function createLobby(tableIndex, tableName, casinoId) {
         betTimeLeft: 0,
         lastResult: null,
         history: [],        // ultimele ~20 de rezultate
+        tablePos: tablePos || null,
     };
 }
 
@@ -139,14 +140,14 @@ function callToLobby(lobby, eventName, ...args) {
 // ──────────────────────────────────────────
 // JOIN / LEAVE
 // ──────────────────────────────────────────
-function joinLobby(player, tableIndex, tableName, casinoId) {
+function joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading) {
     if (getLobbyByPlayer(player)) {
         player.outputChatBox('!{Red}Ești deja la o masă de ruletă!');
         return;
     }
 
     if (!lobbies[tableIndex]) {
-        lobbies[tableIndex] = createLobby(tableIndex, tableName, casinoId);
+        lobbies[tableIndex] = createLobby(tableIndex, tableName, casinoId, { x: tableX, y: tableY, z: tableZ, heading: tableHeading });
     }
 
     const lobby = lobbies[tableIndex];
@@ -173,7 +174,7 @@ function joinLobby(player, tableIndex, tableName, casinoId) {
     broadcastToLobby(lobby, `!{Orange}[RULETĂ] !{Cyan}${player.name} !{White}s-a alăturat (${lobby.players.length}/${ROULETTE_CONFIG.MAX_PLAYERS})`);
     rouletteLog.onPlayerJoin(tableIndex, tableName, player.name, lobby.players.length, ROULETTE_CONFIG.MAX_PLAYERS);
 
-    player.call('openRouletteUI');
+    player.call('openRouletteUI', [tableX || 0, tableY || 0, tableZ || 0, tableHeading || 0]);
     callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
 
     // Dacă masa e în waiting și acum avem destui jucători, pornim betting
@@ -504,9 +505,9 @@ mp.events.add('Server_ClearRouletteBets', (player) => {
     clearBets(player);
 });
 
-mp.events.add('Server_JoinRouletteTable', (player, tableIndex, tableName, casinoId) => {
+mp.events.add('Server_JoinRouletteTable', (player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading) => {
     player.outputChatBox(`!{Green}[RULETĂ] Încerci să te alături mesei "${tableName}"...`);
-    joinLobby(player, tableIndex, tableName, casinoId);
+    joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading);
 });
 
 mp.events.add('Server_LeaveRouletteTable', (player) => {

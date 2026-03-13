@@ -96,6 +96,21 @@ let selectedBet  = 100;
 let hasBet       = false;
 let resultTimeout = null;
 
+const CLIENT_CARD_VALUES = {
+    '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,
+    'J':10,'Q':10,'K':10,'A':11
+};
+
+function calcHandValue(ranks) {
+    let value = 0, aces = 0;
+    for (const r of ranks) {
+        value += CLIENT_CARD_VALUES[r] || 0;
+        if (r === 'A') aces++;
+    }
+    while (value > 21 && aces > 0) { value -= 10; aces--; }
+    return value;
+}
+
 // ── Card helpers ──
 function animateCard(el, delaySec) {
     if (!el) return;
@@ -134,6 +149,9 @@ function updateDealerCard(rank, suit, hasHidden) {
     const container = document.getElementById('dealer-cards');
     container.innerHTML = '';
 
+    // Arată valoarea cărții vizibile (cartea ascunsă nu se numără)
+    document.getElementById('dealer-value').textContent = CLIENT_CARD_VALUES[rank] || '';
+
     const card1 = createCardElement(rank, suit);
     card1.style.display = 'flex';
     container.appendChild(card1);
@@ -150,14 +168,39 @@ function updateDealerCard(rank, suit, hasHidden) {
 
 function revealDealerCards(cards, value) {
     const container = document.getElementById('dealer-cards');
-    container.innerHTML = '';
+    const hiddenEl = document.getElementById('dealer-hidden');
 
-    cards.forEach((c, i) => {
-        const el = createCardElement(c.rank, c.suit);
-        el.style.display = 'flex';
-        container.appendChild(el);
-        animateCard(el, i * 0.15);
-    });
+    if (hiddenEl && cards.length >= 2) {
+        const c = cards[1];
+        const isRed = RED_SUITS.includes(c.suit);
+
+        // Faza 1: rotire până la 90° (dispare)
+        hiddenEl.classList.add('card-flip-out');
+
+        // La jumătate (când e pe muchie), swap conținutul
+        setTimeout(() => {
+            hiddenEl.className = `card face ${isRed ? 'red' : 'black'} card-flip-in`;
+            hiddenEl.id = '';
+            hiddenEl.innerHTML = `<span class="rank">${c.rank}</span><span class="suit">${SUIT_SYMBOLS[c.suit] || c.suit}</span>`;
+            hiddenEl.style.display = 'flex';
+        }, 280);
+
+        // Adăugă restul cărților
+        for (let i = 2; i < cards.length; i++) {
+            const el = createCardElement(cards[i].rank, cards[i].suit);
+            el.style.display = 'flex';
+            container.appendChild(el);
+            animateCard(el, 0.3 + i * 0.15);
+        }
+    } else {
+        container.innerHTML = '';
+        cards.forEach((c, i) => {
+            const el = createCardElement(c.rank, c.suit);
+            el.style.display = 'flex';
+            container.appendChild(el);
+            animateCard(el, i * 0.15);
+        });
+    }
 
     document.getElementById('dealer-value').textContent = value;
 }
@@ -192,6 +235,9 @@ function updateMyCards(r1, s1, r2, s2) {
     card2.style.display = 'flex';
     container.appendChild(card2);
     animateCard(card2, 0.40);
+
+    // Arată valoarea inițială a mâinii
+    document.getElementById('player-value').textContent = calcHandValue([r1, r2]);
 }
 
 function addHitCard(rank, suit, value) {
@@ -267,7 +313,10 @@ function updateBetTimer(secondsLeft) {
 }
 
 // ── Turn ──
+let myTurnActive = false;
+
 function onYourTurn(handValue, canDoubleDown, canSplit) {
+    myTurnActive = true;
     document.getElementById('player-value').textContent = handValue;
     document.getElementById('btn-doubledown').style.display = canDoubleDown ? '' : 'none';
     document.getElementById('btn-split').style.display = canSplit ? '' : 'none';
@@ -280,7 +329,7 @@ function updateTurnTimer(playerName, timeLeft) {
     const fillEl = document.getElementById('fill');
     const numEl = document.getElementById('timer-num');
     const lblEl = document.getElementById('timer-label');
-    if (timeLeft <= 0) { wrap.classList.remove('visible'); return; }
+    if (timeLeft <= 0 || !myTurnActive) { wrap.classList.remove('visible'); return; }
     wrap.classList.add('visible');
     lblEl.textContent = playerName;
     numEl.textContent = timeLeft;
@@ -341,6 +390,7 @@ function sendAction(actionName) {
     if (!document.getElementById('actions').classList.contains('visible')) return;
     if (typeof mp !== 'undefined') mp.trigger('Blackjack_PlayerAction', actionName);
     else console.log('[TEST] Action:', actionName);
+    myTurnActive = false;
     toggleActionButtons(false);
     document.getElementById('timer-wrap').classList.remove('visible');
 }

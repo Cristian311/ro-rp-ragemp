@@ -73,10 +73,9 @@ mp.events.add('bjTurnTimer', (playerName, timeLeft) => {
     }
 });
 
-// ── Hit card (vizual pentru toți) ──
+// ── Hit card (doar pentru jucătorul local) ──
 mp.events.add('bjHitCard', (playerName, rank, suit, handValue) => {
     if (bjBrowser !== null) {
-        // Dacă e cartea jucătorului local, adaugă la hand
         bjBrowser.execute(`addHitCard('${rank}', '${suit}', ${handValue});`);
     }
 });
