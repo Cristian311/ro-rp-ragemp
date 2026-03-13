@@ -78,6 +78,20 @@ mp.events.add('Slots_CollectGamble', () => {
     mp.events.callRemote('Server_SlotsCollectGamble');
 });
 
+mp.events.add('Slots_ToggleTurbo', () => {
+    mp.events.callRemote('Server_SlotsToggleTurbo');
+});
+
+mp.events.add('Slots_SkipAnimation', () => {
+    mp.events.callRemote('Server_SlotsSkipAnimation');
+});
+
+mp.events.add('slotsSkipAnimation', () => {
+    if (slotsBrowser !== null) {
+        slotsBrowser.execute('skipAnimation();');
+    }
+});
+
 mp.events.add('Slots_LeaveTable', () => {
     closeSlotsUI();
     mp.events.callRemote('Server_LeaveSlotsMachine');

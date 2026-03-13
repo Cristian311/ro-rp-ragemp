@@ -480,25 +480,42 @@
         // ACTION BUTTONS
         // ──────────────────────────────────────────
         document.getElementById('btnPlace').addEventListener('click', () => {
-            // Export as JPEG to keep data small for network transfer
-            // RAGE:MP callRemote has data size limits, so we need compact output
             const MAX_DATA_SIZE = 200000; // 200KB max for safe network transfer
-            let quality = 0.85;
-            let dataURL = canvas.toDataURL('image/jpeg', quality);
 
-            // Progressively reduce quality if too large
-            while (dataURL.length > MAX_DATA_SIZE && quality > 0.2) {
-                quality -= 0.1;
-                dataURL = canvas.toDataURL('image/jpeg', quality);
+            // Check if canvas has any transparent pixels
+            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let hasTransparency = false;
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] < 250) { hasTransparency = true; break; }
             }
 
-            // If still too large, resize to smaller canvas
-            if (dataURL.length > MAX_DATA_SIZE) {
-                const small = document.createElement('canvas');
-                small.width = 256;
-                small.height = 256;
-                small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
-                dataURL = small.toDataURL('image/jpeg', 0.7);
+            let dataURL;
+            if (hasTransparency) {
+                // PNG to preserve transparency
+                dataURL = canvas.toDataURL('image/png');
+                // If PNG too large, resize
+                if (dataURL.length > MAX_DATA_SIZE) {
+                    const small = document.createElement('canvas');
+                    small.width = 256;
+                    small.height = 256;
+                    small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
+                    dataURL = small.toDataURL('image/png');
+                }
+            } else {
+                // JPEG for fully opaque images (photos) — much smaller
+                let quality = 0.85;
+                dataURL = canvas.toDataURL('image/jpeg', quality);
+                while (dataURL.length > MAX_DATA_SIZE && quality > 0.2) {
+                    quality -= 0.1;
+                    dataURL = canvas.toDataURL('image/jpeg', quality);
+                }
+                if (dataURL.length > MAX_DATA_SIZE) {
+                    const small = document.createElement('canvas');
+                    small.width = 256;
+                    small.height = 256;
+                    small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
+                    dataURL = small.toDataURL('image/jpeg', 0.7);
+                }
             }
 
             mp.trigger('Graffiti_CanvasReady', dataURL);

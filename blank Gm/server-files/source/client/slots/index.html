@@ -108,6 +108,7 @@
     <!-- ═══ ACTION BUTTONS ═══ -->
     <div id="action-bar">
         <button class="action-btn btn-paytable" onclick="togglePaytable()">📋 TABEL</button>
+        <button class="action-btn btn-turbo" id="btn-turbo" onclick="toggleTurbo()">⚡ TURBO</button>
         <button class="action-btn btn-spin" id="btn-spin" onclick="doSpin()">
             <div class="spin-icon">▶</div>
             <div class="spin-text">SPIN</div>
@@ -247,6 +248,9 @@ const VISIBLE_ROWS = 3;
 let currentReelPositions = [0, 0, 0, 0, 0];
 let toastTimeout = null;
 let winlineAnimFrame = null;
+let turboMode = false;
+let skipRequested = false;
+let currentSpinResolve = null; // callback to snap reels instantly
 
 // ══════════════════════════════════════════
 // SOUND ENGINE (Web Audio API)
@@ -378,15 +382,30 @@ initReels();
 // ══════════════════════════════════════════
 function animateReels(grid, reelStops, spinTime, callback) {
     isSpinning = true;
+    skipRequested = false;
     SFX.spinStart();
 
     const STRIP_LEN = REEL_STRIPS[0].length;         // 30 symbols
     const CYCLE_PX  = STRIP_LEN * SYMBOL_HEIGHT;      // 2700px
-    const MAX_SPEED = 48;                              // px per frame at 60fps
-    const ACCEL_MS  = 350;                             // ramp-up time
-    const DECEL_MS  = 650;                             // per-reel deceleration
-    const STOP_DELAYS = [0, 220, 440, 660, 880];      // staggered stop offsets
+    const MAX_SPEED = turboMode ? 90 : 48;             // px per frame at 60fps
+    const ACCEL_MS  = turboMode ? 80 : 350;            // ramp-up time
+    const DECEL_MS  = turboMode ? 120 : 650;           // per-reel deceleration
+    const STOP_DELAYS = turboMode ? [0, 40, 80, 120, 160] : [0, 220, 440, 660, 880];
     const SPIN_MS   = spinTime * 1000;                 // base spin before first stop
+
+    // Save callback for skip
+    currentSpinResolve = function() {
+        // Snap all reels instantly to final positions
+        for (let r = 0; r < 5; r++) {
+            const snapPx = reelStops[r] * SYMBOL_HEIGHT;
+            reelStripEls[r].style.transform = `translateY(-${snapPx}px)`;
+            currentReelPositions[r] = reelStops[r];
+        }
+        SFX.reelStop(4);
+        isSpinning = false;
+        currentSpinResolve = null;
+        if (callback) callback();
+    };
 
     const startTime = performance.now();
     let tickTimer = 0;
@@ -406,6 +425,12 @@ function animateReels(grid, reelStops, spinTime, callback) {
     }
 
     function frame(now) {
+        // Check for skip request
+        if (skipRequested && currentSpinResolve) {
+            currentSpinResolve();
+            return;
+        }
+
         const elapsed = now - startTime;
         let allDone = true;
 
@@ -472,6 +497,7 @@ function animateReels(grid, reelStops, spinTime, callback) {
 
         if (allDone) {
             isSpinning = false;
+            currentSpinResolve = null;
             if (callback) callback();
         } else {
             requestAnimationFrame(frame);
@@ -580,6 +606,10 @@ function spawnConfetti(count) {
 // ══════════════════════════════════════════
 function updateState(stateJson) {
     state = JSON.parse(stateJson);
+    if (state.turbo !== undefined) {
+        turboMode = state.turbo;
+        document.getElementById('btn-turbo').classList.toggle('active', turboMode);
+    }
     renderUI();
 }
 
@@ -635,11 +665,17 @@ function onSpinResult(spinDataJson, chips) {
     const data = JSON.parse(spinDataJson);
     state.chips = chips;
 
+    // Sync turbo state from server
+    if (data.turbo !== undefined) turboMode = data.turbo;
+
     // Hide gamble button during spin
     document.getElementById('btn-gamble').style.display = 'none';
 
+    // Use turbo spin time if turbo
+    const spinTime = turboMode ? 0.4 : 2.5;
+
     // Animate reels
-    animateReels(data.grid, data.reelStops, 2.5, () => {
+    animateReels(data.grid, data.reelStops, spinTime, () => {
         // Show win
         if (data.totalWin > 0) {
             animateWinCounter(data.totalWin);
@@ -675,9 +711,9 @@ function onSpinResult(spinDataJson, chips) {
         if (data.freeSpinsLeft > 0) {
             setTimeout(() => {
                 if (state.freeSpinsLeft > 0) doSpin();
-            }, 1500);
+            }, turboMode ? 300 : 1500);
         } else if (autoSpin && data.totalWin === 0) {
-            setTimeout(() => doSpin(), 1000);
+            setTimeout(() => doSpin(), turboMode ? 300 : 1000);
         }
 
         renderUI();
@@ -809,6 +845,20 @@ function toggleAutoSpin() {
     }
 }
 
+function toggleTurbo() {
+    SFX.click();
+    turboMode = !turboMode;
+    document.getElementById('btn-turbo').classList.toggle('active', turboMode);
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_ToggleTurbo');
+    }
+}
+
+function skipAnimation() {
+    // Called from client when server confirms skip
+    skipRequested = true;
+}
+
 function leaveTable() {
     autoSpin = false;
     if (typeof mp !== 'undefined') mp.trigger('Slots_LeaveTable');
@@ -854,7 +904,18 @@ buildPaytable();
 // KEYBOARD
 // ══════════════════════════════════════════
 document.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') { e.preventDefault(); doSpin(); }
+    if (e.code === 'Space') {
+        e.preventDefault();
+        if (isSpinning) {
+            // Skip animation instantly (local) + notify server
+            skipRequested = true;
+            if (typeof mp !== 'undefined') {
+                mp.trigger('Slots_SkipAnimation');
+            }
+        } else {
+            doSpin();
+        }
+    }
 });
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 </script>

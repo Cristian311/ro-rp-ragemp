@@ -12,6 +12,16 @@ mp.events.addCommand('kill', (player) => {
     player.health = 0;
 });
 
+mp.events.addCommand('addmoney', (player, amount) => {
+    amount = parseInt(amount);
+    if (isNaN(amount)) {
+        player.outputChatBox('Invalid amount.');
+        return;
+    }
+    player.money += amount;
+    player.outputChatBox(`Added $${amount} to your account. Current balance: $${player.money}`);
+});
+
 mp.events.addCommand('veh', (player, name) => {
     let pos = player.position;
     let heading = player.heading;

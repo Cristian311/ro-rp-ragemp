@@ -4,11 +4,34 @@ const server = require('./slots_server');
 
 const savePath = path.join(process.cwd(), 'slots_machines.json');
 
+// Slot machine prop models (index 1-17, 0 = no prop)
+const SLOT_PROPS = [
+    null, // 0 = no prop
+    'ch_prop_casino_slot_07a',
+    'vw_prop_casino_slot_02a',
+    'ch_prop_casino_slot_02a',
+    'vw_prop_casino_slot_05a',
+    'ch_prop_casino_slot_05a',
+    'vw_prop_casino_slot_08a',
+    'vw_prop_casino_slot_07a',
+    'ch_prop_casino_slot_06a',
+    'vw_prop_casino_slot_01a',
+    'vw_prop_casino_slot_04a',
+    'ch_prop_casino_slot_04b',
+    'ch_prop_casino_slot_04a',
+    'vw_prop_casino_slot_03a',
+    'ch_prop_casino_slot_08a',
+    'ch_prop_casino_slot_03a',
+    'vw_prop_casino_slot_06a',
+    'ch_prop_casino_slot_01a',
+];
+
 // References by machineIndex
 const machineLabels         = {};
 const machineColshapes      = {};
 const machineBlips          = {};
 const machineLeaveColshapes = {};
+const machineProps          = {};
 
 function getMarkerText(index, state, occupied) {
     let statusLine;
@@ -43,23 +66,37 @@ function loadSlotsMachines() {
         createColshape(machine, index, machine.name);
         createLeaveColshape(machine, index);
         createMarker(machine, index);
-        console.log(`  Aparat #${index}. ${machine.name}: X:${machine.x}, Y:${machine.y}, Z:${machine.z}`);
+        createProp(machine, index);
+        console.log(`  Aparat #${index}. ${machine.name}: X:${machine.x}, Y:${machine.y}, Z:${machine.z} Prop:${machine.propModel || 0}`);
     });
 }
 
 loadSlotsMachines();
 
-// Commands
-mp.events.addCommand('createslots', (player, _, name) => {
+mp.events.addCommand('createslots', (player, _, fullText) => {
     const pos = player.position;
     const rot = player.heading;
 
+    // Parse: /createslots [propNumber] [name]
+    // propNumber = 0..17 (optional, default 0 = no prop)
+    const args = (fullText || '').trim().split(/\s+/);
+    let propModel = 0;
+    let name = null;
+
+    if (args.length > 0 && !isNaN(parseInt(args[0]))) {
+        propModel = Math.max(0, Math.min(SLOT_PROPS.length - 1, parseInt(args[0])));
+        name = args.slice(1).join(' ') || null;
+    } else {
+        name = fullText || null;
+    }
+
     const newMachine = {
-        name:     name || `SlotMachine_${Date.now()}`,
-        x:        parseFloat(pos.x.toFixed(2)),
-        y:        parseFloat(pos.y.toFixed(2)),
-        z:        parseFloat(pos.z.toFixed(2)),
-        heading:  parseFloat(rot.toFixed(2)),
+        name:      name || `SlotMachine_${Date.now()}`,
+        x:         parseFloat(pos.x.toFixed(2)),
+        y:         parseFloat(pos.y.toFixed(2)),
+        z:         parseFloat(pos.z.toFixed(2)),
+        heading:   parseFloat(rot.toFixed(2)),
+        propModel: propModel,
     };
 
     let machines = [];
@@ -74,8 +111,10 @@ mp.events.addCommand('createslots', (player, _, name) => {
     createMarker(newMachine, newIndex);
     createColshape(newMachine, newIndex, newMachine.name);
     createLeaveColshape(newMachine, newIndex);
+    createProp(newMachine, newIndex);
 
-    player.outputChatBox(`!{Green}[SLOTS] Aparatul "${newMachine.name}" salvat la: ${newMachine.x}, ${newMachine.y}, ${newMachine.z}`);
+    const propInfo = propModel > 0 ? ` (Prop: ${SLOT_PROPS[propModel]})` : ' (Fara prop)';
+    player.outputChatBox(`!{Green}[SLOTS] Aparatul "${newMachine.name}" salvat la: ${newMachine.x}, ${newMachine.y}, ${newMachine.z}${propInfo}`);
 });
 
 mp.events.addCommand('deleteslots', (player, _, idStr) => {
@@ -89,6 +128,7 @@ mp.events.addCommand('deleteslots', (player, _, idStr) => {
     if (machineColshapes[index]) { machineColshapes[index].destroy(); delete machineColshapes[index]; }
     if (machineBlips[index]) { machineBlips[index].destroy(); delete machineBlips[index]; }
     if (machineLeaveColshapes[index]) { machineLeaveColshapes[index].destroy(); delete machineLeaveColshapes[index]; }
+    if (machineProps[index]) { machineProps[index].destroy(); delete machineProps[index]; }
 
     if (fs.existsSync(savePath)) {
         const machines = JSON.parse(fs.readFileSync(savePath, 'utf8'));
@@ -179,8 +219,20 @@ function createLeaveColshape(position, index) {
     return colShape;
 }
 
+function createProp(machine, index) {
+    const propIdx = machine.propModel || 0;
+    if (propIdx <= 0 || propIdx >= SLOT_PROPS.length) return null;
+    const modelName = SLOT_PROPS[propIdx];
+    const obj = mp.objects.new(mp.joaat(modelName),
+        new mp.Vector3(machine.x, machine.y, machine.z - 0.9),
+        { rotation: new mp.Vector3(0, 0, machine.heading), dimension: 0 }
+    );
+    machineProps[index] = obj;
+    return obj;
+}
+
 mp.events.add('_slots_updateMarker', (machineIndex, state, players, maxPlayers) => {
     updateMachineMarker(machineIndex, state, players, maxPlayers);
 });
 
-module.exports = { createBlip, createColshape, createLeaveColshape, createMarker, loadSlotsMachines };
+module.exports = { createBlip, createColshape, createLeaveColshape, createMarker, createProp, loadSlotsMachines, SLOT_PROPS };

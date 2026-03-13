@@ -379,6 +379,19 @@ body {
     color: #27ae60;
 }
 
+.btn-turbo {
+    background: rgba(255,165,0,.1);
+    border-color: rgba(255,165,0,.25);
+    color: #ffa500;
+}
+.btn-turbo:hover { background: rgba(255,165,0,.2); }
+.btn-turbo.active {
+    background: rgba(255,165,0,.25);
+    border-color: rgba(255,165,0,.5);
+    color: #ffd700;
+    box-shadow: 0 0 12px rgba(255,165,0,.3);
+}
+
 .btn-gamble {
     background: rgba(243,156,18,.15);
     border-color: rgba(243,156,18,.3);

@@ -11,6 +11,7 @@ const SLOTS_CONFIG = {
     REELS: 5,
     ROWS: 3,
     SPIN_TIME: 2.5,          // secunde animație reel spin
+    TURBO_SPIN_TIME: 0.4,    // secunde animație turbo
     FREE_SPIN_SCATTER_COUNT: 3, // 3+ scatter = free spins
     FREE_SPINS_AWARDED: 15,
     GAMBLE_MAX_AMOUNT: 50000,
@@ -116,6 +117,8 @@ function createSession(machineIndex, machineName) {
         freeSpinsTotalWin: 0,
         history: [],           // ultimele ~15 spinuri
         gambleAmount: 0,
+        turbo: false,          // turbo speed mode
+        spinTimer: null,       // reference to state timeout
     };
 }
 
@@ -303,6 +306,7 @@ function spin(player) {
         isFree: isFree,
         freeSpinsLeft: session.freeSpinsLeft,
         freeSpinsTotalWin: session.freeSpinsTotalWin,
+        turbo: session.turbo,
     };
 
     player.call('slotsSpinResult', [JSON.stringify(spinData), session.chips]);
@@ -316,21 +320,31 @@ function spin(player) {
     }
 
     // După animație, setăm starea corectă
-    setTimeout(() => {
+    const spinTime = session.turbo ? SLOTS_CONFIG.TURBO_SPIN_TIME : SLOTS_CONFIG.SPIN_TIME;
+    session.spinTimer = setTimeout(() => {
         if (session.player !== player) return; // a plecat
+        finishSpin(session, player);
+    }, spinTime * 1000 + 500);
+}
 
-        if (session.freeSpinsLeft > 0) {
-            session.state = 'freespin';
-            player.call('slotsUpdateState', [JSON.stringify(getStateForUI(session))]);
-        } else {
-            if (totalWin > 0) {
-                session.state = 'idle'; // Poate da gamble sau spin
-            } else {
-                session.state = 'idle';
-            }
-            player.call('slotsUpdateState', [JSON.stringify(getStateForUI(session))]);
-        }
-    }, SLOTS_CONFIG.SPIN_TIME * 1000 + 500);
+function finishSpin(session, player) {
+    if (session.state !== 'spinning') return;
+    if (session.spinTimer) { clearTimeout(session.spinTimer); session.spinTimer = null; }
+
+    if (session.freeSpinsLeft > 0) {
+        session.state = 'freespin';
+        player.call('slotsUpdateState', [JSON.stringify(getStateForUI(session))]);
+    } else {
+        session.state = 'idle';
+        player.call('slotsUpdateState', [JSON.stringify(getStateForUI(session))]);
+    }
+}
+
+function skipAnimation(player) {
+    const session = getSessionByPlayer(player);
+    if (!session || session.state !== 'spinning') return;
+    player.call('slotsSkipAnimation');
+    finishSpin(session, player);
 }
 
 // ──────────────────────────────────────────
@@ -545,11 +559,13 @@ function getStateForUI(session) {
         lastGrid: session.lastGrid,
         history: session.history.slice(0, 10),
         gambleAmount: session.gambleAmount,
+        turbo: session.turbo,
         config: {
             minBet: SLOTS_CONFIG.MIN_BET_PER_LINE,
             maxBet: SLOTS_CONFIG.MAX_BET_PER_LINE,
             lines: SLOTS_CONFIG.LINES,
             spinTime: SLOTS_CONFIG.SPIN_TIME,
+            turboSpinTime: SLOTS_CONFIG.TURBO_SPIN_TIME,
         },
     };
 }
@@ -585,6 +601,17 @@ mp.events.add('Server_SlotsGambleChoice', (player, choice) => {
 
 mp.events.add('Server_SlotsCollectGamble', (player) => {
     collectGamble(player);
+});
+
+mp.events.add('Server_SlotsToggleTurbo', (player) => {
+    const session = getSessionByPlayer(player);
+    if (!session) return;
+    session.turbo = !session.turbo;
+    player.call('slotsUpdateState', [JSON.stringify(getStateForUI(session))]);
+});
+
+mp.events.add('Server_SlotsSkipAnimation', (player) => {
+    skipAnimation(player);
 });
 
 mp.events.add('Server_JoinSlotsMachine', (player, machineIndex, machineName) => {
