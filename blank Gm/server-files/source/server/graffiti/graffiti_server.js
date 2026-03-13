@@ -9,7 +9,7 @@ const SAVE_PATH = path.join(process.cwd(), 'graffiti_data.json');
 
 const MAX_PER_PLAYER = 15;
 const COOLDOWN_MS    = 5000;       // 5 seconds
-const MAX_IMAGE_SIZE = 500000;      // ~500 KB base64
+const MAX_IMAGE_SIZE = 250000;      // ~250 KB base64
 
 let graffitiList = [];              // Array of graffiti objects
 let nextId       = 1;

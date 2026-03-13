@@ -217,7 +217,8 @@ mp.keys.bind(KEY_ESC, true, () => {
 // ──────────────────────────────────────────
 // CHUNKED TRANSFER TO CEF OVERLAY
 // ──────────────────────────────────────────
-const CHUNK_SIZE = 20000; // 20KB per browser.execute() call
+const CHUNK_SIZE = 15000; // 15KB per browser.execute() call
+const CHUNK_DELAY = 15;  // ms between chunk sends
 
 function sendChunkedTexture(id, imageData) {
     const totalChunks = Math.ceil(imageData.length / CHUNK_SIZE);
@@ -225,7 +226,12 @@ function sendChunkedTexture(id, imageData) {
     for (let i = 0; i < totalChunks; i++) {
         const chunk = imageData.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
         const safe = chunk.replace(/'/g, "\\'");
-        overlayBrowser.execute(`addTextureChunk(${id}, ${i}, '${safe}');`);
+        const idx = i;
+        setTimeout(() => {
+            if (overlayBrowser) {
+                overlayBrowser.execute(`addTextureChunk(${id}, ${idx}, '${safe}');`);
+            }
+        }, idx * CHUNK_DELAY);
     }
 }
 
@@ -235,7 +241,12 @@ function sendChunkedPreview(imageData) {
     for (let i = 0; i < totalChunks; i++) {
         const chunk = imageData.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
         const safe = chunk.replace(/'/g, "\\'");
-        overlayBrowser.execute(`addPreviewChunk(${i}, '${safe}');`);
+        const idx = i;
+        setTimeout(() => {
+            if (overlayBrowser) {
+                overlayBrowser.execute(`addPreviewChunk(${idx}, '${safe}');`);
+            }
+        }, idx * CHUNK_DELAY);
     }
 }
 

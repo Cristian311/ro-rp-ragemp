@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Graffiti Canvas</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        *:not(input):not(#graffitiCanvas) {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
 </head>
 <body>
     <div class="graffiti-container">
@@ -474,7 +480,27 @@
         // ACTION BUTTONS
         // ──────────────────────────────────────────
         document.getElementById('btnPlace').addEventListener('click', () => {
-            const dataURL = canvas.toDataURL('image/png');
+            // Export as JPEG to keep data small for network transfer
+            // RAGE:MP callRemote has data size limits, so we need compact output
+            const MAX_DATA_SIZE = 200000; // 200KB max for safe network transfer
+            let quality = 0.85;
+            let dataURL = canvas.toDataURL('image/jpeg', quality);
+
+            // Progressively reduce quality if too large
+            while (dataURL.length > MAX_DATA_SIZE && quality > 0.2) {
+                quality -= 0.1;
+                dataURL = canvas.toDataURL('image/jpeg', quality);
+            }
+
+            // If still too large, resize to smaller canvas
+            if (dataURL.length > MAX_DATA_SIZE) {
+                const small = document.createElement('canvas');
+                small.width = 256;
+                small.height = 256;
+                small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
+                dataURL = small.toDataURL('image/jpeg', 0.7);
+            }
+
             mp.trigger('Graffiti_CanvasReady', dataURL);
         });
 
