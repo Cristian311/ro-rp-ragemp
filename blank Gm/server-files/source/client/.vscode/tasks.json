@@ -21,6 +21,21 @@
             },
             // Use the standard MS compiler pattern to detect errors, warnings and infos
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Start RAGE:MP Server",
+            "type": "process",
+            "command": "c:\\Users\\40727\\Desktop\\RAGE SERVER\\GMRP\\blank Gm\\server-files\\ragemp-server.exe",
+            "options": {
+                "cwd": "c:\\Users\\40727\\Desktop\\RAGE SERVER\\GMRP\\blank Gm\\server-files"
+            },
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": []
         }
     ]
 }

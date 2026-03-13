@@ -50,24 +50,63 @@ function getPlayerBots(player) {
 // ──────────────────────────────────────────
 // Bot AI — Basic Strategy
 // ──────────────────────────────────────────
+function isSoftHand(cards) {
+    let value = 0, aces = 0;
+    for (const card of cards) {
+        const v = CARD_VALUES[parseCard(card).rank] || 0;
+        value += v;
+        if (parseCard(card).rank === 'A') aces++;
+    }
+    // Soft = un as contează ca 11 și total <= 21
+    while (value > 21 && aces > 0) { value -= 10; aces--; }
+    return aces > 0;
+}
+
 function getBotDecision(slot, dealerUpCard) {
     const handValue = calculateHandValue(slot.cards);
     const dealerVal = CARD_VALUES[parseCard(dealerUpCard).rank] || 10;
+    const soft = isSoftHand(slot.cards);
+    const canDD = slot.cards.length === 2 && slot.chips >= slot.bet;
 
-    // Basic strategy simplificată
+    // ── Soft hand strategy ──
+    if (soft) {
+        if (handValue >= 20) return 'stand';                                    // Soft 20-21
+        if (handValue === 19) {
+            if (dealerVal === 6 && canDD) return 'doubledown';                  // Soft 19 vs 6 → DD
+            return 'stand';                                                     // Soft 19 → stand
+        }
+        if (handValue === 18) {
+            if (dealerVal >= 3 && dealerVal <= 6 && canDD) return 'doubledown'; // Soft 18 vs 3-6 → DD
+            if (dealerVal >= 9 || dealerVal === 1) return 'hit';                // Soft 18 vs 9,10,A → hit
+            return 'stand';                                                     // Soft 18 vs 2,7,8 → stand
+        }
+        if (handValue === 17) {
+            if (dealerVal >= 3 && dealerVal <= 6 && canDD) return 'doubledown'; // Soft 17 vs 3-6 → DD
+            return 'hit';                                                       // Soft 17 → hit
+        }
+        if (handValue >= 15 && handValue <= 16) {
+            if (dealerVal >= 4 && dealerVal <= 6 && canDD) return 'doubledown'; // Soft 15-16 vs 4-6 → DD
+            return 'hit';                                                       // Soft 15-16 → hit
+        }
+        // Soft 13-14
+        if (dealerVal >= 5 && dealerVal <= 6 && canDD) return 'doubledown';     // Soft 13-14 vs 5-6 → DD
+        return 'hit';                                                           // Soft 13-14 → hit
+    }
+
+    // ── Hard hand strategy ──
     if (handValue >= 17) return 'stand';
     if (handValue >= 13 && dealerVal <= 6) return 'stand';
     if (handValue === 12 && dealerVal >= 4 && dealerVal <= 6) return 'stand';
     if (handValue === 11) {
-        if (slot.cards.length === 2 && slot.chips >= slot.bet) return 'doubledown';
+        if (canDD) return 'doubledown';
         return 'hit';
     }
     if (handValue === 10 && dealerVal <= 9) {
-        if (slot.cards.length === 2 && slot.chips >= slot.bet) return 'doubledown';
+        if (canDD) return 'doubledown';
         return 'hit';
     }
     if (handValue === 9 && dealerVal >= 3 && dealerVal <= 6) {
-        if (slot.cards.length === 2 && slot.chips >= slot.bet) return 'doubledown';
+        if (canDD) return 'doubledown';
         return 'hit';
     }
 

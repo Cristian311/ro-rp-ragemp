@@ -102,12 +102,14 @@ function unlockInput() {
 // E — interact with table
 // ESC — leave table
 // ──────────────────────────────────────────
+/*
 mp.keys.bind(KEY_E, true, () => {
     // Only forward if not at a table already
     if (!isAtTable) {
         mp.events.callRemote('Server_PlayerAction', 'interact');
     }
 });
+*/
 
 mp.keys.bind(KEY_ESC, true, () => {
     if (isAtTable && casinoRouletteBrowser !== null) {

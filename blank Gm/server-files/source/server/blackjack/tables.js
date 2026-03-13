@@ -98,7 +98,7 @@ mp.events.addCommand('createblackjack', (player, fullText) => {
         name:       name || `BlackjackTable_${Date.now()}`,
         x:          parseFloat(pos.x.toFixed(2)),
         y:          parseFloat(pos.y.toFixed(2)),
-        z:          parseFloat(pos.z.toFixed(2)),
+        z:          parseFloat((pos.z - 1.0).toFixed(2)),
         heading:    parseFloat(rot.toFixed(2)),
         casinoId:   null,
         spawnTable: spawnTable,
@@ -235,7 +235,7 @@ function createLeaveColshape(position, index) {
 }
 
 function spawnTableObject(table, index) {
-    const obj = mp.objects.new(mp.joaat('prop_casino_table_01'), new mp.Vector3(table.x, table.y, table.z), {
+    const obj = mp.objects.new(mp.joaat('ch_prop_casino_blackjack_01a'), new mp.Vector3(table.x, table.y, table.z), {
         rotation: new mp.Vector3(0, 0, table.heading || 0),
         dimension: 0
     });

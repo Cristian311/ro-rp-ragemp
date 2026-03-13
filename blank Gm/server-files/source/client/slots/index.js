@@ -4,11 +4,11 @@ let slotsBrowser = null;
 
 const KEY_E   = 0x45;
 const KEY_ESC = 0x1B;
-
+/*
 mp.keys.bind(KEY_E, true, () => {
     mp.events.callRemote('Server_PlayerAction', 'interact');
 });
-
+*/
 mp.keys.bind(KEY_ESC, true, () => {
     if (slotsBrowser !== null) {
         closeSlotsUI();

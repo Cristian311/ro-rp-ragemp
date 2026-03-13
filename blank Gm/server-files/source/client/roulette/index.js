@@ -102,9 +102,12 @@ function destroyRouletteCameras() {
 // ──────────────────────────────────────────
 // KEY BINDS
 // ──────────────────────────────────────────
+
+/*
 mp.keys.bind(KEY_E, true, () => {
     mp.events.callRemote('Server_PlayerAction', 'interact');
 });
+*/
 
 mp.keys.bind(KEY_ESC, true, () => {
     if (rouletteBrowser !== null) {

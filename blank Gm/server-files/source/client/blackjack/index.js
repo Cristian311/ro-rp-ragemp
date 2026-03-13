@@ -2,17 +2,20 @@
 
 let bjBrowser = null;
 
+let isAtTable = false;
+
 const KEY_E   = 0x45;
 const KEY_ESC = 0x1B;
 const KEY_F3  = 0x72;
 
-// Notă: KEY_E și KEY_ESC sunt deja bound de poker — 
-// interacțiunea se face prin Server_PlayerAction care decide dacă e poker sau blackjack
+
+// ──────────────────────────────────────────
 
 mp.events.add('openBlackjackUI', () => {
     if (bjBrowser === null) {
         bjBrowser = mp.browsers.new('package://blackjack/index.html');
         mp.gui.cursor.show(true, true);
+        isAtTable = true;
     }
 });
 
@@ -21,6 +24,7 @@ function closeBlackjackUI() {
         bjBrowser.destroy();
         bjBrowser = null;
         mp.gui.cursor.show(false, false);
+        isAtTable = false;
     }
 }
 
@@ -55,21 +59,20 @@ mp.events.add('bjDealerCard', (rank, suit, hasHidden) => {
 // ── Game state ──
 mp.events.add('bjUpdateState', (state) => {
     if (bjBrowser !== null) {
-        let stateJson = JSON.stringify(state);
-        bjBrowser.execute(`updateGameState('${stateJson}');`);
+        bjBrowser.execute(`updateGameState(${JSON.stringify(JSON.stringify(state))});`);
     }
 });
 
 // ── Turn ──
-mp.events.add('bjYourTurn', (handValue, canDoubleDown, canSplit) => {
+mp.events.add('bjYourTurn', (handValue, canDoubleDown) => {
     if (bjBrowser !== null) {
-        bjBrowser.execute(`onYourTurn(${handValue}, ${canDoubleDown}, ${canSplit});`);
+        bjBrowser.execute(`onYourTurn(${handValue}, ${canDoubleDown});`);
     }
 });
 
 mp.events.add('bjTurnTimer', (playerName, timeLeft) => {
     if (bjBrowser !== null) {
-        bjBrowser.execute(`updateTurnTimer('${playerName}', ${timeLeft});`);
+        bjBrowser.execute(`updateTurnTimer(${JSON.stringify(playerName)}, ${timeLeft});`);
     }
 });
 
@@ -97,7 +100,7 @@ mp.events.add('bjDealerHit', (rank, suit, value) => {
 // ── Results ──
 mp.events.add('bjShowResults', (resultsJson, dealerValue, dealerBust) => {
     if (bjBrowser !== null) {
-        bjBrowser.execute(`showResults('${resultsJson}', ${dealerValue}, ${dealerBust});`);
+        bjBrowser.execute(`showResults(${JSON.stringify(resultsJson)}, ${dealerValue}, ${dealerBust});`);
     }
 });
 

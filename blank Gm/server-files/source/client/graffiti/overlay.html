@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>Graffiti Texture Manager</title>
+    <style>
+        * { margin: 0; padding: 0; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        #placementCrosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        #placementCrosshair .ch-h {
+            position: absolute;
+            width: 28px;
+            height: 2px;
+            background: #00ff88;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #placementCrosshair .ch-v {
+            position: absolute;
+            width: 2px;
+            height: 28px;
+            background: #00ff88;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #placementCrosshair .ch-dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00ff88;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px #00ff88;
+        }
+
+        #placementPreview {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            border: 2px dashed #00ff88;
+            border-radius: 8px;
+            display: none;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        #placementHint {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 16px;
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0,255,136,0.5), 0 2px 4px rgba(0,0,0,0.8);
+            text-align: center;
+            display: none;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="placementPreview"></div>
+    <div id="placementCrosshair">
+        <div class="ch-h"></div>
+        <div class="ch-v"></div>
+        <div class="ch-dot"></div>
+    </div>
+    <div id="placementHint">
+        &#x1F3AF; Tinteste un perete &bull; LEFT CLICK = Plaseaza &bull; RIGHT CLICK / ESC = Anuleaza
+    </div>
+
+    <script>
+        // ──────────────────────────────────────────
+        // TEXTURE MANAGER — uploads graffiti images as game textures
+        // Supports chunked base64 transfer from client
+        // ──────────────────────────────────────────
+        const TEX_SIZE = 512;
+
+        // ── CHUNKED DATA RECEIVER ──
+        let textureChunks = {};
+        let previewChunks = null;
+
+        function startTextureUpload(id, totalChunks) {
+            textureChunks[id] = { total: totalChunks, chunks: new Array(totalChunks), received: 0 };
+        }
+
+        function addTextureChunk(id, index, data) {
+            const pending = textureChunks[id];
+            if (!pending) return;
+            pending.chunks[index] = data;
+            pending.received++;
+            if (pending.received >= pending.total) {
+                const fullData = pending.chunks.join('');
+                delete textureChunks[id];
+                uploadTexture(id, fullData);
+            }
+        }
+
+        function startPreview(totalChunks) {
+            previewChunks = { total: totalChunks, chunks: new Array(totalChunks), received: 0 };
+        }
+
+        function addPreviewChunk(index, data) {
+            if (!previewChunks) return;
+            previewChunks.chunks[index] = data;
+            previewChunks.received++;
+            if (previewChunks.received >= previewChunks.total) {
+                const fullData = previewChunks.chunks.join('');
+                previewChunks = null;
+                setPlacementPreview(fullData);
+            }
+        }
+
+        // ── TEXTURE UPLOAD ──
+        function uploadTexture(id, base64) {
+            const img = new Image();
+            img.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = TEX_SIZE;
+                c.height = TEX_SIZE;
+                const ctx = c.getContext('2d');
+                ctx.clearRect(0, 0, TEX_SIZE, TEX_SIZE);
+                ctx.drawImage(img, 0, 0, TEX_SIZE, TEX_SIZE);
+                const canvasImageData = ctx.getImageData(0, 0, TEX_SIZE, TEX_SIZE);
+
+                const dictName = 'graffiti_' + id;
+
+                fetch('http://game-textures/put', {
+                    method: 'POST',
+                    body: canvasImageData.data,
+                    headers: {
+                        'texture-dict': dictName,
+                        'texture-name': 'sprite',
+                        'texture-width': TEX_SIZE.toString(),
+                        'texture-height': TEX_SIZE.toString()
+                    }
+                }).then(resp => {
+                    if (resp.ok) {
+                        mp.trigger('Graffiti_TextureUploaded', '' + id);
+                    } else {
+                        mp.trigger('Graffiti_TextureError', 'HTTP ' + resp.status);
+                    }
+                }).catch(err => {
+                    mp.trigger('Graffiti_TextureError', '' + id + ': ' + err);
+                });
+            };
+            img.onerror = () => {
+                mp.trigger('Graffiti_TextureError', 'Image load failed for ' + id);
+            };
+            img.src = base64;
+        }
+
+        // ──────────────────────────────────────────
+        // PLACEMENT MODE UI
+        // ──────────────────────────────────────────
+        function showPlacementUI(show) {
+            const d = show ? 'block' : 'none';
+            document.getElementById('placementCrosshair').style.display = d;
+            document.getElementById('placementHint').style.display = d;
+        }
+
+        function setPlacementPreview(base64) {
+            const preview = document.getElementById('placementPreview');
+            if (base64) {
+                preview.style.backgroundImage = 'url(' + base64 + ')';
+                preview.style.backgroundSize  = 'cover';
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        // ── SIGNAL READY TO CLIENT ──
+        mp.trigger('Graffiti_OverlayReady');
+    </script>
+</body>
+</html>

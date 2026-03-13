@@ -34,7 +34,7 @@
   <button class="btn-action" id="btn-hit"        onclick="sendAction('hit')">Hit</button>
   <button class="btn-action" id="btn-stand"       onclick="sendAction('stand')">Stand</button>
   <button class="btn-action" id="btn-doubledown"  onclick="sendAction('doubledown')" style="display:none">Double Down</button>
-  <button class="btn-action" id="btn-split"        onclick="sendAction('split')" style="display:none">Split</button>
+
 </div>
 
 <!-- Betting overlay -->
@@ -315,11 +315,10 @@ function updateBetTimer(secondsLeft) {
 // ── Turn ──
 let myTurnActive = false;
 
-function onYourTurn(handValue, canDoubleDown, canSplit) {
+function onYourTurn(handValue, canDoubleDown) {
     myTurnActive = true;
     document.getElementById('player-value').textContent = handValue;
     document.getElementById('btn-doubledown').style.display = canDoubleDown ? '' : 'none';
-    document.getElementById('btn-split').style.display = canSplit ? '' : 'none';
     toggleActionButtons(true);
     showToast('Rândul tău!');
 }
