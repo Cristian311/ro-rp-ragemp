@@ -1,0 +1,533 @@
+const rouletteLog = require('./roulette_logger');
+
+// ──────────────────────────────────────────
+// CONFIG
+// ──────────────────────────────────────────
+const ROULETTE_CONFIG = {
+    MAX_PLAYERS: 8,
+    MIN_PLAYERS: 1,
+    BET_TIME: 10,           // secunde pentru plasarea pariurilor
+    SPIN_TIME: 8,           // secunde animație spin
+    RESULT_DELAY: 6,        // secunde afișare rezultat înainte de runda nouă
+    MIN_BET: 10,
+    MAX_BET: 50000,
+    MAX_BETS_PER_PLAYER: 20,
+    HOUSE_CUT_PERCENT: 0,   // La ruletă casa câștigă din 0 (edge), nu rake
+};
+
+// ──────────────────────────────────────────
+// ROULETTE NUMBERS & COLORS
+// ──────────────────────────────────────────
+const RED_NUMBERS  = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35];
+
+function getNumberColor(num) {
+    if (num === 0) return 'green';
+    if (RED_NUMBERS.includes(num)) return 'red';
+    return 'black';
+}
+
+// ──────────────────────────────────────────
+// BET TYPES & PAYOUTS
+// ──────────────────────────────────────────
+const BET_TYPES = {
+    straight:  { payout: 35, label: 'Număr direct' },   // un singur număr
+    split:     { payout: 17, label: 'Split' },           // 2 numere
+    street:    { payout: 11, label: 'Street' },          // 3 numere (rând)
+    corner:    { payout: 8,  label: 'Corner' },          // 4 numere
+    line:      { payout: 5,  label: 'Line' },            // 6 numere (2 rânduri)
+    column:    { payout: 2,  label: 'Coloană' },         // 12 numere (coloană)
+    dozen:     { payout: 2,  label: 'Duzină' },          // 12 numere (1-12, 13-24, 25-36)
+    red:       { payout: 1,  label: 'Roșu' },
+    black:     { payout: 1,  label: 'Negru' },
+    odd:       { payout: 1,  label: 'Impar' },
+    even:      { payout: 1,  label: 'Par' },
+    low:       { payout: 1,  label: '1-18' },
+    high:      { payout: 1,  label: '19-36' },
+};
+
+// Returnează numerele acoperite de un pariu
+function getBetNumbers(betType, betValue) {
+    switch (betType) {
+        case 'straight': return [betValue];
+        case 'split':    return betValue; // array de 2
+        case 'street':   return betValue; // array de 3
+        case 'corner':   return betValue; // array de 4
+        case 'line':     return betValue; // array de 6
+        case 'column': {
+            const col = betValue; // 1, 2 sau 3
+            const nums = [];
+            for (let i = col; i <= 36; i += 3) nums.push(i);
+            return nums;
+        }
+        case 'dozen': {
+            const d = betValue; // 1, 2 sau 3
+            const start = (d - 1) * 12 + 1;
+            const nums = [];
+            for (let i = start; i < start + 12; i++) nums.push(i);
+            return nums;
+        }
+        case 'red':   return [...RED_NUMBERS];
+        case 'black': return [...BLACK_NUMBERS];
+        case 'odd': {
+            const nums = [];
+            for (let i = 1; i <= 36; i += 2) nums.push(i);
+            return nums;
+        }
+        case 'even': {
+            const nums = [];
+            for (let i = 2; i <= 36; i += 2) nums.push(i);
+            return nums;
+        }
+        case 'low': {
+            const nums = [];
+            for (let i = 1; i <= 18; i++) nums.push(i);
+            return nums;
+        }
+        case 'high': {
+            const nums = [];
+            for (let i = 19; i <= 36; i++) nums.push(i);
+            return nums;
+        }
+        default: return [];
+    }
+}
+
+// ──────────────────────────────────────────
+// LOBBY MANAGEMENT
+// ──────────────────────────────────────────
+function createLobby(tableIndex, tableName, casinoId, tablePos) {
+    return {
+        id: tableIndex,
+        name: tableName,
+        casinoId: casinoId || null,
+        state: 'waiting',  // waiting | betting | spinning | result
+        players: [],
+        betTimer: null,
+        betTimeLeft: 0,
+        lastResult: null,
+        history: [],        // ultimele ~20 de rezultate
+        tablePos: tablePos || null,
+    };
+}
+
+const lobbies = {};
+
+function getLobbyByPlayer(player) {
+    for (const key in lobbies) {
+        const found = lobbies[key].players.find(p => p.player === player);
+        if (found) return lobbies[key];
+    }
+    return null;
+}
+
+function getPlayerSlot(lobby, player) {
+    return lobby.players.find(p => p.player === player);
+}
+
+function broadcastToLobby(lobby, message) {
+    lobby.players.forEach(slot => {
+        slot.player.outputChatBox(message);
+    });
+}
+
+function callToLobby(lobby, eventName, ...args) {
+    lobby.players.forEach(slot => {
+        slot.player.call(eventName, ...args);
+    });
+}
+
+// ──────────────────────────────────────────
+// JOIN / LEAVE
+// ──────────────────────────────────────────
+function joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading) {
+    if (getLobbyByPlayer(player)) {
+        player.outputChatBox('!{Red}Ești deja la o masă de ruletă!');
+        return;
+    }
+
+    if (!lobbies[tableIndex]) {
+        lobbies[tableIndex] = createLobby(tableIndex, tableName, casinoId, { x: tableX, y: tableY, z: tableZ, heading: tableHeading });
+    }
+
+    const lobby = lobbies[tableIndex];
+
+    if (lobby.players.length >= ROULETTE_CONFIG.MAX_PLAYERS) {
+        player.outputChatBox('!{Red}Masa este plină!');
+        return;
+    }
+
+    const usedSeats = new Set(lobby.players.map(p => p.seat));
+    let seat = 0;
+    while (usedSeats.has(seat)) seat++;
+
+    lobby.players.push({
+        player,
+        seat,
+        chips: player.money || 10000,
+        bets: [],
+        totalBet: 0,
+        lastWin: 0,
+    });
+
+    player.outputChatBox(`!{Orange}[RULETĂ] Te-ai așezat la masă pe locul ${seat + 1}.`);
+    broadcastToLobby(lobby, `!{Orange}[RULETĂ] !{Cyan}${player.name} !{White}s-a alăturat (${lobby.players.length}/${ROULETTE_CONFIG.MAX_PLAYERS})`);
+    rouletteLog.onPlayerJoin(tableIndex, tableName, player.name, lobby.players.length, ROULETTE_CONFIG.MAX_PLAYERS);
+
+    player.call('openRouletteUI', [tableX || 0, tableY || 0, tableZ || 0, tableHeading || 0]);
+    callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
+
+    // Dacă masa e în waiting și acum avem destui jucători, pornim betting
+    if (lobby.state === 'waiting' && lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS) {
+        startBettingPhase(lobby);
+    }
+}
+
+function leaveLobby(player) {
+    const lobby = getLobbyByPlayer(player);
+    if (!lobby) return;
+
+    const leavingIndex = lobby.players.findIndex(p => p.player === player);
+    if (leavingIndex === -1) return;
+
+    const slot = lobby.players[leavingIndex];
+    console.log(`[RULETĂ] LEAVE: ${player.name} părăsește masa "${lobby.name}"`);
+    rouletteLog.onPlayerLeave(lobby.id, lobby.name, player.name, lobby.state);
+
+    // Returnează pariurile neevaluate dacă suntem în faza de betting
+    if (lobby.state === 'betting' && slot.totalBet > 0) {
+        slot.chips += slot.totalBet;
+        player.outputChatBox(`!{Orange}[RULETĂ] !{White}Pariurile tale ($${slot.totalBet}) au fost returnate.`);
+    }
+
+    if (!player._isBot) {
+        mp.events.call('roulette:updatePlayerMoney', player, slot.chips);
+    }
+
+    player.call('closeRouletteUI');
+    player.outputChatBox('!{Orange}[RULETĂ] !{White}Ai părăsit masa.');
+
+    lobby.players.splice(leavingIndex, 1);
+    lobby.players.forEach((p, i) => { p.seat = i; });
+
+    broadcastToLobby(lobby, `!{Orange}[RULETĂ] !{Cyan}${player.name} !{White}a părăsit masa.`);
+
+    if (lobby.players.length < ROULETTE_CONFIG.MIN_PLAYERS && lobby.state === 'betting') {
+        if (lobby.betTimer) { clearInterval(lobby.betTimer); lobby.betTimer = null; }
+        lobby.state = 'waiting';
+        // Returnează pariurile tuturor
+        lobby.players.forEach(s => {
+            if (s.totalBet > 0) {
+                s.chips += s.totalBet;
+                s.bets = [];
+                s.totalBet = 0;
+            }
+        });
+        broadcastToLobby(lobby, '!{Red}[RULETĂ] Nu mai sunt suficienți jucători. Pariurile au fost returnate.');
+    }
+
+    updateLobbyUI(lobby);
+}
+
+// ──────────────────────────────────────────
+// BETTING PHASE
+// ──────────────────────────────────────────
+function startBettingPhase(lobby) {
+    lobby.state = 'betting';
+    lobby.betTimeLeft = ROULETTE_CONFIG.BET_TIME;
+
+    // Reset pariuri
+    lobby.players.forEach(slot => {
+        slot.bets = [];
+        slot.totalBet = 0;
+        slot.lastWin = 0;
+    });
+
+    broadcastToLobby(lobby, `!{Orange}[RULETĂ] !{White}Plasați pariurile! Aveți ${ROULETTE_CONFIG.BET_TIME} secunde.`);
+    callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
+    callToLobby(lobby, 'rouletteBettingStart', [ROULETTE_CONFIG.BET_TIME]);
+
+    lobby.betTimer = setInterval(() => {
+        lobby.betTimeLeft--;
+        callToLobby(lobby, 'rouletteBetTimer', [lobby.betTimeLeft]);
+
+        if (lobby.betTimeLeft <= 0) {
+            clearInterval(lobby.betTimer);
+            lobby.betTimer = null;
+            broadcastToLobby(lobby, '!{Orange}[RULETĂ] !{Red}Nu se mai acceptă pariuri!');
+            startSpin(lobby);
+        }
+    }, 1000);
+}
+
+// ──────────────────────────────────────────
+// PLACE BET
+// ──────────────────────────────────────────
+function placeBet(player, betType, betValue, amount) {
+    const lobby = getLobbyByPlayer(player);
+    if (!lobby || lobby.state !== 'betting') {
+        player.outputChatBox('!{Red}Nu poți paria acum!');
+        return;
+    }
+
+    const slot = getPlayerSlot(lobby, player);
+    if (!slot) return;
+
+    if (!BET_TYPES[betType]) {
+        player.outputChatBox('!{Red}Tip de pariu invalid!');
+        return;
+    }
+
+    if (amount < ROULETTE_CONFIG.MIN_BET) {
+        player.outputChatBox(`!{Red}Pariul minim este $${ROULETTE_CONFIG.MIN_BET}!`);
+        return;
+    }
+
+    if (amount > ROULETTE_CONFIG.MAX_BET) {
+        player.outputChatBox(`!{Red}Pariul maxim este $${ROULETTE_CONFIG.MAX_BET}!`);
+        return;
+    }
+
+    if (slot.bets.length >= ROULETTE_CONFIG.MAX_BETS_PER_PLAYER) {
+        player.outputChatBox(`!{Red}Ai atins numărul maxim de pariuri (${ROULETTE_CONFIG.MAX_BETS_PER_PLAYER})!`);
+        return;
+    }
+
+    if (amount > slot.chips) {
+        player.outputChatBox('!{Red}Nu ai suficienți bani!');
+        return;
+    }
+
+    const numbers = getBetNumbers(betType, betValue);
+    if (numbers.length === 0) {
+        player.outputChatBox('!{Red}Pariu invalid!');
+        return;
+    }
+
+    slot.chips -= amount;
+    slot.totalBet += amount;
+    slot.bets.push({
+        type: betType,
+        value: betValue,
+        numbers: numbers,
+        amount: amount,
+        payout: BET_TYPES[betType].payout,
+    });
+
+    const label = BET_TYPES[betType].label;
+    player.outputChatBox(`!{Orange}[RULETĂ] !{White}Pariu plasat: !{Yellow}${label} !{White}— !{Green}$${amount} !{White}(Chips: $${slot.chips})`);
+
+    // Update UI
+    player.call('rouletteUpdateBets', [JSON.stringify(slot.bets), slot.chips, slot.totalBet]);
+    callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
+}
+
+// ──────────────────────────────────────────
+// CLEAR BETS
+// ──────────────────────────────────────────
+function clearBets(player) {
+    const lobby = getLobbyByPlayer(player);
+    if (!lobby || lobby.state !== 'betting') {
+        player.outputChatBox('!{Red}Nu poți șterge pariurile acum!');
+        return;
+    }
+
+    const slot = getPlayerSlot(lobby, player);
+    if (!slot) return;
+
+    if (slot.totalBet > 0) {
+        slot.chips += slot.totalBet;
+        slot.bets = [];
+        slot.totalBet = 0;
+        player.outputChatBox('!{Orange}[RULETĂ] !{White}Pariurile au fost șterse. Chips: $' + slot.chips);
+        player.call('rouletteUpdateBets', [JSON.stringify(slot.bets), slot.chips, slot.totalBet]);
+        callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
+    }
+}
+
+// ──────────────────────────────────────────
+// SPIN
+// ──────────────────────────────────────────
+function startSpin(lobby) {
+    lobby.state = 'spinning';
+
+    rouletteLog.onBetsPlaced(lobby);
+
+    // Generează numărul câștigător
+    const winningNumber = Math.floor(Math.random() * 37); // 0-36
+    const winningColor = getNumberColor(winningNumber);
+
+    lobby.lastResult = { number: winningNumber, color: winningColor };
+
+    console.log(`[RULETĂ] SPIN: Masa "${lobby.name}" → ${winningNumber} (${winningColor})`);
+    rouletteLog.onSpinResult(lobby, lobby.lastResult);
+    rouletteLog.onSpinStart(lobby);
+
+    broadcastToLobby(lobby, '!{Orange}[RULETĂ] !{White}Bila se învârte...');
+    callToLobby(lobby, 'rouletteSpinStart', [winningNumber, winningColor, ROULETTE_CONFIG.SPIN_TIME]);
+
+    // După animație, evaluează rezultatele
+    setTimeout(() => {
+        evaluateResults(lobby);
+    }, ROULETTE_CONFIG.SPIN_TIME * 1000);
+}
+
+// ──────────────────────────────────────────
+// EVALUATE RESULTS
+// ──────────────────────────────────────────
+function evaluateResults(lobby) {
+    lobby.state = 'result';
+    const { number, color } = lobby.lastResult;
+
+    broadcastToLobby(lobby, `!{Orange}[RULETĂ] !{White}Numărul câștigător: !{${color === 'red' ? 'Red' : color === 'black' ? 'White' : 'Green'}}${number} (${color === 'red' ? 'Roșu' : color === 'black' ? 'Negru' : 'Verde'})`);
+
+    // Adaugă la istoric
+    lobby.history.unshift({ number, color });
+    if (lobby.history.length > 20) lobby.history.pop();
+
+    let totalHouseProfit = 0;
+
+    lobby.players.forEach(slot => {
+        let totalWin = 0;
+
+        slot.bets.forEach(bet => {
+            if (bet.numbers.includes(number)) {
+                const win = bet.amount + (bet.amount * bet.payout);
+                totalWin += win;
+            }
+        });
+
+        if (totalWin > 0) {
+            slot.chips += totalWin;
+            slot.lastWin = totalWin;
+            broadcastToLobby(lobby,
+                `!{Orange}[RULETĂ] !{Yellow}${slot.player.name} !{White}a câștigat !{Green}$${totalWin}!{White}!`
+            );
+            rouletteLog.onPlayerWin(lobby, slot.player.name, totalWin, slot.totalBet);
+            console.log(`[RULETĂ] WIN: ${slot.player.name} → $${totalWin} (pariu: $${slot.totalBet})`);
+        } else if (slot.totalBet > 0) {
+            slot.lastWin = 0;
+            totalHouseProfit += slot.totalBet;
+            slot.player.outputChatBox(`!{Orange}[RULETĂ] !{Red}Ai pierdut $${slot.totalBet}.`);
+            rouletteLog.onPlayerLose(lobby, slot.player.name, slot.totalBet);
+            console.log(`[RULETĂ] LOSE: ${slot.player.name} → -$${slot.totalBet}`);
+        }
+
+        // Update bani
+        if (!slot.player._isBot) {
+            mp.events.call('roulette:updatePlayerMoney', slot.player, slot.chips);
+        }
+    });
+
+    rouletteLog.onGameEnd(lobby, totalHouseProfit);
+
+    // Trimite rezultat la UI
+    callToLobby(lobby, 'rouletteShowResult', [number, color, getLobbyStateForUI(lobby)]);
+
+    // Elimină jucătorii fără chips
+    setTimeout(() => {
+        const eliminated = lobby.players.filter(p => p.chips <= 0);
+        eliminated.forEach(slot => {
+            slot.player.outputChatBox('!{Red}[RULETĂ] Nu mai ai chips! Ai fost eliminat.');
+            slot.player.call('closeRouletteUI');
+            broadcastToLobby(lobby, `!{Red}[RULETĂ] ${slot.player.name} a fost eliminat (0 chips).`);
+        });
+        lobby.players = lobby.players.filter(p => p.chips > 0);
+        lobby.players.forEach((p, i) => { p.seat = i; });
+
+        // Runda nouă sau așteptare
+        if (lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS) {
+            broadcastToLobby(lobby, `!{Orange}[RULETĂ] !{White}Rundă nouă în ${ROULETTE_CONFIG.RESULT_DELAY} secunde...`);
+            setTimeout(() => {
+                if (lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS) {
+                    startBettingPhase(lobby);
+                } else {
+                    lobby.state = 'waiting';
+                    broadcastToLobby(lobby, '!{Red}[RULETĂ] Nu sunt suficienți jucători.');
+                }
+            }, ROULETTE_CONFIG.RESULT_DELAY * 1000);
+        } else {
+            lobby.state = 'waiting';
+            broadcastToLobby(lobby, '!{Red}[RULETĂ] Nu sunt suficienți jucători pentru o nouă rundă.');
+        }
+
+        updateLobbyUI(lobby);
+    }, 2000);
+}
+
+// ──────────────────────────────────────────
+// UI HELPERS
+// ──────────────────────────────────────────
+function getLobbyStateForUI(lobby) {
+    return {
+        state: lobby.state,
+        betTimeLeft: lobby.betTimeLeft || 0,
+        lastResult: lobby.lastResult,
+        history: lobby.history,
+        players: lobby.players.map(p => ({
+            name: p.player.name,
+            chips: p.chips,
+            seat: p.seat,
+            totalBet: p.totalBet,
+            lastWin: p.lastWin || 0,
+            betsCount: p.bets.length,
+        })),
+    };
+}
+
+function updateLobbyUI(lobby) {
+    callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
+    const visibleCount = lobby.players.length;
+    mp.events.call('_roulette_updateMarker', lobby.id, lobby.state, visibleCount, ROULETTE_CONFIG.MAX_PLAYERS);
+}
+
+// ──────────────────────────────────────────
+// EVENTS
+// ──────────────────────────────────────────
+mp.events.add('roulette:updatePlayerMoney', (player, newAmount) => {
+    player.money = newAmount;
+    console.log(`[RULETĂ] MONEY_SET: ${player.name} → $${newAmount}`);
+});
+
+mp.events.add('Server_ReceiveRouletteBet', (player, betType, betValueJson, amount) => {
+    let betValue;
+    try {
+        betValue = JSON.parse(betValueJson);
+    } catch (e) {
+        betValue = parseInt(betValueJson);
+        if (isNaN(betValue)) betValue = betValueJson;
+    }
+    console.log(`[RULETĂ] BET: ${player.name} → ${betType} [${JSON.stringify(betValue)}] $${amount}`);
+    placeBet(player, betType, betValue, parseInt(amount) || 0);
+});
+
+mp.events.add('Server_ClearRouletteBets', (player) => {
+    clearBets(player);
+});
+
+mp.events.add('Server_JoinRouletteTable', (player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading) => {
+    player.outputChatBox(`!{Green}[RULETĂ] Încerci să te alături mesei "${tableName}"...`);
+    joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading);
+});
+
+mp.events.add('Server_LeaveRouletteTable', (player) => {
+    leaveLobby(player);
+});
+
+mp.events.add('playerQuit', (player) => {
+    leaveLobby(player);
+});
+
+module.exports = {
+    ROULETTE_CONFIG,
+    joinLobby,
+    leaveLobby,
+    placeBet,
+    clearBets,
+    lobbies,
+    getLobbyByPlayer,
+    RED_NUMBERS,
+    BLACK_NUMBERS,
+    getNumberColor,
+    BET_TYPES,
+};

@@ -1,0 +1,715 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Bebas+Neue&family=Share+Tech+Mono&display=swap');
+
+:root {
+    --gold: #c9a84c;
+    --gold-lt: #f0d080;
+    --red: #c0392b;
+    --green: #27ae60;
+    --blue: #2980b9;
+    --glass: rgba(8, 12, 20, 0.72);
+    --border: rgba(201, 168, 76, 0.35);
+    --text: #e8dfc0;
+    --dim: rgba(232, 223, 192, 0.5);
+    --card-w: 72px;
+    --card-h: 100px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+}
+
+/* ── WATERMARK TOP BAR ── */
+#topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 34px;
+    background: rgba(5, 8, 14, 0.80);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    gap: 14px;
+    backdrop-filter: blur(6px);
+    z-index: 100;
+}
+
+#topbar .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-shadow: 0 0 12px rgba(201, 168, 76, .6);
+}
+
+#topbar .sep { flex: 1; }
+
+#topbar .info {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 1px;
+}
+
+#btn-leave {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    padding: 3px 14px;
+    margin-left: 8px;
+    border: 1px solid rgba(192, 57, 43, 0.5);
+    border-radius: 4px;
+    background: rgba(192, 57, 43, 0.25);
+    color: #fbd5d0;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, transform .15s;
+}
+
+#btn-leave:hover {
+    background: rgba(192, 57, 43, 0.5);
+    border-color: rgba(192, 57, 43, 0.8);
+}
+
+#btn-leave:active {
+    transform: scale(0.95);
+}
+
+/* ── COMMUNITY CARDS — centru ecran ── */
+#community {
+    position: fixed;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 50;
+}
+
+#community .label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    text-transform: uppercase;
+}
+
+#community .cards {
+    display: flex;
+    gap: 8px;
+}
+
+#community .card {
+    width: 88px;
+    height: 122px;
+}
+
+#community .card.face .rank { font-size: 28px; }
+#community .card.face .suit { font-size: 26px; }
+
+/* ── PLAYER HAND — centru jos ── */
+#player-hand {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 50;
+}
+
+#player-hand .label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+#player-hand .cards {
+    display: flex;
+    gap: 8px;
+}
+
+/* ── CARD STYLES ── */
+.card {
+    width: var(--card-w);
+    height: var(--card-h);
+    border-radius: 8px;
+    position: relative;
+    cursor: default;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.card:hover { transform: translateY(-5px); }
+
+/* ── CARD DEAL ANIMATION ── */
+@keyframes dealCard {
+    0% {
+        transform: translateX(600px) rotate(80deg) scale(0.4);
+        opacity: 0;
+    }
+    30% {
+        opacity: 1;
+    }
+    75% {
+        transform: translateX(-8px) rotate(-3deg) scale(1.03);
+        opacity: 1;
+    }
+    90% {
+        transform: translateX(3px) rotate(1deg) scale(0.99);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(0) rotate(0deg) scale(1);
+        opacity: 1;
+    }
+}
+
+.card.card-waiting {
+    opacity: 0;
+}
+
+.card-deal {
+    animation: dealCard 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.card-deal:hover {
+    transform: translateY(-5px);
+}
+
+.card.back {
+    background:
+        repeating-linear-gradient(45deg,
+            #1a2540 0px, #1a2540 4px,
+            #111827 4px, #111827 8px);
+    border: 1.5px solid rgba(201, 168, 76, .4);
+    box-shadow: 0 4px 18px rgba(0,0,0,.7),
+        inset 0 0 0 3px rgba(201, 168, 76, .08);
+}
+
+.card.back::after {
+    content: '♠';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: rgba(201, 168, 76, .15);
+}
+
+.card.face {
+    background: linear-gradient(160deg, #f9f4e8 0%, #ede4cc 100%);
+    border: 1.5px solid rgba(0,0,0,.2);
+    box-shadow: 0 6px 20px rgba(0,0,0,.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 5px 6px;
+}
+
+.card.face .rank {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.card.face .suit {
+    font-size: 20px;
+    line-height: 1;
+    align-self: flex-end;
+}
+
+.card.face.red .rank,
+.card.face.red .suit { color: #c0392b; }
+
+.card.face.black .rank,
+.card.face.black .suit { color: #1a1a2e; }
+
+#player-hand .card.face {
+    box-shadow: 0 6px 20px rgba(0,0,0,.7),
+        0 0 16px rgba(201, 168, 76, .25);
+}
+
+/* ── ACTION BUTTONS — centru jos sub cărți ── */
+#actions {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    z-index: 60;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease, transform .3s ease;
+}
+
+#actions.visible {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(-50%) translateY(0);
+}
+
+.btn-action {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 2px;
+    font-size: 16px;
+    padding: 8px 22px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform .15s, box-shadow .15s;
+}
+
+.btn-action::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,.07);
+    opacity: 0;
+    transition: opacity .15s;
+}
+
+.btn-action:hover::before { opacity: 1; }
+.btn-action:active { transform: scale(.96); }
+
+#btn-fold {
+    background: linear-gradient(135deg, #7b241c, #922b21);
+    color: #fbd5d0;
+    box-shadow: 0 3px 14px rgba(192,57,43,.35);
+}
+
+#btn-check {
+    background: linear-gradient(135deg, #1a5276, #2471a3);
+    color: #d6eaf8;
+    box-shadow: 0 3px 14px rgba(41,128,185,.35);
+}
+
+#btn-call {
+    background: linear-gradient(135deg, #1e8449, #27ae60);
+    color: #d5f5e3;
+    box-shadow: 0 3px 14px rgba(39,174,96,.35);
+}
+
+#btn-raise {
+    background: linear-gradient(135deg, #7d6608, #d4ac0d);
+    color: #fef9e7;
+    box-shadow: 0 3px 14px rgba(212,172,13,.4);
+}
+
+#btn-allin {
+    background: linear-gradient(135deg, #6c3483, #9b59b6);
+    color: #f5eef8;
+    box-shadow: 0 3px 14px rgba(155,89,182,.35);
+}
+
+/* Raise input inline */
+#raise-wrap {
+    display: none;
+    align-items: center;
+    gap: 6px;
+}
+#raise-wrap.open { display: flex; }
+#raise-input {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    width: 80px;
+    padding: 8px 10px;
+    background: #0a0d14;
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    color: var(--gold-lt);
+    outline: none;
+    text-align: center;
+}
+#raise-input::placeholder { color: var(--dim); }
+#btn-raise-confirm {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #7d6608, #d4ac0d);
+    color: #fef9e7;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    letter-spacing: 1px;
+}
+
+/* ── PLAYER LIST (dreapta) ── */
+#player-list {
+    position: fixed;
+    top: 50px;
+    right: 20px;
+    width: 220px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    z-index: 50;
+    box-shadow: 0 8px 32px rgba(0,0,0,.6);
+}
+
+#player-list .pl-header {
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#player-list .pl-header span {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 2px;
+    font-size: 15px;
+    color: var(--gold);
+}
+
+#player-list .pot {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+}
+
+.pl-row {
+    padding: 9px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(201,168,76,.08);
+    transition: background .2s;
+    position: relative;
+}
+.pl-row:last-child { border-bottom: none; }
+.pl-row.active { background: rgba(201,168,76,.08); }
+.pl-row.folded { opacity: .38; }
+
+.pl-arrow {
+    width: 8px; height: 8px;
+    border-right: 2px solid var(--gold);
+    border-top: 2px solid var(--gold);
+    transform: rotate(45deg);
+    opacity: 0;
+    flex-shrink: 0;
+    animation: pulse-arrow 1s ease-in-out infinite;
+}
+.pl-row.active .pl-arrow { opacity: 1; }
+
+@keyframes pulse-arrow {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .3; }
+}
+
+.pl-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a2540, #2c3e6b);
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    color: var(--gold);
+    flex-shrink: 0;
+}
+
+.pl-info { flex: 1; min-width: 0; }
+
+.pl-name {
+    font-size: 13px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--text);
+}
+.pl-row.active .pl-name { color: var(--gold-lt); }
+
+.pl-chips {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+}
+
+.pl-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    margin-left: auto;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.pl-status.dealer { background: rgba(201,168,76,.2); color: var(--gold); }
+.pl-status.sb     { background: rgba(41,128,185,.2); color: #7fb3d3; }
+.pl-status.bb     { background: rgba(39,174,96,.2);  color: #82e0aa; }
+
+.pl-bet {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gold);
+    margin-left: 4px;
+}
+
+/* ── RIGHT PANEL (POT/BET + TIMER) ── */
+#right-panel {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    z-index: 60;
+}
+
+/* ── TIMER ── */
+#timer-wrap {
+    background-color: rgba(8,12,20,.7);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s;
+}
+#timer-wrap.visible { opacity: 1; }
+
+#timer-ring {
+    width: 60px; height: 60px;
+    position: relative;
+}
+#timer-ring svg { transform: rotate(-90deg); }
+#timer-ring #track { fill: none; stroke: rgba(201,168,76,.12); stroke-width: 4; }
+#timer-ring #fill  {
+    fill: none;
+    stroke: var(--gold);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 163;
+    stroke-dashoffset: 0;
+    transition: stroke 0.5s;
+}
+
+#timer-num {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--gold);
+    letter-spacing: 1px;
+}
+
+#timer-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    text-transform: uppercase;
+    text-align: left;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── POT DISPLAY ── */
+#pot-display {
+    position: fixed;
+    top: 46px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(8,12,20,.75);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    z-index: 40;
+}
+
+/* ── RIGHT INFO (POT & BET) ── */
+#left-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .4s ease, visibility .4s ease;
+}
+#left-info.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.info-box {
+    background: rgba(8,12,20,.85);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 16px rgba(0,0,0,.6);
+    min-width: 160px;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.info-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+}
+
+.info-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(14px, 2vw, 22px);
+    letter-spacing: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#left-pot-value {
+    color: var(--gold);
+}
+
+#left-bet-value {
+    color: var(--green);
+}
+
+#bet-box {
+    display: block;
+}
+
+/* ── COUNTDOWN OVERLAY ── */
+#countdown-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.72);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease;
+}
+#countdown-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+}
+#countdown-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 5px;
+    color: var(--gold);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+}
+#countdown-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 100px;
+    color: #fff;
+    line-height: 1;
+    text-shadow: 0 0 60px rgba(201,168,76,.5);
+    transition: transform .15s ease;
+}
+#countdown-num.pop {
+    transform: scale(1.15);
+}
+
+/* ── TOAST ── */
+#toast {
+    position: fixed;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    background: rgba(8,12,20,.85);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 2px;
+    font-size: 14px;
+    color: var(--gold-lt);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s, transform .3s;
+    z-index: 200;
+}
+#toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ── WINNER BANNER ── */
+#winner-banner {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100%);
+    background: linear-gradient(135deg, rgba(12,16,28,.92), rgba(20,25,40,.95));
+    border: 1px solid var(--gold);
+    border-radius: 12px;
+    padding: 14px 32px;
+    text-align: center;
+    z-index: 80;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .5s ease, transform .5s ease;
+    box-shadow: 0 0 30px rgba(201,168,76,.3), 0 8px 32px rgba(0,0,0,.6);
+    white-space: nowrap;
+}
+#winner-banner.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-110%);
+}
+.wb-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    color: var(--gold-lt);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+}
+.wb-detail {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    color: #ccc;
+    letter-spacing: 1px;
+}
+.wb-pot {
+    color: var(--green);
+    font-weight: 700;
+    font-size: 16px;
+}
+.wb-hand {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    margin-top: 4px;
+    text-transform: uppercase;
+}

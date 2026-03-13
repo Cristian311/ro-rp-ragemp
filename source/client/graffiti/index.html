@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graffiti Canvas</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        *:not(input):not(#graffitiCanvas) {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="graffiti-container">
+        <div class="graffiti-title">&#x1F3A8; SPRAY GRAFFITI</div>
+
+        <!-- COLOR PALETTE -->
+        <div class="toolbar">
+            <div class="toolbar-section">
+                <label>Culori</label>
+                <div class="color-btn active" style="background:#FFFFFF" data-color="#FFFFFF"></div>
+                <div class="color-btn" style="background:#000000; border-color: #333;" data-color="#000000"></div>
+                <div class="color-btn" style="background:#FF0000" data-color="#FF0000"></div>
+                <div class="color-btn" style="background:#FF6600" data-color="#FF6600"></div>
+                <div class="color-btn" style="background:#FFFF00" data-color="#FFFF00"></div>
+                <div class="color-btn" style="background:#00FF00" data-color="#00FF00"></div>
+                <div class="color-btn" style="background:#00FFFF" data-color="#00FFFF"></div>
+                <div class="color-btn" style="background:#0088FF" data-color="#0088FF"></div>
+                <div class="color-btn" style="background:#0000FF" data-color="#0000FF"></div>
+                <div class="color-btn" style="background:#8800FF" data-color="#8800FF"></div>
+                <div class="color-btn" style="background:#FF00FF" data-color="#FF00FF"></div>
+                <div class="color-btn" style="background:#FF88AA" data-color="#FF88AA"></div>
+                <div class="color-btn" style="background:#8B4513" data-color="#8B4513"></div>
+                <div class="color-btn" style="background:#808080" data-color="#808080"></div>
+                <input type="color" id="colorPicker" value="#00FF88" title="Custom color">
+            </div>
+        </div>
+
+        <!-- BRUSH SIZE + TOOLS -->
+        <div class="toolbar">
+            <div class="toolbar-section">
+                <label>Marime</label>
+                <button class="size-btn" data-size="3">3</button>
+                <button class="size-btn" data-size="6">6</button>
+                <button class="size-btn active" data-size="12">12</button>
+                <button class="size-btn" data-size="24">24</button>
+                <button class="size-btn" data-size="40">40</button>
+            </div>
+            <div class="toolbar-section">
+                <label>Unelte</label>
+                <button class="tool-btn active" id="btnBrush">&#x1F58C; Brush</button>
+                <button class="tool-btn" id="btnSpray">&#x1F4A8; Spray</button>
+                <button class="tool-btn" id="btnEraser">&#x1F9F9; Eraser</button>
+                <button class="tool-btn" id="btnFill">&#x1FAA3; Fill</button>
+            </div>
+            <div class="toolbar-section">
+                <button class="tool-btn" id="btnUndo">&#x21A9; Undo</button>
+                <button class="tool-btn" id="btnClear">&#x1F5D1; Clear</button>
+                <button class="tool-btn" id="btnImgUrl">&#x1F310; URL</button>
+            </div>
+        </div>
+
+        <!-- CANVAS -->
+        <div class="canvas-wrapper">
+            <canvas id="graffitiCanvas" width="512" height="512"></canvas>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="actions">
+            <button class="btn-place" id="btnPlace">&#x2714; PLACE</button>
+            <button class="btn-cancel" id="btnCancel">&#x2716; CANCEL</button>
+        </div>
+
+        <div class="info-text">Deseneaza graffiti-ul tau, apoi apasa PLACE pentru a-l plasa pe un perete.</div>
+    </div>
+
+    <!-- SPRAY CURSOR (visual indicator for brush size) -->
+    <div class="spray-cursor" id="sprayCursor"></div>
+
+    <!-- IMAGE URL MODAL -->
+    <div class="url-modal-overlay" id="urlModal">
+        <div class="url-modal">
+            <div class="url-modal-title">&#x1F310; Importa Imagine din URL</div>
+            <input type="text" id="urlInput" class="url-input" placeholder="https://i.imgur.com/example.png" spellcheck="false">
+            <div class="url-status" id="urlStatus"></div>
+            <div class="url-preview-wrap">
+                <img id="urlPreview" class="url-preview">
+            </div>
+            <div class="url-actions">
+                <button class="btn-place" id="btnUrlLoad">&#x2714; INCARCA</button>
+                <button class="btn-cancel" id="btnUrlCancel">&#x2716; ANULEAZA</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ──────────────────────────────────────────
+        // CANVAS SETUP
+        // ──────────────────────────────────────────
+        const canvas  = document.getElementById('graffitiCanvas');
+        const ctx     = canvas.getContext('2d');
+        const cursor  = document.getElementById('sprayCursor');
+
+        // Start with transparent canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // ──────────────────────────────────────────
+        // STATE
+        // ──────────────────────────────────────────
+        let currentColor   = '#FFFFFF';
+        let currentSize    = 12;
+        let currentTool    = 'brush';   // brush | spray | eraser | fill
+        let isDrawing      = false;
+        let lastX          = 0;
+        let lastY          = 0;
+        let historyStack   = [];
+        const MAX_HISTORY  = 30;
+
+        // Save initial state
+        saveHistory();
+
+        // ──────────────────────────────────────────
+        // HISTORY (UNDO)
+        // ──────────────────────────────────────────
+        function saveHistory() {
+            if (historyStack.length >= MAX_HISTORY) historyStack.shift();
+            historyStack.push(canvas.toDataURL());
+        }
+
+        function undo() {
+            if (historyStack.length <= 1) return;
+            historyStack.pop(); // remove current
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = historyStack[historyStack.length - 1];
+        }
+
+        // ──────────────────────────────────────────
+        // DRAWING
+        // ──────────────────────────────────────────
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left) * (canvas.width / rect.width),
+                y: (e.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function drawLine(x0, y0, x1, y1) {
+            if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.strokeStyle = 'rgba(0,0,0,1)';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+            }
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y1);
+            ctx.lineWidth   = currentSize;
+            ctx.lineCap     = 'round';
+            ctx.lineJoin    = 'round';
+            ctx.globalAlpha = 1.0;
+            ctx.stroke();
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        function drawSpray(x, y) {
+            const density = Math.floor(currentSize * 2.5);
+            const radius  = currentSize * 1.5;
+            ctx.fillStyle = currentColor;
+            for (let i = 0; i < density; i++) {
+                const angle  = Math.random() * Math.PI * 2;
+                const r      = Math.random() * radius;
+                const dx     = Math.cos(angle) * r;
+                const dy     = Math.sin(angle) * r;
+                ctx.globalAlpha = Math.random() * 0.4 + 0.1;
+                ctx.fillRect(x + dx, y + dy, 1.5, 1.5);
+            }
+            ctx.globalAlpha = 1.0;
+        }
+
+        // Flood fill
+        function floodFill(startX, startY, fillColor) {
+            startX = Math.floor(startX);
+            startY = Math.floor(startY);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data      = imageData.data;
+            const w         = canvas.width;
+            const h         = canvas.height;
+
+            const targetIdx  = (startY * w + startX) * 4;
+            const targetR    = data[targetIdx];
+            const targetG    = data[targetIdx + 1];
+            const targetB    = data[targetIdx + 2];
+            const targetA    = data[targetIdx + 3];
+
+            // Parse fill color
+            const tempC  = document.createElement('canvas').getContext('2d');
+            tempC.fillStyle = fillColor;
+            tempC.fillRect(0, 0, 1, 1);
+            const fc = tempC.getImageData(0, 0, 1, 1).data;
+
+            if (targetR === fc[0] && targetG === fc[1] && targetB === fc[2] && targetA === fc[3]) return;
+
+            const tolerance = 20;
+            const stack = [[startX, startY]];
+            const visited = new Uint8Array(w * h);
+
+            function matches(idx) {
+                return Math.abs(data[idx] - targetR) <= tolerance &&
+                       Math.abs(data[idx + 1] - targetG) <= tolerance &&
+                       Math.abs(data[idx + 2] - targetB) <= tolerance &&
+                       Math.abs(data[idx + 3] - targetA) <= tolerance;
+            }
+
+            while (stack.length > 0) {
+                const [cx, cy] = stack.pop();
+                const pi = cy * w + cx;
+                if (cx < 0 || cx >= w || cy < 0 || cy >= h) continue;
+                if (visited[pi]) continue;
+                const idx = pi * 4;
+                if (!matches(idx)) continue;
+
+                visited[pi] = 1;
+                data[idx]     = fc[0];
+                data[idx + 1] = fc[1];
+                data[idx + 2] = fc[2];
+                data[idx + 3] = 255;
+
+                stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // ──────────────────────────────────────────
+        // MOUSE EVENTS
+        // ──────────────────────────────────────────
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getCanvasPos(e);
+
+            if (currentTool === 'fill') {
+                saveHistory();
+                floodFill(pos.x, pos.y, currentColor);
+                return;
+            }
+
+            isDrawing = true;
+            lastX = pos.x;
+            lastY = pos.y;
+
+            if (currentTool === 'spray') {
+                drawSpray(pos.x, pos.y);
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            // Update custom cursor position
+            cursor.style.left   = e.clientX + 'px';
+            cursor.style.top    = e.clientY + 'px';
+            cursor.style.width  = currentSize * 2 + 'px';
+            cursor.style.height = currentSize * 2 + 'px';
+            cursor.style.display = 'block';
+
+            if (!isDrawing) return;
+            const pos = getCanvasPos(e);
+
+            if (currentTool === 'spray') {
+                drawSpray(pos.x, pos.y);
+            } else {
+                drawLine(lastX, lastY, pos.x, pos.y);
+            }
+
+            lastX = pos.x;
+            lastY = pos.y;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (isDrawing) {
+                isDrawing = false;
+                saveHistory();
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            if (isDrawing) {
+                isDrawing = false;
+                saveHistory();
+            }
+            cursor.style.display = 'none';
+        });
+
+        // ──────────────────────────────────────────
+        // COLOR BUTTONS
+        // ──────────────────────────────────────────
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentColor = btn.dataset.color;
+                if (currentTool === 'eraser') {
+                    currentTool = 'brush';
+                    updateToolButtons();
+                }
+            });
+        });
+
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            if (currentTool === 'eraser') {
+                currentTool = 'brush';
+                updateToolButtons();
+            }
+        });
+
+        // ──────────────────────────────────────────
+        // SIZE BUTTONS
+        // ──────────────────────────────────────────
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSize = parseInt(btn.dataset.size);
+            });
+        });
+
+        // ──────────────────────────────────────────
+        // TOOL BUTTONS
+        // ──────────────────────────────────────────
+        function updateToolButtons() {
+            document.querySelectorAll('#btnBrush, #btnSpray, #btnEraser, #btnFill')
+                .forEach(b => b.classList.remove('active'));
+
+            if (currentTool === 'brush')  document.getElementById('btnBrush').classList.add('active');
+            if (currentTool === 'spray')  document.getElementById('btnSpray').classList.add('active');
+            if (currentTool === 'eraser') document.getElementById('btnEraser').classList.add('active');
+            if (currentTool === 'fill')   document.getElementById('btnFill').classList.add('active');
+
+            canvas.style.cursor = currentTool === 'fill' ? 'cell' : 'crosshair';
+        }
+
+        document.getElementById('btnBrush').addEventListener('click', () => { currentTool = 'brush'; updateToolButtons(); });
+        document.getElementById('btnSpray').addEventListener('click', () => { currentTool = 'spray'; updateToolButtons(); });
+        document.getElementById('btnEraser').addEventListener('click', () => { currentTool = 'eraser'; updateToolButtons(); });
+        document.getElementById('btnFill').addEventListener('click', () => { currentTool = 'fill'; updateToolButtons(); });
+
+        document.getElementById('btnUndo').addEventListener('click', undo);
+
+        document.getElementById('btnClear').addEventListener('click', () => {
+            saveHistory();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // ──────────────────────────────────────────
+        // IMAGE URL IMPORT
+        // ──────────────────────────────────────────
+        const urlModal   = document.getElementById('urlModal');
+        const urlInput   = document.getElementById('urlInput');
+        const urlStatus  = document.getElementById('urlStatus');
+        const urlPreview = document.getElementById('urlPreview');
+
+        const ALLOWED_HOSTS = [
+            'i.imgur.com', 'imgur.com',
+            'i.ibb.co', 'ibb.co',
+            'upload.wikimedia.org',
+            'i.redd.it', 'preview.redd.it',
+            'cdn.discordapp.com', 'media.discordapp.net',
+            'pbs.twimg.com',
+            'i.pinimg.com'
+        ];
+
+        function isAllowedImageUrl(url) {
+            try {
+                const u = new URL(url);
+                if (u.protocol !== 'https:') return { ok: false, reason: 'Doar HTTPS este permis.' };
+                const host = u.hostname.toLowerCase();
+                const allowed = ALLOWED_HOSTS.some(h => host === h || host.endsWith('.' + h));
+                if (!allowed) return { ok: false, reason: 'Host nepermis. Foloseste: imgur, ibb, discord, reddit, etc.' };
+                const ext = u.pathname.toLowerCase();
+                const validExt = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+                const hasValidExt = validExt.some(e => ext.endsWith(e));
+                if (!hasValidExt) return { ok: false, reason: 'URL-ul trebuie sa fie o imagine (.png, .jpg, .gif, .webp).' };
+                return { ok: true };
+            } catch (e) {
+                return { ok: false, reason: 'URL invalid.' };
+            }
+        }
+
+        function showUrlModal() {
+            urlModal.style.display = 'flex';
+            urlInput.value = '';
+            urlStatus.textContent = '';
+            urlStatus.className = 'url-status';
+            urlPreview.style.display = 'none';
+            urlInput.focus();
+        }
+
+        function hideUrlModal() {
+            urlModal.style.display = 'none';
+        }
+
+        document.getElementById('btnImgUrl').addEventListener('click', showUrlModal);
+        document.getElementById('btnUrlCancel').addEventListener('click', hideUrlModal);
+
+        urlInput.addEventListener('input', () => {
+            const val = urlInput.value.trim();
+            if (!val) {
+                urlStatus.textContent = '';
+                urlPreview.style.display = 'none';
+                return;
+            }
+            const check = isAllowedImageUrl(val);
+            if (!check.ok) {
+                urlStatus.textContent = check.reason;
+                urlStatus.className = 'url-status url-error';
+                urlPreview.style.display = 'none';
+                return;
+            }
+            urlStatus.textContent = 'Se incarca previzualizarea...';
+            urlStatus.className = 'url-status url-loading';
+            urlPreview.style.display = 'none';
+
+            const testImg = new Image();
+            testImg.crossOrigin = 'anonymous';
+            testImg.onload = () => {
+                urlPreview.src = val;
+                urlPreview.style.display = 'block';
+                urlStatus.textContent = 'Imagine valida! Apasa INCARCA.';
+                urlStatus.className = 'url-status url-ok';
+            };
+            testImg.onerror = () => {
+                urlStatus.textContent = 'Nu se poate incarca imaginea. Verifica URL-ul.';
+                urlStatus.className = 'url-status url-error';
+                urlPreview.style.display = 'none';
+            };
+            testImg.src = val;
+        });
+
+        document.getElementById('btnUrlLoad').addEventListener('click', () => {
+            const val = urlInput.value.trim();
+            const check = isAllowedImageUrl(val);
+            if (!check.ok) {
+                urlStatus.textContent = check.reason;
+                urlStatus.className = 'url-status url-error';
+                return;
+            }
+            if (urlPreview.style.display === 'none') {
+                urlStatus.textContent = 'Asteapta sa se incarce imaginea.';
+                urlStatus.className = 'url-status url-error';
+                return;
+            }
+            saveHistory();
+            const loadImg = new Image();
+            loadImg.crossOrigin = 'anonymous';
+            loadImg.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(loadImg, 0, 0, canvas.width, canvas.height);
+                saveHistory();
+                hideUrlModal();
+            };
+            loadImg.onerror = () => {
+                urlStatus.textContent = 'Eroare la incarcarea imaginii.';
+                urlStatus.className = 'url-status url-error';
+            };
+            loadImg.src = val;
+        });
+
+        urlModal.addEventListener('click', (e) => {
+            if (e.target === urlModal) hideUrlModal();
+        });
+
+        // ──────────────────────────────────────────
+        // ACTION BUTTONS
+        // ──────────────────────────────────────────
+        document.getElementById('btnPlace').addEventListener('click', () => {
+            const MAX_DATA_SIZE = 200000; // 200KB max for safe network transfer
+
+            // Check if canvas has any transparent pixels
+            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let hasTransparency = false;
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] < 250) { hasTransparency = true; break; }
+            }
+
+            let dataURL;
+            if (hasTransparency) {
+                // PNG to preserve transparency
+                dataURL = canvas.toDataURL('image/png');
+                // If PNG too large, resize
+                if (dataURL.length > MAX_DATA_SIZE) {
+                    const small = document.createElement('canvas');
+                    small.width = 256;
+                    small.height = 256;
+                    small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
+                    dataURL = small.toDataURL('image/png');
+                }
+            } else {
+                // JPEG for fully opaque images (photos) — much smaller
+                let quality = 0.85;
+                dataURL = canvas.toDataURL('image/jpeg', quality);
+                while (dataURL.length > MAX_DATA_SIZE && quality > 0.2) {
+                    quality -= 0.1;
+                    dataURL = canvas.toDataURL('image/jpeg', quality);
+                }
+                if (dataURL.length > MAX_DATA_SIZE) {
+                    const small = document.createElement('canvas');
+                    small.width = 256;
+                    small.height = 256;
+                    small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
+                    dataURL = small.toDataURL('image/jpeg', 0.7);
+                }
+            }
+
+            mp.trigger('Graffiti_CanvasReady', dataURL);
+        });
+
+        document.getElementById('btnCancel').addEventListener('click', () => {
+            mp.trigger('Graffiti_CanvasCancel');
+        });
+
+        // ──────────────────────────────────────────
+        // KEYBOARD SHORTCUTS
+        // ──────────────────────────────────────────
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+            if (e.key === 'b') { currentTool = 'brush'; updateToolButtons(); }
+            if (e.key === 's') { currentTool = 'spray'; updateToolButtons(); }
+            if (e.key === 'e') { currentTool = 'eraser'; updateToolButtons(); }
+            if (e.key === 'f') { currentTool = 'fill'; updateToolButtons(); }
+        });
+    </script>
+</body>
+</html>

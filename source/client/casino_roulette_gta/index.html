@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Roulette — Diamond Casino</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- MAIN CONTAINER -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div id="roulette-container">
+
+        <!-- TOP BAR: Timer, Round info, Dealer speech -->
+        <div id="top-bar">
+            <div id="round-info">
+                <span id="round-label">ROUND</span>
+                <span id="round-number">—</span>
+            </div>
+            <div id="timer-bar">
+                <div id="timer-fill"></div>
+                <span id="timer-text">WAITING FOR PLAYERS</span>
+            </div>
+            <div id="dealer-speech-box">
+                <div id="dealer-icon">🎰</div>
+                <span id="dealer-speech-text"></span>
+            </div>
+        </div>
+
+        <!-- LEFT PANEL: History + Players -->
+        <div id="left-panel">
+            <div id="history-panel">
+                <div class="panel-header">HISTORY</div>
+                <div id="history-list"></div>
+            </div>
+            <div id="players-panel">
+                <div class="panel-header">PLAYERS</div>
+                <div id="players-list"></div>
+            </div>
+        </div>
+
+        <!-- CENTER: Wheel + Betting Board -->
+        <div id="center-area">
+            <!-- Roulette Wheel Canvas -->
+            <div id="wheel-section">
+                <canvas id="roulette-wheel" width="300" height="300"></canvas>
+                <div id="wheel-pointer">▼</div>
+                <div id="winning-number-display" class="hidden">
+                    <span id="winning-number-text"></span>
+                </div>
+            </div>
+
+            <!-- Betting Board (European layout) -->
+            <div id="betting-board">
+                <!-- Zero -->
+                <div class="bet-cell zero-cell" data-bet-type="straight" data-bet-value="0">0</div>
+
+                <!-- Numbers grid 1-36 (3 columns x 12 rows) -->
+                <div id="numbers-grid"></div>
+
+                <!-- Bottom bets -->
+                <div id="bottom-bets">
+                    <div class="bet-row">
+                        <div class="bet-cell dozen-cell" data-bet-type="dozen" data-bet-value="1">1st 12</div>
+                        <div class="bet-cell dozen-cell" data-bet-type="dozen" data-bet-value="2">2nd 12</div>
+                        <div class="bet-cell dozen-cell" data-bet-type="dozen" data-bet-value="3">3rd 12</div>
+                    </div>
+                    <div class="bet-row">
+                        <div class="bet-cell outside-cell" data-bet-type="low" data-bet-value="1">1-18</div>
+                        <div class="bet-cell outside-cell" data-bet-type="even" data-bet-value="1">EVEN</div>
+                        <div class="bet-cell outside-cell red-bet" data-bet-type="red" data-bet-value="1">RED</div>
+                        <div class="bet-cell outside-cell black-bet" data-bet-type="black" data-bet-value="1">BLACK</div>
+                        <div class="bet-cell outside-cell" data-bet-type="odd" data-bet-value="1">ODD</div>
+                        <div class="bet-cell outside-cell" data-bet-type="high" data-bet-value="1">19-36</div>
+                    </div>
+                    <!-- Column bets -->
+                    <div class="bet-row column-row">
+                        <div class="bet-cell column-cell" data-bet-type="column" data-bet-value="1">2:1</div>
+                        <div class="bet-cell column-cell" data-bet-type="column" data-bet-value="2">2:1</div>
+                        <div class="bet-cell column-cell" data-bet-type="column" data-bet-value="3">2:1</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: My Bets + Chips -->
+        <div id="right-panel">
+            <div id="chips-panel">
+                <div class="panel-header">CHIPS</div>
+                <div id="my-chips">$0</div>
+                <div id="my-total-bet">BET: $0</div>
+            </div>
+            <div id="chip-selector">
+                <div class="chip-option selected" data-value="100">$100</div>
+                <div class="chip-option" data-value="500">$500</div>
+                <div class="chip-option" data-value="1000">$1K</div>
+                <div class="chip-option" data-value="5000">$5K</div>
+                <div class="chip-option" data-value="10000">$10K</div>
+                <div class="chip-option" data-value="50000">$50K</div>
+            </div>
+            <div id="my-bets-panel">
+                <div class="panel-header">MY BETS</div>
+                <div id="my-bets-list"></div>
+            </div>
+            <div id="action-buttons">
+                <button id="btn-clear-bets" class="action-btn clear-btn">CLEAR BETS</button>
+                <button id="btn-leave" class="action-btn leave-btn">LEAVE TABLE</button>
+            </div>
+        </div>
+
+        <!-- DEALER ANIMATION OVERLAY (visual feedback for chip clearing etc.) -->
+        <div id="dealer-anim-overlay" class="hidden">
+            <div id="dealer-anim-text"></div>
+        </div>
+
+        <!-- WIN NOTIFICATION -->
+        <div id="win-notification" class="hidden">
+            <div id="win-amount"></div>
+            <div id="win-label">YOU WIN!</div>
+        </div>
+
+        <!-- LOSE NOTIFICATION -->
+        <div id="lose-notification" class="hidden">
+            <div id="lose-label">NO LUCK THIS TIME</div>
+        </div>
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════
+    // CASINO ROULETTE GTA — CLIENT UI LOGIC
+    // Diamond Casino & Resort Style
+    // ═══════════════════════════════════════════════════════
+
+    // ── ROULETTE DATA ──
+    const RED_NUMBERS  = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+    const BLACK_NUMBERS = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35];
+    const WHEEL_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+
+    function getColor(num) {
+        if (num === 0) return 'green';
+        return RED_NUMBERS.includes(num) ? 'red' : 'black';
+    }
+
+    // ── STATE ──
+    let gameState = 'waiting';
+    let selectedChipValue = 100;
+    let currentBetTime = 0;
+    let maxBetTime = 40;
+    let timerInterval = null;
+    let myChips = 0;
+    let myTotalBet = 0;
+    let myBets = [];
+    let spinAngle = 0;
+    let spinAnimFrame = null;
+    let isSpinning = false;
+
+    // ── BUILD NUMBERS GRID ──
+    const numbersGrid = document.getElementById('numbers-grid');
+    // European roulette board: 12 rows × 3 columns
+    // Row 1: 3, 6, 9, 12... Row layout: col1 bottom, col3 top
+    for (let row = 0; row < 12; row++) {
+        for (let col = 3; col >= 1; col--) {
+            const num = (row * 3) + col;
+            const cell = document.createElement('div');
+            cell.className = 'bet-cell number-cell';
+            cell.dataset.betType = 'straight';
+            cell.dataset.betValue = num;
+            cell.textContent = num;
+
+            const color = getColor(num);
+            cell.classList.add(color === 'red' ? 'red-number' : 'black-number');
+
+            cell.addEventListener('click', () => onCellClick(cell));
+            numbersGrid.appendChild(cell);
+        }
+    }
+
+    // ── ADD CLICK EVENTS TO ALL BET CELLS ──
+    document.querySelectorAll('.bet-cell').forEach(cell => {
+        if (!cell.dataset.betType) return;
+        cell.addEventListener('click', () => onCellClick(cell));
+    });
+
+    function onCellClick(cell) {
+        if (gameState !== 'betting') return;
+
+        const betType  = cell.dataset.betType;
+        let betValue = cell.dataset.betValue;
+
+        // Parse value
+        if (betType === 'straight' || betType === 'dozen' || betType === 'column') {
+            betValue = parseInt(betValue);
+        }
+
+        // Highlight cell briefly
+        cell.classList.add('cell-flash');
+        setTimeout(() => cell.classList.remove('cell-flash'), 300);
+
+        // Send bet to server via RAGE MP
+        if (typeof mp !== 'undefined') {
+            mp.trigger('CasinoRouletteGTA_PlaceBet', betType, JSON.stringify(betValue), selectedChipValue);
+        }
+    }
+
+    // ── CHIP SELECTOR ──
+    document.querySelectorAll('.chip-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            document.querySelector('.chip-option.selected')?.classList.remove('selected');
+            opt.classList.add('selected');
+            selectedChipValue = parseInt(opt.dataset.value);
+        });
+    });
+
+    // ── ACTION BUTTONS ──
+    document.getElementById('btn-clear-bets').addEventListener('click', () => {
+        if (typeof mp !== 'undefined') {
+            mp.trigger('CasinoRouletteGTA_ClearBets');
+        }
+    });
+
+    document.getElementById('btn-leave').addEventListener('click', () => {
+        if (typeof mp !== 'undefined') {
+            mp.trigger('CasinoRouletteGTA_LeaveTable');
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // WHEEL DRAWING (Canvas)
+    // ═══════════════════════════════════════════════════════
+    const canvas = document.getElementById('roulette-wheel');
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 140;
+
+    function drawWheel(rotation) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(rotation);
+
+        const sliceAngle = (2 * Math.PI) / WHEEL_ORDER.length;
+
+        WHEEL_ORDER.forEach((num, i) => {
+            const startAngle = i * sliceAngle;
+            const endAngle = startAngle + sliceAngle;
+            const color = getColor(num);
+
+            // Slice
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, radius, startAngle, endAngle);
+            ctx.closePath();
+
+            if (color === 'red') ctx.fillStyle = '#c0392b';
+            else if (color === 'black') ctx.fillStyle = '#1a1a1a';
+            else ctx.fillStyle = '#0d6b38';
+
+            ctx.fill();
+            ctx.strokeStyle = '#c9a84c';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            // Number text
+            ctx.save();
+            ctx.rotate(startAngle + sliceAngle / 2);
+            ctx.translate(radius - 25, 0);
+            ctx.rotate(Math.PI / 2);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(num, 0, 0);
+            ctx.restore();
+        });
+
+        // Inner circle
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fill();
+        ctx.strokeStyle = '#c9a84c';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Center diamond logo
+        ctx.fillStyle = '#c9a84c';
+        ctx.font = 'bold 14px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('◆', 0, 0);
+
+        ctx.restore();
+
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = '#c9a84c';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    drawWheel(0);
+
+    // ═══════════════════════════════════════════════════════
+    // SERVER → CEF FUNCTIONS
+    // Called by client_packages/casino_roulette_gta/index.js
+    // ═══════════════════════════════════════════════════════
+
+    function updateGameState(stateJson) {
+        try {
+            const state = typeof stateJson === 'string' ? JSON.parse(stateJson) : stateJson;
+            gameState = state.state || 'waiting';
+
+            // Round info
+            document.getElementById('round-number').textContent = state.roundNumber || '—';
+
+            // Players
+            updatePlayersList(state.players || []);
+
+            // History
+            updateHistory(state.history || []);
+
+            // Update timer text based on state
+            if (gameState === 'waiting') {
+                document.getElementById('timer-text').textContent = 'WAITING FOR PLAYERS';
+                document.getElementById('timer-fill').style.width = '0%';
+            } else if (gameState === 'spinning') {
+                document.getElementById('timer-text').textContent = 'BALL SPINNING...';
+                document.getElementById('timer-fill').style.width = '100%';
+                document.getElementById('timer-fill').style.background = 'linear-gradient(90deg, #c9a84c, #f4d776)';
+            } else if (gameState === 'result') {
+                document.getElementById('timer-text').textContent = 'RESULT';
+            }
+
+            // Toggle bet board interactivity
+            document.getElementById('betting-board').classList.toggle('disabled', gameState !== 'betting');
+
+        } catch (e) { console.error('updateGameState error:', e); }
+    }
+
+    function onBettingStart(betTime) {
+        gameState = 'betting';
+        maxBetTime = betTime;
+        currentBetTime = betTime;
+
+        document.getElementById('timer-text').textContent = `PLACE YOUR BETS — ${betTime}s`;
+        document.getElementById('timer-fill').style.width = '100%';
+        document.getElementById('timer-fill').style.background = 'linear-gradient(90deg, #27ae60, #2ecc71)';
+        document.getElementById('timer-fill').style.transition = 'none';
+
+        document.getElementById('betting-board').classList.remove('disabled');
+
+        // Hide previous notifications
+        document.getElementById('win-notification').classList.add('hidden');
+        document.getElementById('lose-notification').classList.add('hidden');
+        document.getElementById('winning-number-display').classList.add('hidden');
+    }
+
+    function updateBetTimer(timeLeft) {
+        currentBetTime = timeLeft;
+        const pct = (timeLeft / maxBetTime) * 100;
+
+        document.getElementById('timer-fill').style.transition = 'width 1s linear';
+        document.getElementById('timer-fill').style.width = pct + '%';
+
+        // Color transitions
+        if (timeLeft <= 5) {
+            document.getElementById('timer-fill').style.background = 'linear-gradient(90deg, #c0392b, #e74c3c)';
+            document.getElementById('timer-text').textContent = `NO MORE BETS — ${timeLeft}s`;
+        } else if (timeLeft <= 10) {
+            document.getElementById('timer-fill').style.background = 'linear-gradient(90deg, #e67e22, #f39c12)';
+            document.getElementById('timer-text').textContent = `HURRY UP — ${timeLeft}s`;
+        } else {
+            document.getElementById('timer-text').textContent = `PLACE YOUR BETS — ${timeLeft}s`;
+        }
+    }
+
+    function onSpinStart(winNumber, winColor, spinTime) {
+        gameState = 'spinning';
+        document.getElementById('betting-board').classList.add('disabled');
+        document.getElementById('timer-text').textContent = 'BALL IS SPINNING...';
+        document.getElementById('timer-fill').style.width = '100%';
+        document.getElementById('timer-fill').style.background = 'linear-gradient(90deg, #c9a84c, #f4d776)';
+
+        // Animate wheel spin
+        isSpinning = true;
+        const targetIndex = WHEEL_ORDER.indexOf(winNumber);
+        const sliceAngle = (2 * Math.PI) / WHEEL_ORDER.length;
+        const fullRotations = 8 + Math.random() * 4; // 8-12 full spins
+        const targetAngle = -(targetIndex * sliceAngle) - (sliceAngle / 2) + (Math.PI / 2);
+        const totalAngle = (fullRotations * 2 * Math.PI) + targetAngle;
+
+        const startTime = Date.now();
+        const duration = spinTime * 1000;
+        const startAngle = spinAngle;
+
+        function animateSpin() {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            // Ease-out cubic for deceleration
+            const eased = 1 - Math.pow(1 - progress, 3);
+            spinAngle = startAngle + (totalAngle * eased);
+
+            drawWheel(spinAngle);
+
+            if (progress < 1) {
+                spinAnimFrame = requestAnimationFrame(animateSpin);
+            } else {
+                isSpinning = false;
+            }
+        }
+
+        if (spinAnimFrame) cancelAnimationFrame(spinAnimFrame);
+        animateSpin();
+    }
+
+    function onShowResult(number, color, stateJson) {
+        gameState = 'result';
+
+        // Show winning number
+        const winDisplay = document.getElementById('winning-number-display');
+        const winText = document.getElementById('winning-number-text');
+        winDisplay.classList.remove('hidden');
+        winText.textContent = number;
+        winDisplay.className = 'win-number-' + color;
+
+        document.getElementById('timer-text').textContent = `WINNING NUMBER: ${number}`;
+
+        // Highlight winning cell on board
+        document.querySelectorAll('.number-cell, .zero-cell').forEach(cell => {
+            cell.classList.remove('winner-highlight');
+            if (parseInt(cell.dataset.betValue) === number && cell.dataset.betType === 'straight') {
+                cell.classList.add('winner-highlight');
+            }
+        });
+
+        // Update state
+        try {
+            const state = typeof stateJson === 'string' ? JSON.parse(stateJson) : stateJson;
+            updatePlayersList(state.players || []);
+
+            // Check if current player won
+            const me = state.players?.find(p => p.lastWin > 0);
+            if (me && me.lastWin > 0) {
+                showWinNotification(me.lastWin);
+            } else {
+                const meLost = state.players?.find(p => p.totalBet > 0 && p.lastWin === 0);
+                if (meLost) showLoseNotification();
+            }
+
+            updateHistory(state.history || []);
+        } catch (e) {}
+    }
+
+    function updateMyBets(betsJson, chips, totalBet) {
+        try {
+            myBets = typeof betsJson === 'string' ? JSON.parse(betsJson) : betsJson;
+            myChips = chips;
+            myTotalBet = totalBet;
+
+            document.getElementById('my-chips').textContent = '$' + chips.toLocaleString();
+            document.getElementById('my-total-bet').textContent = 'BET: $' + totalBet.toLocaleString();
+
+            // Render bet list
+            const list = document.getElementById('my-bets-list');
+            list.innerHTML = '';
+            myBets.forEach(bet => {
+                const item = document.createElement('div');
+                item.className = 'bet-item';
+                item.innerHTML = `
+                    <span class="bet-item-type">${bet.type.toUpperCase()}</span>
+                    <span class="bet-item-amount">$${bet.amount.toLocaleString()}</span>
+                    <span class="bet-item-payout">×${bet.payout + 1}</span>
+                `;
+                list.appendChild(item);
+            });
+        } catch (e) { console.error('updateMyBets error:', e); }
+    }
+
+    // ── DEALER ANIMATION / SPEECH HANDLERS ──
+    function onDealerAnimation(animDataJson) {
+        try {
+            const data = typeof animDataJson === 'string' ? JSON.parse(animDataJson) : animDataJson;
+            const overlay = document.getElementById('dealer-anim-overlay');
+            const text = document.getElementById('dealer-anim-text');
+
+            if (data.label) {
+                text.textContent = data.label;
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.add('hidden'), 3000);
+            }
+        } catch (e) {}
+    }
+
+    function onDealerAnimSequence(sequenceJson) {
+        try {
+            const sequence = typeof sequenceJson === 'string' ? JSON.parse(sequenceJson) : sequenceJson;
+            let delay = 0;
+            sequence.forEach(step => {
+                setTimeout(() => onDealerAnimation(JSON.stringify(step)), delay);
+                delay += 1500;
+            });
+        } catch (e) {}
+    }
+
+    function onDealerSpeech(speechDataJson) {
+        try {
+            const data = typeof speechDataJson === 'string' ? JSON.parse(speechDataJson) : speechDataJson;
+            const speechBox = document.getElementById('dealer-speech-text');
+
+            if (data.displayText) {
+                speechBox.textContent = data.displayText;
+                speechBox.classList.add('speech-active');
+                setTimeout(() => speechBox.classList.remove('speech-active'), 4000);
+            }
+        } catch (e) {}
+    }
+
+    function playUISoundEffect(soundName) {
+        // Visual feedback in UI (no real audio in CEF for GTA native sounds)
+        // Could be extended with Web Audio API for UI feedback sounds
+        const soundBox = document.getElementById('dealer-speech-text');
+        if (soundName === 'WIN_CHIPS') {
+            document.getElementById('roulette-container').classList.add('win-flash');
+            setTimeout(() => document.getElementById('roulette-container').classList.remove('win-flash'), 500);
+        }
+    }
+
+    // ── UI HELPERS ──
+    function updatePlayersList(players) {
+        const list = document.getElementById('players-list');
+        list.innerHTML = '';
+        players.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'player-item';
+            const winBadge = p.lastWin > 0 ? `<span class="win-badge">+$${p.lastWin.toLocaleString()}</span>` : '';
+            item.innerHTML = `
+                <div class="player-name">${escapeHtml(p.name)}</div>
+                <div class="player-info">
+                    <span class="player-chips">$${p.chips.toLocaleString()}</span>
+                    ${winBadge}
+                    <span class="player-seat">Seat ${p.seat + 1}</span>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function updateHistory(history) {
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        history.forEach(h => {
+            const item = document.createElement('div');
+            item.className = 'history-item history-' + h.color;
+            item.textContent = h.number;
+            list.appendChild(item);
+        });
+    }
+
+    function showWinNotification(amount) {
+        const notif = document.getElementById('win-notification');
+        document.getElementById('win-amount').textContent = '+$' + amount.toLocaleString();
+        notif.classList.remove('hidden');
+        notif.classList.add('win-animate');
+        setTimeout(() => {
+            notif.classList.add('hidden');
+            notif.classList.remove('win-animate');
+        }, 5000);
+    }
+
+    function showLoseNotification() {
+        const notif = document.getElementById('lose-notification');
+        notif.classList.remove('hidden');
+        setTimeout(() => notif.classList.add('hidden'), 3000);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    </script>
+</body>
+</html>

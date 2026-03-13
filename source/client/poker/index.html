@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="styles.css">
+<title>Poker HUD – RageMP</title>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">♠ POKER HUD</div>
+  <div class="sep"></div>
+  <div class="info" id="phase-label">WAITING</div>
+  <div class="info">RageMP v1.1</div>
+  <button id="btn-leave" onclick="leaveTable()">✕ LEAVE</button>
+</div>
+
+
+<div id="right-panel">
+  <div id="left-info">
+    <div class="info-box">
+      <div class="info-label">POT</div>
+      <div class="info-value" id="left-pot-value">$0</div>
+    </div>
+    <div class="info-box" id="bet-box">
+      <div class="info-label">BET</div>
+      <div class="info-value" id="left-bet-value">$0</div>
+    </div>
+  </div>
+
+  <div id="timer-wrap">
+    <div id="timer-ring">
+      <svg width="60" height="60" viewBox="0 0 60 60">
+        <circle id="track" cx="30" cy="30" r="26"/>
+        <circle id="fill"  cx="30" cy="30" r="26"/>
+      </svg>
+      <div id="timer-num">30</div>
+    </div>
+    <div id="timer-label">Āşteptare...</div>
+  </div>
+</div>
+
+<div id="community">
+  <div id="winner-banner"></div>
+ <!-- <div class="label">Masă</div> -->
+  <div class="cards" id="community-cards">
+    <div class="card back" id="cc1" style="display:none"></div>
+    <div class="card back" id="cc2" style="display:none"></div>
+    <div class="card back" id="cc3" style="display:none"></div>
+    <div class="card back" id="cc4" style="display:none"></div>
+    <div class="card back" id="cc5" style="display:none"></div>
+  </div>
+</div>
+
+<!-- Cărțile jucătorului sunt ascunse inițial, apar doar prin animație -->
+<div id="player-hand">
+<!--<div class="label">Cărțile tale</div> -->
+  <div class="cards" id="hand-cards">
+    <div class="card" id="pc1" style="display:none"></div>
+    <div class="card" id="pc2" style="display:none"></div>
+  </div>
+</div>
+
+<div id="actions">
+  <button class="btn-action" id="btn-fold"  onclick="sendAction('fold')">Fold</button>
+  <button class="btn-action" id="btn-check" onclick="sendAction('check')">Check</button>
+  <button class="btn-action" id="btn-call"  onclick="sendAction('call')">Call $0</button>
+  <button class="btn-action" id="btn-raise" onclick="toggleRaiseInput()">Raise</button>
+  <div id="raise-wrap">
+    <input id="raise-input" type="number" placeholder="Sumă" min="0" step="50" />
+    <button id="btn-raise-confirm" onclick="confirmRaise()">OK</button>
+  </div>
+  <button class="btn-action" id="btn-allin" onclick="sendAction('allin')">All-In</button>
+</div>
+
+<div id="player-list">
+  <div class="pl-header">
+    <span>Jucători</span>
+    <span class="pot" id="blind-info">SB $50 / BB $100</span>
+  </div>
+  <div id="pl-rows"></div>
+</div>
+
+
+<div id="toast"></div>
+
+<script>
+const SUIT_SYMBOLS  = { s:'♠', h:'♥', d:'♦', c:'♣' };
+const RED_SUITS     = ['h', 'd'];
+const CIRCUMFERENCE = 2 * Math.PI * 26;
+
+let timerTotal   = 30;
+let toastTimeout = null;
+let currentCommunityCount = 0;
+
+/**
+ * Animează o carte: o ascunde instant, aplică delay-ul, apoi rulează animația.
+ * Dupã animație, clasa card-deal e eliminatã și cartea rãmâne vizibilã normal.
+ */
+function animateCard(elementId, delaySec) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    // Oprește orice animație în curs
+    el.classList.remove('card-deal');
+    // Forțăm cartea invizibilă pe durata delay-ului
+    el.style.opacity = '0';
+    // Forțat reflow ca browser-ul să reseteze starea animației
+    void el.offsetWidth;
+
+    el.style.animationDelay = delaySec + 's';
+    el.classList.add('card-deal');
+
+    // Dupã ce animația se termina, curãță clasele și inline styles
+    el.addEventListener('animationend', function handler() {
+        el.removeEventListener('animationend', handler);
+        el.classList.remove('card-deal');
+        el.style.opacity = '';
+        el.style.animationDelay = '';
+    });
+}
+
+function parseCard(cardStr) {
+    if (!cardStr) return { rank:'', suit:'' };
+    return { suit: cardStr.slice(-1), rank: cardStr.slice(0,-1) };
+}
+
+/**
+ * Setează conținutul unei cărți.
+ * Dacã rank/suit sunt goale, ascunde cartea complet (display:none).
+ */
+function setCardData(elementId, rank, suit) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    if (!rank || !suit) {
+        // Ascunde cartea complet — nu mai afișa spatele
+        el.className = 'card';
+        el.innerHTML = '';
+        el.style.display = 'none';
+        el.style.opacity = '';
+        el.style.animationDelay = '';
+        return;
+    }
+    const isRed = RED_SUITS.includes(suit);
+    el.className = `card face ${isRed ? 'red' : 'black'}`;
+    el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${SUIT_SYMBOLS[suit] || suit}</span>`;
+}
+
+function resetCommunityCards() {
+    currentCommunityCount = 0;
+    for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`cc${i}`);
+        if (el) {
+            el.style.display = 'none';
+            el.style.opacity = '';
+            el.classList.remove('card-deal');
+            setCardData(`cc${i}`, '', '');
+        }
+    }
+}
+
+function updateMyCards(rank1, suit1, rank2, suit2) {
+    resetCommunityCards();
+    hideWinnerBanner();
+
+    // Prima carte
+    const pc1 = document.getElementById('pc1');
+    const pc2 = document.getElementById('pc2');
+
+    // Setează conținutul (fără display none — animateCard va gestiona vizibilitatea)
+    const isRed1 = RED_SUITS.includes(suit1);
+    pc1.className = `card face ${isRed1 ? 'red' : 'black'}`;
+    pc1.innerHTML = `<span class="rank">${rank1}</span><span class="suit">${SUIT_SYMBOLS[suit1] || suit1}</span>`;
+    pc1.style.display = 'flex';
+
+    const isRed2 = RED_SUITS.includes(suit2);
+    pc2.className = `card face ${isRed2 ? 'red' : 'black'}`;
+    pc2.innerHTML = `<span class="rank">${rank2}</span><span class="suit">${SUIT_SYMBOLS[suit2] || suit2}</span>`;
+    pc2.style.display = 'flex';
+
+    // Animează cu delay cascadat
+    animateCard('pc1', 0.1);
+    animateCard('pc2', 0.40);
+}
+
+function updateGameState(statejson) {
+    const state = JSON.parse(statejson);
+
+    document.getElementById('left-pot-value').textContent = `$${(state.pot || 0).toLocaleString('en-US')}`;
+    document.getElementById('left-bet-value').textContent = `$${state.currentBet.toLocaleString('en-US')}`;
+
+    // Arată left-info (POT + BET) doar când jocul e activ
+    const leftInfo = document.getElementById('left-info');
+    const roundUpper = (state.round || 'WAITING').toUpperCase();
+    if (roundUpper !== 'WAITING') {
+        leftInfo.classList.add('visible');
+    } else {
+        leftInfo.classList.remove('visible');
+    }
+    
+    document.getElementById('phase-label').textContent = roundUpper;
+    const cc = state.communityCards || [];
+    const prevCount = currentCommunityCount;
+
+    for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`cc${i}`);
+        if (cc[i-1]) {
+            const { rank, suit } = parseCard(cc[i-1]);
+            const isNew = (i > prevCount);
+
+            if (isNew) {
+                // Cartă nouă: setează conținutul, afișeaz-o (invizibilă), animează
+                const isRed = RED_SUITS.includes(suit);
+                el.className = `card face ${isRed ? 'red' : 'black'}`;
+                el.innerHTML = `<span class="rank">${rank}</span><span class="suit">${SUIT_SYMBOLS[suit] || suit}</span>`;
+                el.style.display = 'flex';
+                const delayIndex = i - 1 - prevCount;
+                animateCard(`cc${i}`, 0.08 + delayIndex * 0.18);
+            } else if (!el.classList.contains('card-deal')) {
+                // Carte existentă deja pe masă și nu e în mijlocul animației — nu re-animăm
+                el.style.display = 'flex';
+                setCardData(`cc${i}`, rank, suit);
+                el.style.opacity = '';
+            }
+            // Dacă e card-deal (animație în curs), nu atinge nimic
+        } else {
+            el.style.display = 'none';
+            setCardData(`cc${i}`, '', '');
+        }
+    }
+
+    currentCommunityCount = cc.length;
+    renderPlayerList(state.players || [], state.currentPlayer);
+}
+
+function onYourTurn(currentBet, myBet, myChips) {
+    const toCall   = currentBet - myBet;
+    const callBtn  = document.getElementById('btn-call');
+    const checkBtn = document.getElementById('btn-check');
+    const raiseBtn = document.getElementById('btn-raise');
+    const allinBtn = document.getElementById('btn-allin');
+
+    if (toCall <= 0) {
+        callBtn.style.display='none'; checkBtn.style.display='';
+    } else {
+        callBtn.textContent=`Call $${Math.min(toCall,myChips)}`; callBtn.style.display=''; checkBtn.style.display='none';
+    }
+
+    const inp=document.getElementById('raise-input');
+    const minRaise=100;
+    const maxRaise=myChips - toCall;
+
+    if (maxRaise < minRaise) {
+        raiseBtn.style.display='none';
+        document.getElementById('raise-wrap').classList.remove('open');
+    } else {
+        raiseBtn.style.display='';
+        inp.min=minRaise;
+        inp.max=maxRaise;
+        inp.value=minRaise;
+        inp.placeholder=`Min +$${minRaise}`;
+    }
+
+    if (myChips <= 0) {
+        raiseBtn.style.display='none';
+        allinBtn.style.display='none';
+    } else {
+        allinBtn.style.display='';
+    }
+
+    toggleActionButtons(true);
+    showToast('Rândul tău!');
+}
+
+function updateTurnTimer(playerName, timeLeft) {
+    const wrap=document.getElementById('timer-wrap');
+    const fillEl=document.getElementById('fill');
+    const numEl=document.getElementById('timer-num');
+    const lblEl=document.getElementById('timer-label');
+    if (timeLeft<=0) { wrap.classList.remove('visible'); return; }
+    wrap.classList.add('visible');
+    lblEl.textContent=playerName;
+    numEl.textContent=timeLeft;
+    fillEl.style.strokeDasharray=CIRCUMFERENCE;
+    const ratio=timeLeft/timerTotal;
+    fillEl.style.strokeDashoffset=CIRCUMFERENCE*(1-ratio);
+    if (ratio<0.34) fillEl.style.stroke='#e74c3c';
+    else if (ratio<0.67) fillEl.style.stroke='#f39c12';
+    else fillEl.style.stroke='var(--gold)';
+}
+
+function updateLobbyCountdown(secondsLeft) {
+    // countdown overlay disabled
+}
+
+function renderPlayerList(players, currentPlayerName) {
+    const container=document.getElementById('pl-rows');
+    container.innerHTML='';
+    const ACTION_LABELS = {
+        fold:  'FOLD',
+        check: 'CHECK',
+        call:  'CALL',
+        raise: 'RAISE',
+        allin: 'ALL-IN',
+    };
+    players.forEach(p => {
+        const isActive=p.name===currentPlayerName;
+        const row=document.createElement('div');
+        row.className=`pl-row${isActive?' active':''}${p.hasFolded?' folded':''}`;
+        
+        let statusHtml = '';
+        if (p.lastAction && ACTION_LABELS[p.lastAction]) {
+            statusHtml = `<span class="pl-status ${p.lastAction}">${ACTION_LABELS[p.lastAction]}</span>`;
+        }
+        
+        row.innerHTML=`
+            <div class="pl-arrow"></div>
+            <div class="pl-avatar">${escHtml(p.name.charAt(0).toUpperCase())}</div>
+            <div class="pl-info">
+                <div class="pl-name">${escHtml(p.name)}</div>
+                <div class="pl-chips">$${p.chips}${p.currentBet>0?` <span class="pl-bet">+$${p.currentBet}</span>`:''}</div>
+            </div>
+            ${statusHtml}`;
+        container.appendChild(row);
+    });
+}
+
+function toggleActionButtons(visible) {
+    document.getElementById('actions').classList.toggle('visible',visible);
+    if (!visible) document.getElementById('raise-wrap').classList.remove('open');
+}
+
+function toggleRaiseInput() {
+    document.getElementById('raise-wrap').classList.toggle('open');
+    if (document.getElementById('raise-wrap').classList.contains('open'))
+        document.getElementById('raise-input').focus();
+}
+
+function confirmRaise() {
+    const inp=document.getElementById('raise-input');
+    const minVal=parseInt(inp.min,10)||100;
+    const maxVal=parseInt(inp.max,10)||0;
+    let amount=parseInt(inp.value,10);
+    if (!amount||amount<=0) return;
+    if (amount<minVal) amount=minVal;
+    if (maxVal>0 && amount>maxVal) amount=maxVal;
+    inp.value=amount;
+    sendAction('raise',amount);
+}
+
+function sendAction(actionName, raiseAmount) {
+    if (!document.getElementById('actions').classList.contains('visible')) return;
+    if (typeof mp!=='undefined') mp.trigger('Poker_PlayerAction',actionName,raiseAmount||0);
+    else console.log('[TEST] Action:',actionName,raiseAmount||'');
+    
+    // Ascunde cărțile la fold — complet, fără să lase spatele cărților
+    if (actionName === 'fold') {
+        setCardData('pc1', '', '');
+        setCardData('pc2', '', '');
+    }
+    
+    toggleActionButtons(false);
+    document.getElementById('timer-wrap').classList.remove('visible');
+}
+
+function showToast(msg, duration) {
+    clearTimeout(toastTimeout);
+    const el=document.getElementById('toast');
+    el.textContent=msg; el.classList.add('show');
+    toastTimeout=setTimeout(()=>el.classList.remove('show'),duration||2500);
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let winnerBannerTimeout = null;
+function showWinnerBanner(winnerNames, pot, handName) {
+    const el = document.getElementById('winner-banner');
+    clearTimeout(winnerBannerTimeout);
+    const names = winnerNames.map(n => escHtml(n)).join(', ');
+    if (winnerNames.length === 1) {
+        el.innerHTML = `<div class="wb-name">🏆 ${names}</div><div class="wb-detail">a câștigat <span class="wb-pot">$${pot.toLocaleString('en-US')}</span></div><div class="wb-hand">${escHtml(handName)}</div>`;
+    } else {
+        el.innerHTML = `<div class="wb-name">🏆 ${names}</div><div class="wb-detail">split pot <span class="wb-pot">$${pot.toLocaleString('en-US')}</span></div><div class="wb-hand">${escHtml(handName)}</div>`;
+    }
+    el.classList.add('visible');
+    winnerBannerTimeout = setTimeout(() => { el.classList.remove('visible'); }, 5000);
+}
+function hideWinnerBanner() {
+    clearTimeout(winnerBannerTimeout);
+    document.getElementById('winner-banner').classList.remove('visible');
+}
+
+function leaveTable() {
+    mp.trigger('Poker_LeaveTable');
+}
+
+// Blochează Space/Enter pe butoane ca să nu activeze click prin tastatură
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') {
+        if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+            e.preventDefault();
+        }
+    }
+});
+
+// Dezactivează context menu
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+/*
+// TEST — decomentează pentru preview
+setTimeout(()=>{
+    updateMyCards('A','s','K','h');
+    updateGameState({ round:'flop', pot:750, currentBet:100, currentPlayer:'Bogdan',
+        communityCards:['7h','Js','3d'],
+        players:[
+            {name:'Bogdan',chips:850,seat:0,hasFolded:false,currentBet:100},
+            {name:'xXDarkBoy',chips:1200,seat:1,hasFolded:false,currentBet:0},
+            {name:'Mihai99',chips:400,seat:2,hasFolded:true,currentBet:0},
+        ]
+    });
+    onYourTurn(100,0,1000);
+    updateTurnTimer('Bogdan',25);
+},500);
+*/
+</script>
+</body>
+</html>
