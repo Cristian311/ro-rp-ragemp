@@ -95,7 +95,7 @@
         <div class="ch-dot"></div>
     </div>
     <div id="placementHint">
-        &#x1F3AF; Tinteste un perete &bull; LEFT CLICK = Plaseaza &bull; RIGHT CLICK / ESC = Anuleaza
+        &#x1F3AF; Tinteste un perete &bull; LEFT CLICK = Plaseaza &bull; SCROLL = Marime &bull; RIGHT CLICK / ESC = Anuleaza
     </div>
 
     <script>
@@ -140,8 +140,39 @@
             }
         }
 
-        // ── TEXTURE UPLOAD ──
+        // ── TEXTURE UPLOAD (serialized queue) ──
+        let texFetchQueue = [];
+        let texFetching = false;
+        let texFetchTimer = null;
+
         function uploadTexture(id, base64) {
+            texFetchQueue.push({ id, base64 });
+            processTexFetchQueue();
+        }
+
+        function processTexFetchQueue() {
+            if (texFetching || texFetchQueue.length === 0) return;
+            texFetching = true;
+            const { id, base64 } = texFetchQueue.shift();
+            doTextureFetch(id, base64);
+        }
+
+        function finishTexFetch() {
+            texFetching = false;
+            if (texFetchTimer) { clearTimeout(texFetchTimer); texFetchTimer = null; }
+            // Small delay between uploads to let game-textures settle
+            setTimeout(() => processTexFetchQueue(), 50);
+        }
+
+        function doTextureFetch(id, base64) {
+            // Safety timeout — if upload hangs, skip after 10s
+            texFetchTimer = setTimeout(() => {
+                texFetching = false;
+                texFetchTimer = null;
+                mp.trigger('Graffiti_TextureError', 'Timeout for ' + id);
+                processTexFetchQueue();
+            }, 10000);
+
             const img = new Image();
             img.onload = () => {
                 const c = document.createElement('canvas');
@@ -153,10 +184,12 @@
                 const canvasImageData = ctx.getImageData(0, 0, TEX_SIZE, TEX_SIZE);
 
                 const dictName = 'graffiti_' + id;
+                // Copy to plain ArrayBuffer for reliable binary transfer
+                const pixelBuf = new Uint8Array(canvasImageData.data).buffer;
 
                 fetch('http://game-textures/put', {
                     method: 'POST',
-                    body: canvasImageData.data,
+                    body: pixelBuf,
                     headers: {
                         'texture-dict': dictName,
                         'texture-name': 'sprite',
@@ -169,12 +202,15 @@
                     } else {
                         mp.trigger('Graffiti_TextureError', 'HTTP ' + resp.status);
                     }
+                    finishTexFetch();
                 }).catch(err => {
                     mp.trigger('Graffiti_TextureError', '' + id + ': ' + err);
+                    finishTexFetch();
                 });
             };
             img.onerror = () => {
                 mp.trigger('Graffiti_TextureError', 'Image load failed for ' + id);
+                finishTexFetch();
             };
             img.src = base64;
         }

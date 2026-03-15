@@ -310,3 +310,215 @@ body {
     gap: 12px;
     justify-content: center;
 }
+
+/* ── MODE TABS ── */
+.mode-tabs {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+}
+
+.mode-tab {
+    padding: 8px 28px;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: none;
+    background: rgba(255, 255, 255, 0.03);
+    color: #888;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+}
+
+.mode-tab:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ccc;
+}
+
+.mode-tab.active {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: #00ff88;
+    color: #00ff88;
+}
+
+/* ── TEXT MODE ── */
+.mode-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.text-input {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 15px;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 280px;
+    resize: vertical;
+    line-height: 1.4;
+}
+
+.text-input:focus {
+    border-color: #00ff88;
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.2);
+}
+
+.font-select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.font-select:focus {
+    border-color: #00ff88;
+}
+
+.font-select option {
+    background: #1a1a2e;
+    color: #fff;
+}
+
+/* ── CUSTOM FONT DROPDOWN ── */
+.font-dropdown {
+    position: relative;
+    min-width: 180px;
+    user-select: none;
+}
+
+.font-dropdown-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    gap: 8px;
+}
+
+.font-dropdown-selected:hover,
+.font-dropdown.open .font-dropdown-selected {
+    border-color: #00ff88;
+}
+
+.font-dropdown-arrow {
+    font-size: 10px;
+    color: #888;
+    transition: transform 0.2s;
+}
+
+.font-dropdown.open .font-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.font-dropdown-list {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: #1a1a2e;
+    border: 1px solid #00ff88;
+    border-radius: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 300;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.font-dropdown.open .font-dropdown-list {
+    display: block;
+}
+
+.font-dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.font-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.font-dropdown-item:hover {
+    background: rgba(0, 255, 136, 0.1);
+}
+
+.font-dropdown-item.active {
+    background: rgba(0, 255, 136, 0.15);
+    border-left: 3px solid #00ff88;
+}
+
+.font-preview-text {
+    font-size: 16px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.font-dropdown-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.font-dropdown-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.font-dropdown-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 136, 0.3);
+    border-radius: 3px;
+}
+
+.font-dropdown-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 136, 0.5);
+}
+
+.font-slider {
+    width: 100px;
+    accent-color: #00ff88;
+    cursor: pointer;
+}
+
+.size-label {
+    font-size: 12px;
+    color: #00ff88;
+    min-width: 28px;
+    text-align: center;
+}
+
+.stamp-info {
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+    padding: 2px 0;
+}
+
+.preview-slider {
+    width: 100px;
+    accent-color: #00ff88;
+    cursor: pointer;
+}

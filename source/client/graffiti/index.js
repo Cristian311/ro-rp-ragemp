@@ -20,27 +20,39 @@ const GRAFFITI_SIZE   = 2.0; // world meters
 
 const KEY_ESC         = 0x1B;
 const KEY_E           = 0x45;
+const PREVIEW_TEX_ID  = 99999;
+
+let previewSizeW       = GRAFFITI_SIZE;
+let previewSizeH       = GRAFFITI_SIZE;
+let previewRotation    = 0;
+let previewTextureReady = false;
 
 // ──────────────────────────────────────────
 // 3D QUAD HELPERS — compute wall-aligned quad
 // ──────────────────────────────────────────
-function computeQuadVectors(normal) {
-    // Compute right & up vectors perpendicular to the wall normal
+function computeQuadVectors(normal, rotation) {
     const worldUp = { x: 0, y: 0, z: 1 };
     const dot = Math.abs(normal.x * worldUp.x + normal.y * worldUp.y + normal.z * worldUp.z);
     const ref = dot > 0.9 ? { x: 0, y: 1, z: 0 } : worldUp;
 
-    // right = normalize( cross(ref, normal) )
     let rx = ref.y * normal.z - ref.z * normal.y;
     let ry = ref.z * normal.x - ref.x * normal.z;
     let rz = ref.x * normal.y - ref.y * normal.x;
     const rLen = Math.sqrt(rx * rx + ry * ry + rz * rz);
     rx /= rLen; ry /= rLen; rz /= rLen;
 
-    // up = cross(normal, right)
     const ux = normal.y * rz - normal.z * ry;
     const uy = normal.z * rx - normal.x * rz;
     const uz = normal.x * ry - normal.y * rx;
+
+    if (rotation) {
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        return {
+            right: { x: rx * cos + ux * sin, y: ry * cos + uy * sin, z: rz * cos + uz * sin },
+            up:    { x: -rx * sin + ux * cos, y: -ry * sin + uy * cos, z: -rz * sin + uz * cos }
+        };
+    }
 
     return { right: { x: rx, y: ry, z: rz }, up: { x: ux, y: uy, z: uz } };
 }
@@ -74,11 +86,30 @@ function closeCanvas() {
     mp.gui.cursor.show(false, false);
 }
 
-// Canvas ready → enter placement mode
-mp.events.add('Graffiti_CanvasReady', (dataURL) => {
-    pendingImageData = dataURL;
-    closeCanvas();
-    enterPlacementMode();
+// Canvas ready — chunked receive from CEF (avoids mp.trigger size limits)
+let canvasChunks = null;
+let pendingAspectW = GRAFFITI_SIZE;
+let pendingAspectH = GRAFFITI_SIZE;
+
+mp.events.add('Graffiti_CanvasStart', (totalStr, wStr, hStr) => {
+    const total = parseInt(totalStr);
+    canvasChunks = { total, chunks: new Array(total), received: 0 };
+    pendingAspectW = parseFloat(wStr) || GRAFFITI_SIZE;
+    pendingAspectH = parseFloat(hStr) || GRAFFITI_SIZE;
+});
+
+mp.events.add('Graffiti_CanvasChunk', (idxStr, data) => {
+    if (!canvasChunks) return;
+    const idx = parseInt(idxStr);
+    canvasChunks.chunks[idx] = data;
+    canvasChunks.received++;
+    if (canvasChunks.received >= canvasChunks.total) {
+        const fullData = canvasChunks.chunks.join('');
+        canvasChunks = null;
+        pendingImageData = fullData;
+        closeCanvas();
+        enterPlacementMode();
+    }
 });
 
 // Canvas cancelled
@@ -91,18 +122,20 @@ mp.events.add('Graffiti_CanvasCancel', () => {
 // ──────────────────────────────────────────
 function enterPlacementMode() {
     isPlacementMode = true;
+    previewSizeW = pendingAspectW;
+    previewSizeH = pendingAspectH;
+    previewTextureReady = false;
     ensureOverlay();
     overlayBrowser.execute(`showPlacementUI(true);`);
-    // Show preview image on crosshair via chunked transfer
-    sendChunkedPreview(pendingImageData);
+    uploadPreviewTexture(pendingImageData);
 }
 
 function exitPlacementMode() {
     isPlacementMode = false;
     pendingImageData = null;
+    previewTextureReady = false;
     if (overlayBrowser !== null) {
         overlayBrowser.execute(`showPlacementUI(false);`);
-        overlayBrowser.execute(`setPlacementPreview(null);`);
     }
 }
 
@@ -156,12 +189,11 @@ function performRaycast() {
     return ray;
 }
 
-// Left click during placement → place graffiti
+// Left click during placement → place graffiti, Right click → cancel
 mp.events.add('click', (x, y, upOrDown, leftOrRight) => {
     if (!isPlacementMode || !pendingImageData) return;
 
-    // leftOrRight: 0 = left, 1 = right
-    if (upOrDown === 'up') return; // only act on mouse down
+    if (upOrDown === 'up') return;
 
     if (leftOrRight === 1) {
         // Right click → cancel
@@ -176,7 +208,6 @@ mp.events.add('click', (x, y, upOrDown, leftOrRight) => {
         return;
     }
 
-    // Extract hit data
     const hitPos = ray.position;
     const normal = ray.surfaceNormal;
 
@@ -185,20 +216,29 @@ mp.events.add('click', (x, y, upOrDown, leftOrRight) => {
         return;
     }
 
-    // Offset slightly from wall to prevent z-fighting
     const placementPos = {
         x: hitPos.x + normal.x * 0.02,
         y: hitPos.y + normal.y * 0.02,
         z: hitPos.z + normal.z * 0.02
     };
 
-    const data = JSON.stringify({
-        imageData: pendingImageData,
+    // Send metadata first, then image in chunks (callRemote has ~32KB limit)
+    const meta = JSON.stringify({
         position: placementPos,
-        normal: { x: normal.x, y: normal.y, z: normal.z }
+        normal: { x: normal.x, y: normal.y, z: normal.z },
+        sizeW: previewSizeW,
+        sizeH: previewSizeH
     });
+    const imgData = pendingImageData;
+    const PLACE_CHUNK = 25000;
+    const totalChunks = Math.ceil(imgData.length / PLACE_CHUNK);
 
-    mp.events.callRemote('Server_GraffitiPlace', data);
+    mp.events.callRemote('Server_GraffitiPlaceMeta', meta, '' + totalChunks);
+    for (let i = 0; i < totalChunks; i++) {
+        const chunk = imgData.substring(i * PLACE_CHUNK, (i + 1) * PLACE_CHUNK);
+        mp.events.callRemote('Server_GraffitiPlaceChunk', '' + i, chunk);
+    }
+
     exitPlacementMode();
 });
 
@@ -250,27 +290,48 @@ function sendChunkedPreview(imageData) {
     }
 }
 
+function uploadPreviewTexture(imageData) {
+    previewTextureReady = false;
+    // Route through the same upload queue to prevent concurrent chunk sends
+    uploadQueue.unshift({ id: PREVIEW_TEX_ID, imageData: imageData });
+    processUploadQueue();
+}
+
 // ──────────────────────────────────────────
 // UPLOAD QUEUE (sequential, one at a time)
 // ──────────────────────────────────────────
 let uploadQueue = [];
 let isUploading = false;
+let uploadSafetyTimer = null;
 
 function processUploadQueue() {
     if (isUploading || uploadQueue.length === 0) return;
     isUploading = true;
+    if (uploadSafetyTimer) clearTimeout(uploadSafetyTimer);
+    // Safety: if upload doesn't complete in 15s, force-unlock queue
+    uploadSafetyTimer = setTimeout(() => {
+        isUploading = false;
+        uploadSafetyTimer = null;
+        processUploadQueue();
+    }, 15000);
     const { id, imageData } = uploadQueue.shift();
     sendChunkedTexture(id, imageData);
 }
 
 mp.events.add('Graffiti_TextureUploaded', (idStr) => {
     const numId = parseInt(idStr);
-    uploadedTextures[numId] = true;
+    if (numId === PREVIEW_TEX_ID) {
+        previewTextureReady = true;
+    } else {
+        uploadedTextures[numId] = true;
+    }
+    if (uploadSafetyTimer) { clearTimeout(uploadSafetyTimer); uploadSafetyTimer = null; }
     isUploading = false;
     processUploadQueue();
 });
 
 mp.events.add('Graffiti_TextureError', (msg) => {
+    if (uploadSafetyTimer) { clearTimeout(uploadSafetyTimer); uploadSafetyTimer = null; }
     isUploading = false;
     processUploadQueue();
 });
@@ -301,19 +362,56 @@ function uploadGraffitiTexture(id, imageData) {
 }
 
 // ──────────────────────────────────────────
-// GRAFFITI SYNC EVENTS
+// GRAFFITI SYNC EVENTS (chunked server→client)
 // ──────────────────────────────────────────
+let pendingGraffiti = {}; // id → { meta, totalChunks, chunks[], received }
 
-// Receive a single new graffiti (broadcast)
-mp.events.add('graffitiCreated', (jsonStr) => {
+// Receive graffiti metadata (without imageData)
+mp.events.add('graffitiMeta', (metaJson, totalStr) => {
     try {
-        const g = JSON.parse(jsonStr);
-        graffitiData[g.id] = g;
-        uploadGraffitiTexture(g.id, g.imageData);
+        const meta = JSON.parse(metaJson);
+        const total = parseInt(totalStr) || 1;
+        pendingGraffiti[meta.id] = {
+            meta,
+            totalChunks: total,
+            chunks: new Array(total),
+            received: 0
+        };
+        // Safety cleanup after 60s
+        setTimeout(() => { delete pendingGraffiti[meta.id]; }, 60000);
     } catch (e) {}
 });
 
-// Receive chunk of graffiti on join
+// Receive image data chunk
+mp.events.add('graffitiImgChunk', (idStr, idxStr, chunk) => {
+    const id = parseInt(idStr);
+    const idx = parseInt(idxStr);
+    const pending = pendingGraffiti[id];
+    if (!pending) return;
+    pending.chunks[idx] = chunk;
+    pending.received++;
+    if (pending.received >= pending.totalChunks) {
+        const imageData = pending.chunks.join('');
+        const g = pending.meta;
+        g.imageData = imageData;
+        delete pendingGraffiti[id];
+        graffitiData[g.id] = g;
+        uploadGraffitiTexture(g.id, g.imageData);
+    }
+});
+
+// Legacy single-call (backward compat)
+mp.events.add('graffitiCreated', (jsonStr) => {
+    try {
+        const g = JSON.parse(jsonStr);
+        if (g.imageData) {
+            graffitiData[g.id] = g;
+            uploadGraffitiTexture(g.id, g.imageData);
+        }
+    } catch (e) {}
+});
+
+// Legacy chunk load
 mp.events.add('graffitiLoadChunk', (jsonStr) => {
     try {
         const chunk = JSON.parse(jsonStr);
@@ -344,20 +442,86 @@ mp.events.add('graffitiClearAll', () => {
 });
 
 // ──────────────────────────────────────────
+// RENDER HELPERS
+// ──────────────────────────────────────────
+function drawGraffitiQuad(pos, normal, sizeW, sizeH, rotation, dictName, texName, alpha) {
+    const hsW = sizeW / 2;
+    const hsH = sizeH / 2;
+    const { right, up } = computeQuadVectors(normal, rotation);
+
+    const bl = {
+        x: pos.x - right.x * hsW - up.x * hsH,
+        y: pos.y - right.y * hsW - up.y * hsH,
+        z: pos.z - right.z * hsW - up.z * hsH
+    };
+    const br = {
+        x: pos.x + right.x * hsW - up.x * hsH,
+        y: pos.y + right.y * hsW - up.y * hsH,
+        z: pos.z + right.z * hsW - up.z * hsH
+    };
+    const tl = {
+        x: pos.x - right.x * hsW + up.x * hsH,
+        y: pos.y - right.y * hsW + up.y * hsH,
+        z: pos.z - right.z * hsW + up.z * hsH
+    };
+    const tr = {
+        x: pos.x + right.x * hsW + up.x * hsH,
+        y: pos.y + right.y * hsW + up.y * hsH,
+        z: pos.z + right.z * hsW + up.z * hsH
+    };
+
+    mp.game.graphics.drawSpritePoly(
+        bl.x, bl.y, bl.z,
+        br.x, br.y, br.z,
+        tl.x, tl.y, tl.z,
+        255, 255, 255, alpha,
+        dictName, texName,
+        0, 1, 1,
+        1, 1, 1,
+        0, 0, 1
+    );
+
+    mp.game.graphics.drawSpritePoly(
+        tl.x, tl.y, tl.z,
+        br.x, br.y, br.z,
+        tr.x, tr.y, tr.z,
+        255, 255, 255, alpha,
+        dictName, texName,
+        0, 0, 1,
+        1, 1, 1,
+        1, 0, 1
+    );
+}
+
+// ──────────────────────────────────────────
 // RENDER LOOP — native drawSpritePoly on walls
 // ──────────────────────────────────────────
 mp.events.add('render', () => {
     const playerPos = mp.players.local.position;
-    const hs = GRAFFITI_SIZE / 2;
 
+    // Handle placement mode controls (scroll to resize, disable weapon wheel)
+    if (isPlacementMode) {
+        mp.game.controls.disableControlAction(0, 14, true);
+        mp.game.controls.disableControlAction(0, 15, true);
+        mp.game.controls.disableControlAction(0, 37, true);
+
+        if (mp.game.controls.isDisabledControlJustPressed(0, 14)) {
+            previewSizeW = Math.min(previewSizeW + 0.2, 12.0);
+            previewSizeH = Math.min(previewSizeH + 0.2, 12.0);
+        }
+        if (mp.game.controls.isDisabledControlJustPressed(0, 15)) {
+            previewSizeW = Math.max(previewSizeW - 0.2, 0.3);
+            previewSizeH = Math.max(previewSizeH - 0.2, 0.3);
+        }
+    }
+
+    // Render existing graffiti
     for (const id in graffitiData) {
-        // Skip if texture not uploaded yet
         if (!uploadedTextures[id]) continue;
 
         const g   = graffitiData[id];
         const pos = g.position;
 
-        // Distance check
         const dx = pos.x - playerPos.x;
         const dy = pos.y - playerPos.y;
         const dz = pos.z - playerPos.z;
@@ -368,65 +532,37 @@ mp.events.add('render', () => {
         const dictName = 'crtxd_graffiti_' + id;
         const texName  = 'sprite';
 
-        // Request texture dict loading (RAGE:MP adds crtxd_ prefix to custom textures)
         if (!mp.game.graphics.hasStreamedTextureDictLoaded(dictName)) {
             mp.game.graphics.requestStreamedTextureDict(dictName, true);
-            continue; // Skip drawing until texture is loaded
+            continue;
         }
 
-        // Opacity fade at distance
         let alpha = 255;
         if (dist > FADE_START) {
             alpha = Math.floor(255 * (1.0 - (dist - FADE_START) / (RENDER_DISTANCE - FADE_START)));
         }
         if (alpha <= 0) continue;
 
-        // Compute wall-aligned quad corners from position + surface normal
-        const { right, up } = computeQuadVectors(g.normal);
+        drawGraffitiQuad(pos, g.normal, g.sizeW || g.size || GRAFFITI_SIZE, g.sizeH || g.size || GRAFFITI_SIZE, g.rotation || 0, dictName, texName, alpha);
+    }
 
-        const bl = {
-            x: pos.x - right.x * hs - up.x * hs,
-            y: pos.y - right.y * hs - up.y * hs,
-            z: pos.z - right.z * hs - up.z * hs
-        };
-        const br = {
-            x: pos.x + right.x * hs - up.x * hs,
-            y: pos.y + right.y * hs - up.y * hs,
-            z: pos.z + right.z * hs - up.z * hs
-        };
-        const tl = {
-            x: pos.x - right.x * hs + up.x * hs,
-            y: pos.y - right.y * hs + up.y * hs,
-            z: pos.z - right.z * hs + up.z * hs
-        };
-        const tr = {
-            x: pos.x + right.x * hs + up.x * hs,
-            y: pos.y + right.y * hs + up.y * hs,
-            z: pos.z + right.z * hs + up.z * hs
-        };
+    // 3D Preview on wall during placement mode
+    if (isPlacementMode && previewTextureReady) {
+        const previewDict = 'crtxd_graffiti_' + PREVIEW_TEX_ID;
+        const previewTex = 'sprite';
 
-        // Triangle 1: bottomLeft, bottomRight, topLeft
-        mp.game.graphics.drawSpritePoly(
-            bl.x, bl.y, bl.z,
-            br.x, br.y, br.z,
-            tl.x, tl.y, tl.z,
-            255, 255, 255, alpha,
-            dictName, texName,
-            0, 1, 1,    // BL: u=0, v=1, w=1
-            1, 1, 1,    // BR: u=1, v=1, w=1
-            0, 0, 1     // TL: u=0, v=0, w=1
-        );
-
-        // Triangle 2: topLeft, bottomRight, topRight
-        mp.game.graphics.drawSpritePoly(
-            tl.x, tl.y, tl.z,
-            br.x, br.y, br.z,
-            tr.x, tr.y, tr.z,
-            255, 255, 255, alpha,
-            dictName, texName,
-            0, 0, 1,    // TL: u=0, v=0, w=1
-            1, 1, 1,    // BR: u=1, v=1, w=1
-            1, 0, 1     // TR: u=1, v=0, w=1
-        );
+        if (!mp.game.graphics.hasStreamedTextureDictLoaded(previewDict)) {
+            mp.game.graphics.requestStreamedTextureDict(previewDict, true);
+        } else {
+            const ray = performRaycast();
+            if (ray && ray.position && ray.surfaceNormal) {
+                const hitPos = {
+                    x: ray.position.x + ray.surfaceNormal.x * 0.03,
+                    y: ray.position.y + ray.surfaceNormal.y * 0.03,
+                    z: ray.position.z + ray.surfaceNormal.z * 0.03
+                };
+                drawGraffitiQuad(hitPos, ray.surfaceNormal, previewSizeW, previewSizeH, 0, previewDict, previewTex, 180);
+            }
+        }
     }
 });

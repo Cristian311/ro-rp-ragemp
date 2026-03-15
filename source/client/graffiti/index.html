@@ -6,7 +6,7 @@
     <title>Graffiti Canvas</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        *:not(input):not(#graffitiCanvas) {
+        *:not(input):not(textarea):not(#graffitiCanvas) {
             user-select: none;
             -webkit-user-select: none;
         }
@@ -16,7 +16,13 @@
     <div class="graffiti-container">
         <div class="graffiti-title">&#x1F3A8; SPRAY GRAFFITI</div>
 
-        <!-- COLOR PALETTE -->
+        <!-- MODE TABS -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tabText">&#x1F4DD; TEXT</button>
+            <button class="mode-tab" id="tabDraw">&#x270F;&#xFE0F; DESEN</button>
+        </div>
+
+        <!-- COLOR PALETTE (shared by both modes) -->
         <div class="toolbar">
             <div class="toolbar-section">
                 <label>Culori</label>
@@ -38,7 +44,39 @@
             </div>
         </div>
 
-        <!-- BRUSH SIZE + TOOLS -->
+        <!-- TEXT MODE PANEL -->
+        <div id="textPanel" class="mode-panel">
+            <div class="toolbar">
+                <div class="toolbar-section" style="flex:1">
+                    <label>Text</label>
+                    <textarea id="textInput" class="text-input" placeholder="Scrie textul... (Enter = linie noua)" rows="3" maxlength="500"></textarea>
+                </div>
+            </div>
+            <div class="toolbar">
+                <div class="toolbar-section">
+                    <label>Font</label>
+                    <div class="font-dropdown" id="fontDropdown">
+                        <div class="font-dropdown-selected" id="fontSelected">
+                            <span class="font-preview-text" style="font-family: Impact">Impact</span>
+                            <span class="font-dropdown-arrow">&#9660;</span>
+                        </div>
+                        <div class="font-dropdown-list" id="fontList"></div>
+                    </div>
+                    <input type="hidden" id="fontSelect" value="Impact">
+                </div>
+                <div class="toolbar-section">
+                    <label>Stil</label>
+                    <button class="tool-btn" id="btnBold">&#x1D401; Bold</button>
+                    <button class="tool-btn" id="btnItalic">&#x1D43C; Italic</button>
+                    <button class="tool-btn" id="btnOutline">&#x2B1C; Outline</button>
+                    <button class="tool-btn" id="btnShadow">&#x1F4A8; Shadow</button>
+                </div>
+            </div>
+            <div class="stamp-info">Click pe canvas = Plaseaza text &bull; Right Click + Drag = Roteste &bull; Scroll = Marime</div>
+        </div>
+
+        <!-- DRAW MODE PANEL -->
+        <div id="drawPanel" class="mode-panel" style="display:none">
         <div class="toolbar">
             <div class="toolbar-section">
                 <label>Marime</label>
@@ -59,6 +97,21 @@
                 <button class="tool-btn" id="btnUndo">&#x21A9; Undo</button>
                 <button class="tool-btn" id="btnClear">&#x1F5D1; Clear</button>
                 <button class="tool-btn" id="btnImgUrl">&#x1F310; URL</button>
+            </div>
+        </div>
+        </div><!-- /drawPanel -->
+
+        <!-- PREVIEW SIZE CONTROLS -->
+        <div class="toolbar" id="previewSizeBar">
+            <div class="toolbar-section">
+                <label>Latime 3D</label>
+                <input type="range" id="previewW" class="preview-slider" min="0.5" max="10" step="0.1" value="2.0">
+                <span id="previewWVal" class="size-label">2.0</span>
+            </div>
+            <div class="toolbar-section">
+                <label>Inaltime 3D</label>
+                <input type="range" id="previewH" class="preview-slider" min="0.5" max="10" step="0.1" value="2.0">
+                <span id="previewHVal" class="size-label">2.0</span>
             </div>
         </div>
 
@@ -112,6 +165,7 @@
         let currentColor   = '#FFFFFF';
         let currentSize    = 12;
         let currentTool    = 'brush';   // brush | spray | eraser | fill
+        let currentMode    = 'text';    // text | draw
         let isDrawing      = false;
         let lastX          = 0;
         let lastY          = 0;
@@ -240,9 +294,183 @@
         }
 
         // ──────────────────────────────────────────
+        // TEXT STAMP STATE
+        // ──────────────────────────────────────────
+        let stampScale    = 1.0;
+        let stampRotation = 0;
+        let stampMouseX   = canvas.width / 2;
+        let stampMouseY   = canvas.height / 2;
+        let stampImage    = null; // offscreen rendered text image
+
+        // Drag-to-rotate state
+        let isRotating      = false;
+        let rotateAnchorX   = 0;
+        let rotateAnchorY   = 0;
+        let rotateBaseAngle = 0;
+
+        function generateStampImage() {
+            const text = document.getElementById('textInput').value;
+            if (!text.trim()) { stampImage = null; return; }
+
+            const font = document.getElementById('fontSelect').value;
+            const baseFontSize = 80;
+
+            let fontStyle = '';
+            if (textBold) fontStyle += 'bold ';
+            if (textItalic) fontStyle += 'italic ';
+
+            const fullFont = fontStyle + baseFontSize + 'px "' + font + '"';
+
+            // Measure and wrap text to fit within canvas
+            const measureCtx = document.createElement('canvas').getContext('2d');
+            measureCtx.font = fullFont;
+
+            const maxWidth = 480;
+            const paragraphs = text.split('\n');
+            const lines = [];
+            for (const para of paragraphs) {
+                if (!para.length) { lines.push(''); continue; }
+                const words = para.split(' ');
+                let currentLine = '';
+                for (const word of words) {
+                    const testLine = currentLine ? currentLine + ' ' + word : word;
+                    if (measureCtx.measureText(testLine).width > maxWidth && currentLine) {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                if (currentLine) lines.push(currentLine);
+            }
+            if (lines.length === 0) lines.push('');
+
+            const lineHeight = baseFontSize * 1.2;
+            let maxW = 0;
+            for (const line of lines) {
+                const w = measureCtx.measureText(line).width;
+                if (w > maxW) maxW = w;
+            }
+
+            const pad = Math.ceil(baseFontSize * 0.4);
+            const cw = Math.ceil(maxW) + pad * 2;
+            const ch = Math.ceil(lines.length * lineHeight) + pad * 2;
+
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = cw;
+            offCanvas.height = ch;
+            const offCtx = offCanvas.getContext('2d');
+
+            offCtx.font = fullFont;
+            offCtx.textAlign = 'center';
+            offCtx.textBaseline = 'middle';
+
+            if (textShadow) {
+                offCtx.shadowColor = 'rgba(0,0,0,0.7)';
+                offCtx.shadowBlur = 8;
+                offCtx.shadowOffsetX = 4;
+                offCtx.shadowOffsetY = 4;
+            }
+
+            for (let i = 0; i < lines.length; i++) {
+                const y = pad + lineHeight / 2 + i * lineHeight;
+                if (textOutline) {
+                    offCtx.strokeStyle = '#000000';
+                    offCtx.lineWidth = Math.max(2, baseFontSize / 12);
+                    offCtx.lineJoin = 'round';
+                    offCtx.strokeText(lines[i], cw / 2, y);
+                }
+                offCtx.fillStyle = currentColor;
+                offCtx.fillText(lines[i], cw / 2, y);
+            }
+
+            offCtx.shadowColor = 'transparent';
+            stampImage = offCanvas;
+        }
+
+        function renderCanvasWithStampPreview() {
+            // Redraw canvas from last saved history state
+            if (historyStack.length > 0) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                    drawStampGhost();
+                };
+                img.src = historyStack[historyStack.length - 1];
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawStampGhost();
+            }
+        }
+
+        function drawStampGhost() {
+            if (!stampImage || currentMode !== 'text') return;
+
+            ctx.save();
+            ctx.translate(stampMouseX, stampMouseY);
+            ctx.rotate(stampRotation);
+            ctx.scale(stampScale, stampScale);
+            ctx.globalAlpha = 0.6;
+            ctx.drawImage(stampImage, -stampImage.width / 2, -stampImage.height / 2);
+            ctx.restore();
+        }
+
+        function placeStamp() {
+            if (!stampImage || currentMode !== 'text') return;
+
+            // Restore canvas to last clean state, then stamp permanently
+            if (historyStack.length > 0) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+
+                    ctx.save();
+                    ctx.translate(stampMouseX, stampMouseY);
+                    ctx.rotate(stampRotation);
+                    ctx.scale(stampScale, stampScale);
+                    ctx.globalAlpha = 1.0;
+                    ctx.drawImage(stampImage, -stampImage.width / 2, -stampImage.height / 2);
+                    ctx.restore();
+
+                    saveHistory();
+                    renderCanvasWithStampPreview();
+                };
+                img.src = historyStack[historyStack.length - 1];
+            } else {
+                ctx.save();
+                ctx.translate(stampMouseX, stampMouseY);
+                ctx.rotate(stampRotation);
+                ctx.scale(stampScale, stampScale);
+                ctx.globalAlpha = 1.0;
+                ctx.drawImage(stampImage, -stampImage.width / 2, -stampImage.height / 2);
+                ctx.restore();
+
+                saveHistory();
+                renderCanvasWithStampPreview();
+            }
+        }
+
+        // ──────────────────────────────────────────
         // MOUSE EVENTS
         // ──────────────────────────────────────────
         canvas.addEventListener('mousedown', (e) => {
+            if (currentMode === 'text') {
+                if (e.button === 0) {
+                    // Left click → place stamp
+                    placeStamp();
+                } else if (e.button === 2) {
+                    // Right click → start drag-to-rotate
+                    isRotating = true;
+                    const pos = getCanvasPos(e);
+                    rotateAnchorX = pos.x;
+                    rotateAnchorY = pos.y;
+                    rotateBaseAngle = stampRotation;
+                }
+                return;
+            }
+
             const pos = getCanvasPos(e);
 
             if (currentTool === 'fill') {
@@ -260,7 +488,27 @@
             }
         });
 
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
         canvas.addEventListener('mousemove', (e) => {
+            if (currentMode === 'text') {
+                cursor.style.display = 'none';
+                const pos = getCanvasPos(e);
+                if (isRotating) {
+                    const dx = pos.x - rotateAnchorX;
+                    const dy = pos.y - rotateAnchorY;
+                    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+                        stampRotation = rotateBaseAngle + Math.atan2(dy, dx);
+                    }
+                } else {
+                    stampMouseX = pos.x;
+                    stampMouseY = pos.y;
+                }
+                renderCanvasWithStampPreview();
+                return;
+            }
             // Update custom cursor position
             cursor.style.left   = e.clientX + 'px';
             cursor.style.top    = e.clientY + 'px';
@@ -281,7 +529,22 @@
             lastY = pos.y;
         });
 
-        canvas.addEventListener('mouseup', () => {
+        canvas.addEventListener('wheel', (e) => {
+            if (currentMode !== 'text') return;
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                stampScale = Math.min(stampScale + 0.1, 5.0);
+            } else {
+                stampScale = Math.max(stampScale - 0.1, 0.2);
+            }
+            renderCanvasWithStampPreview();
+        }, { passive: false });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (currentMode === 'text' && e.button === 2) {
+                isRotating = false;
+                return;
+            }
             if (isDrawing) {
                 isDrawing = false;
                 saveHistory();
@@ -293,7 +556,17 @@
                 isDrawing = false;
                 saveHistory();
             }
+            isRotating = false;
             cursor.style.display = 'none';
+            // In text mode, restore clean canvas (remove ghost stamp)
+            if (currentMode === 'text' && historyStack.length > 0) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = historyStack[historyStack.length - 1];
+            }
         });
 
         // ──────────────────────────────────────────
@@ -308,6 +581,8 @@
                     currentTool = 'brush';
                     updateToolButtons();
                 }
+                generateStampImage();
+                renderCanvasWithStampPreview();
             });
         });
 
@@ -318,6 +593,8 @@
                 currentTool = 'brush';
                 updateToolButtons();
             }
+            generateStampImage();
+            renderCanvasWithStampPreview();
         });
 
         // ──────────────────────────────────────────
@@ -480,45 +757,61 @@
         // ACTION BUTTONS
         // ──────────────────────────────────────────
         document.getElementById('btnPlace').addEventListener('click', () => {
-            const MAX_DATA_SIZE = 200000; // 200KB max for safe network transfer
+            function doExport() {
+                const MAX_DATA_SIZE = 2000000; // ~2MB max for network transfer
 
-            // Check if canvas has any transparent pixels
-            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-            let hasTransparency = false;
-            for (let i = 3; i < pixels.length; i += 4) {
-                if (pixels[i] < 250) { hasTransparency = true; break; }
-            }
-
-            let dataURL;
-            if (hasTransparency) {
-                // PNG to preserve transparency
-                dataURL = canvas.toDataURL('image/png');
-                // If PNG too large, resize
-                if (dataURL.length > MAX_DATA_SIZE) {
-                    const small = document.createElement('canvas');
-                    small.width = 256;
-                    small.height = 256;
-                    small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
-                    dataURL = small.toDataURL('image/png');
+                // Check if canvas has any transparent pixels
+                const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let hasTransparency = false;
+                for (let i = 3; i < pixels.length; i += 4) {
+                    if (pixels[i] < 250) { hasTransparency = true; break; }
                 }
-            } else {
-                // JPEG for fully opaque images (photos) — much smaller
-                let quality = 0.85;
-                dataURL = canvas.toDataURL('image/jpeg', quality);
-                while (dataURL.length > MAX_DATA_SIZE && quality > 0.2) {
-                    quality -= 0.1;
+
+                let dataURL;
+                if (hasTransparency) {
+                    // PNG to preserve transparency
+                    dataURL = canvas.toDataURL('image/png');
+                    // If PNG too large, resize
+                    if (dataURL.length > MAX_DATA_SIZE) {
+                        const small = document.createElement('canvas');
+                        small.width = 256;
+                        small.height = 256;
+                        small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
+                        dataURL = small.toDataURL('image/png');
+                    }
+                } else {
+                    // JPEG for fully opaque images (photos) — much smaller
+                    let quality = 0.85;
                     dataURL = canvas.toDataURL('image/jpeg', quality);
+                    while (dataURL.length > MAX_DATA_SIZE && quality > 0.2) {
+                        quality -= 0.1;
+                        dataURL = canvas.toDataURL('image/jpeg', quality);
+                    }
+                    if (dataURL.length > MAX_DATA_SIZE) {
+                        const small = document.createElement('canvas');
+                        small.width = 256;
+                        small.height = 256;
+                        small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
+                        dataURL = small.toDataURL('image/jpeg', 0.7);
+                    }
                 }
-                if (dataURL.length > MAX_DATA_SIZE) {
-                    const small = document.createElement('canvas');
-                    small.width = 256;
-                    small.height = 256;
-                    small.getContext('2d').drawImage(canvas, 0, 0, 256, 256);
-                    dataURL = small.toDataURL('image/jpeg', 0.7);
-                }
+
+                sendChunkedToClient(dataURL);
             }
 
-            mp.trigger('Graffiti_CanvasReady', dataURL);
+            // In text mode, restore clean canvas from history (remove ghost stamp overlay)
+            if (currentMode === 'text' && historyStack.length > 0) {
+                const cleanImg = new Image();
+                cleanImg.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(cleanImg, 0, 0);
+                    doExport();
+                };
+                cleanImg.src = historyStack[historyStack.length - 1];
+                return;
+            }
+
+            doExport();
         });
 
         document.getElementById('btnCancel').addEventListener('click', () => {
@@ -526,15 +819,253 @@
         });
 
         // ──────────────────────────────────────────
+        // CHUNKED EXPORT TO CLIENT (avoids mp.trigger size limits)
+        // ──────────────────────────────────────────
+        function sendChunkedToClient(dataURL) {
+            const pw = document.getElementById('previewW').value;
+            const ph = document.getElementById('previewH').value;
+            const CHUNK = 25000;
+            const total = Math.ceil(dataURL.length / CHUNK);
+            mp.trigger('Graffiti_CanvasStart', '' + total, pw, ph);
+            for (let i = 0; i < total; i++) {
+                mp.trigger('Graffiti_CanvasChunk', '' + i, dataURL.substring(i * CHUNK, (i + 1) * CHUNK));
+            }
+        }
+
+        // ──────────────────────────────────────────
         // KEYBOARD SHORTCUTS
         // ──────────────────────────────────────────
         document.addEventListener('keydown', (e) => {
+            if (currentMode === 'text') {
+                if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); renderCanvasWithStampPreview(); }
+                return;
+            }
             if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
             if (e.key === 'b') { currentTool = 'brush'; updateToolButtons(); }
             if (e.key === 's') { currentTool = 'spray'; updateToolButtons(); }
             if (e.key === 'e') { currentTool = 'eraser'; updateToolButtons(); }
             if (e.key === 'f') { currentTool = 'fill'; updateToolButtons(); }
         });
+
+        // ──────────────────────────────────────────
+        // MODE SWITCHING (TEXT / DRAW)
+        // ──────────────────────────────────────────
+        let textBold = false;
+        let textItalic = false;
+        let textOutline = false;
+        let textShadow = false;
+
+        document.getElementById('tabText').addEventListener('click', () => {
+            currentMode = 'text';
+            document.getElementById('tabText').classList.add('active');
+            document.getElementById('tabDraw').classList.remove('active');
+            document.getElementById('textPanel').style.display = '';
+            document.getElementById('drawPanel').style.display = 'none';
+            canvas.style.cursor = 'crosshair';
+            generateStampImage();
+            renderCanvasWithStampPreview();
+            setTimeout(() => document.getElementById('textInput').focus(), 50);
+        });
+
+        document.getElementById('tabDraw').addEventListener('click', () => {
+            currentMode = 'draw';
+            document.getElementById('tabDraw').classList.add('active');
+            document.getElementById('tabText').classList.remove('active');
+            document.getElementById('drawPanel').style.display = '';
+            document.getElementById('textPanel').style.display = 'none';
+            // Restore canvas to clean state (remove ghost stamp)
+            if (historyStack.length > 0) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = historyStack[historyStack.length - 1];
+            }
+        });
+
+        // Text controls event listeners
+        document.getElementById('textInput').addEventListener('input', () => {
+            generateStampImage();
+            renderCanvasWithStampPreview();
+        });
+        // fontSelect change is handled by the custom dropdown selectFont()
+
+        document.getElementById('btnBold').addEventListener('click', () => {
+            textBold = !textBold;
+            document.getElementById('btnBold').classList.toggle('active', textBold);
+            generateStampImage();
+            renderCanvasWithStampPreview();
+        });
+        document.getElementById('btnItalic').addEventListener('click', () => {
+            textItalic = !textItalic;
+            document.getElementById('btnItalic').classList.toggle('active', textItalic);
+            generateStampImage();
+            renderCanvasWithStampPreview();
+        });
+        document.getElementById('btnOutline').addEventListener('click', () => {
+            textOutline = !textOutline;
+            document.getElementById('btnOutline').classList.toggle('active', textOutline);
+            generateStampImage();
+            renderCanvasWithStampPreview();
+        });
+        document.getElementById('btnShadow').addEventListener('click', () => {
+            textShadow = !textShadow;
+            document.getElementById('btnShadow').classList.toggle('active', textShadow);
+            generateStampImage();
+            renderCanvasWithStampPreview();
+        });
+
+        // Preview size slider listeners — also resize the canvas
+        document.getElementById('previewW').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('previewWVal').textContent = val.toFixed(1);
+            const hVal = parseFloat(document.getElementById('previewH').value);
+            resizeCanvasPreview(val, hVal);
+        });
+        document.getElementById('previewH').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('previewHVal').textContent = val.toFixed(1);
+            const wVal = parseFloat(document.getElementById('previewW').value);
+            resizeCanvasPreview(wVal, val);
+        });
+
+        function resizeCanvasPreview(w, h) {
+            // Save current canvas content
+            const imgData = canvas.toDataURL();
+            const ratio = w / h;
+            // Base dimension: keep the larger side at 512
+            let newW, newH;
+            if (ratio >= 1) {
+                newW = 512;
+                newH = Math.round(512 / ratio);
+            } else {
+                newH = 512;
+                newW = Math.round(512 * ratio);
+            }
+            newW = Math.max(64, newW);
+            newH = Math.max(64, newH);
+            canvas.width = newW;
+            canvas.height = newH;
+            // Restore content
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, newW, newH);
+                ctx.drawImage(img, 0, 0, newW, newH);
+                // Update history with new size
+                historyStack = [canvas.toDataURL()];
+            };
+            img.src = imgData;
+        }
+
+        // ──────────────────────────────────────────
+        // CUSTOM FONT DROPDOWN
+        // ──────────────────────────────────────────
+        const builtinFonts = [
+            { name: 'Impact', family: 'Impact' },
+            { name: 'Arial Black', family: 'Arial Black' },
+            { name: 'Comic Sans', family: 'Comic Sans MS' },
+            { name: 'Segoe Script', family: 'Segoe Script' },
+            { name: 'Georgia', family: 'Georgia' },
+            { name: 'Courier', family: 'Courier New' },
+            { name: 'Verdana', family: 'Verdana' },
+            { name: 'Trebuchet', family: 'Trebuchet MS' },
+            { name: 'Lucida Console', family: 'Lucida Console' },
+            { name: 'Times New Roman', family: 'Times New Roman' }
+        ];
+
+        let allFonts = [...builtinFonts];
+        let selectedFont = 'Impact';
+
+        const fontDropdown = document.getElementById('fontDropdown');
+        const fontSelected = document.getElementById('fontSelected');
+        const fontList = document.getElementById('fontList');
+        const fontSelect = document.getElementById('fontSelect');
+
+        function buildFontList() {
+            fontList.innerHTML = '';
+            allFonts.forEach(f => {
+                const item = document.createElement('div');
+                item.className = 'font-dropdown-item' + (f.family === selectedFont ? ' active' : '');
+                item.dataset.family = f.family;
+                item.innerHTML = '<span class="font-preview-text" style="font-family: \'' + f.family + '\'">' + f.name + '</span>';
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectFont(f.family, f.name);
+                });
+                fontList.appendChild(item);
+            });
+        }
+
+        function selectFont(family, name) {
+            selectedFont = family;
+            fontSelect.value = family;
+            fontSelected.innerHTML = '<span class="font-preview-text" style="font-family: \'' + family + '\'">' + name + '</span><span class="font-dropdown-arrow">&#9660;</span>';
+            fontDropdown.classList.remove('open');
+            buildFontList();
+            generateStampImage();
+            renderCanvasWithStampPreview();
+        }
+
+        fontSelected.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fontDropdown.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!fontDropdown.contains(e.target)) {
+                fontDropdown.classList.remove('open');
+            }
+        });
+
+        // Load custom fonts from fonts/fonts.json
+        function loadCustomFonts() {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', 'fonts/fonts.json', true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                if (xhr.status !== 200 && xhr.responseText === '') {
+                    console.warn('fonts.json not found or empty');
+                    return;
+                }
+                let data;
+                try { data = JSON.parse(xhr.responseText); } catch(e) { console.warn('fonts.json parse error', e); return; }
+                if (!data.fonts || !data.fonts.length) return;
+
+                // Build @font-face CSS rules
+                let css = '';
+                data.fonts.forEach(f => {
+                    css += '@font-face { font-family: "' + f.name + '"; src: url("fonts/' + f.file + '"); font-display: block; }\n';
+                });
+                const style = document.createElement('style');
+                style.textContent = css;
+                document.head.appendChild(style);
+
+                // Add fonts to the list
+                data.fonts.forEach(f => {
+                    allFonts.push({ name: f.name, family: f.name });
+                });
+
+                // Wait for fonts to actually load, then rebuild
+                document.fonts.ready.then(() => {
+                    buildFontList();
+                });
+
+                // Also rebuild immediately so they show up (they'll render with correct font once loaded)
+                buildFontList();
+            };
+            xhr.send();
+        }
+
+        buildFontList();
+        loadCustomFonts();
+
+        // Auto-focus text input on load
+        setTimeout(() => {
+            if (currentMode === 'text') {
+                document.getElementById('textInput').focus();
+            }
+        }, 100);
     </script>
 </body>
 </html>

@@ -7,9 +7,9 @@ const logger = require('./graffiti_logger');
 // ──────────────────────────────────────────
 const SAVE_PATH = path.join(process.cwd(), 'graffiti_data.json');
 
-const MAX_PER_PLAYER = 15;
-const COOLDOWN_MS    = 5000;       // 5 seconds
-const MAX_IMAGE_SIZE = 250000;      // ~250 KB base64
+const MAX_PER_PLAYER = 199;
+const COOLDOWN_MS    = 1000;       // 1 second
+const MAX_IMAGE_SIZE = 2000000;     // ~2 MB base64
 
 let graffitiList = [];              // Array of graffiti objects
 let nextId       = 1;
@@ -64,9 +64,28 @@ function setCooldown(player) {
 function broadcastGraffitiToAll(eventName, data) {
     mp.players.forEach(p => {
         if (p && p.id !== undefined) {
-            p.call(eventName, [typeof data === 'string' ? data : JSON.stringify(data)]);
+            try { sendGraffitiChunked(p, eventName, data); } catch (e) {}
         }
     });
+}
+
+const SERVER_CHUNK_SIZE = 20000; // 20KB per player.call()
+
+function sendGraffitiChunked(player, eventName, graffiti) {
+    // Send metadata (without imageData) + image chunks separately
+    const meta = {};
+    for (const key in graffiti) {
+        if (key !== 'imageData') meta[key] = graffiti[key];
+    }
+    const imgData = graffiti.imageData || '';
+    const totalChunks = Math.ceil(imgData.length / SERVER_CHUNK_SIZE) || 1;
+    player.call('graffitiMeta', [JSON.stringify(meta), '' + totalChunks]);
+    for (let i = 0; i < totalChunks; i++) {
+        const chunk = imgData.substring(i * SERVER_CHUNK_SIZE, (i + 1) * SERVER_CHUNK_SIZE);
+        setTimeout(() => {
+            try { player.call('graffitiImgChunk', ['' + meta.id, '' + i, chunk]); } catch(e) {}
+        }, (i + 1) * 10);
+    }
 }
 
 function sendAllGraffitiToPlayer(player) {
@@ -75,16 +94,18 @@ function sendAllGraffitiToPlayer(player) {
         player.call('graffitiLoadComplete', []);
         return;
     }
-    // Send one graffiti at a time with delays to avoid overwhelming the client
+    // Send one graffiti at a time with delays
     for (let i = 0; i < total; i++) {
         setTimeout(() => {
             try {
-                player.call('graffitiLoadChunk', [JSON.stringify([graffitiList[i]])]);
+                sendGraffitiChunked(player, 'graffitiCreated', graffitiList[i]);
                 if (i === total - 1) {
-                    player.call('graffitiLoadComplete', []);
+                    setTimeout(() => {
+                        try { player.call('graffitiLoadComplete', []); } catch(e) {}
+                    }, 500);
                 }
             } catch (e) {}
-        }, i * 300);
+        }, i * 400);
     }
 }
 
@@ -206,23 +227,54 @@ mp.events.addCommand('graffitilist', (player) => {
 // CLIENT EVENTS
 // ──────────────────────────────────────────
 
-// Player places graffiti after drawing + aiming at wall
-mp.events.add('Server_GraffitiPlace', (player, jsonData) => {
-    let data;
+// Chunked placement: client sends meta first, then image chunks
+const pendingPlace = {};  // playerId → { meta, totalChunks, chunks[], received }
+
+mp.events.add('Server_GraffitiPlaceMeta', (player, metaJson, totalStr) => {
+    let meta;
     try {
-        data = JSON.parse(jsonData);
+        meta = JSON.parse(metaJson);
     } catch (e) {
         player.outputChatBox('!{FF4444}[GRAFFITI] Date invalide.');
         return;
     }
+    const total = parseInt(totalStr) || 0;
+    if (total <= 0 || total > 200) {
+        player.outputChatBox('!{FF4444}[GRAFFITI] Date invalide.');
+        return;
+    }
+    pendingPlace[player.id] = {
+        meta,
+        totalChunks: total,
+        chunks: new Array(total),
+        received: 0
+    };
+    // Safety: clear pending after 30s if not completed
+    setTimeout(() => { delete pendingPlace[player.id]; }, 30000);
+});
 
-    // Validate
-    if (!data.imageData || !data.position || !data.normal) {
+mp.events.add('Server_GraffitiPlaceChunk', (player, idxStr, chunkData) => {
+    const pending = pendingPlace[player.id];
+    if (!pending) return;
+    const idx = parseInt(idxStr);
+    if (idx < 0 || idx >= pending.totalChunks) return;
+    pending.chunks[idx] = chunkData;
+    pending.received++;
+    if (pending.received >= pending.totalChunks) {
+        const imageData = pending.chunks.join('');
+        const meta = pending.meta;
+        delete pendingPlace[player.id];
+        finalizeGraffitiPlace(player, meta, imageData);
+    }
+});
+
+function finalizeGraffitiPlace(player, meta, imageData) {
+    if (!imageData || !meta.position || !meta.normal) {
         player.outputChatBox('!{FF4444}[GRAFFITI] Date incomplete.');
         return;
     }
 
-    if (data.imageData.length > MAX_IMAGE_SIZE) {
+    if (imageData.length > MAX_IMAGE_SIZE) {
         player.outputChatBox('!{FF4444}[GRAFFITI] Imaginea este prea mare.');
         return;
     }
@@ -242,16 +294,20 @@ mp.events.add('Server_GraffitiPlace', (player, jsonData) => {
         playerName: player.name,
         socialClub: getPlayerIdentifier(player),
         position: {
-            x: parseFloat(data.position.x),
-            y: parseFloat(data.position.y),
-            z: parseFloat(data.position.z),
+            x: parseFloat(meta.position.x),
+            y: parseFloat(meta.position.y),
+            z: parseFloat(meta.position.z),
         },
         normal: {
-            x: parseFloat(data.normal.x),
-            y: parseFloat(data.normal.y),
-            z: parseFloat(data.normal.z),
+            x: parseFloat(meta.normal.x),
+            y: parseFloat(meta.normal.y),
+            z: parseFloat(meta.normal.z),
         },
-        imageData: data.imageData,
+        size: parseFloat(meta.sizeW) || 2.0,
+        sizeW: parseFloat(meta.sizeW) || 2.0,
+        sizeH: parseFloat(meta.sizeH) || 2.0,
+        rotation: parseFloat(meta.rotation) || 0,
+        imageData: imageData,
         timestamp: Date.now(),
     };
 
@@ -263,6 +319,18 @@ mp.events.add('Server_GraffitiPlace', (player, jsonData) => {
 
     broadcastGraffitiToAll('graffitiCreated', graffiti);
     player.outputChatBox(`!{00FF88}[GRAFFITI] Graffiti #${graffiti.id} plasat! (${getPlayerGraffitiCount(player)}/${MAX_PER_PLAYER})`);
+}
+
+// Legacy single-call placement (kept for backward compat)
+mp.events.add('Server_GraffitiPlace', (player, jsonData) => {
+    let data;
+    try {
+        data = JSON.parse(jsonData);
+    } catch (e) {
+        player.outputChatBox('!{FF4444}[GRAFFITI] Date invalide.');
+        return;
+    }
+    finalizeGraffitiPlace(player, data, data.imageData);
 });
 
 // Player requests all graffiti (on join / reconnect)

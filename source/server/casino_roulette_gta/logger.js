@@ -7,7 +7,7 @@
 const fs   = require('fs');
 const path = require('path');
 
-const LOGS_DIR       = path.join(process.cwd(), 'casino_roulette_gta_logs');
+const LOGS_DIR       = path.join(process.cwd(), 'logs/casino_roulette_gta_logs');
 const TABLES_DIR     = path.join(LOGS_DIR, 'tables');
 const GAMES_DIR      = path.join(LOGS_DIR, 'games');
 const SUMMARY_FILE   = path.join(LOGS_DIR, 'all_games_history.log');

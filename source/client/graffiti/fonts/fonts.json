@@ -1,0 +1,22 @@
+{
+    "fonts": [
+        { "name": "A Another Tag",        "file": "aAnotherTag.ttf" },
+        { "name": "A Dripping Marker",    "file": "adrip1.ttf" },
+        { "name": "Aerosoldier",          "file": "Aerosoldier_PERSONAL_USE_ONLY.otf" },
+        { "name": "Aerosoldier Basic",    "file": "AerosoldierBasic_PERSONAL_USE_ONLY.otf" },
+        { "name": "Aerosoldier Drip",     "file": "AerosoldierDrip_PERSONAL_USE_ONLY.otf" },
+        { "name": "Aerosoldier Spray",    "file": "AerosoldierSpray_PERSONAL_USE_ONLY.otf" },
+        { "name": "Docallisme On Street", "file": "DOCALLISME ON STREET.ttf" },
+        { "name": "Don Graffiti",         "file": "DonGraffiti.otf" },
+        { "name": "Fat Wandals",          "file": "FatWandals_PERSONAL.ttf" },
+        { "name": "Fat Wandals Alt",      "file": "FatWandalsAlt_PERSONAL.ttf" },
+        { "name": "Graffiti City",        "file": "Graffiti City.otf" },
+        { "name": "Next Ups",             "file": "Next Ups.ttf" },
+        { "name": "Next Ups Black",       "file": "Next Ups Black.ttf" },
+        { "name": "Smasher 312",          "file": "Smasher 312 Custom.ttf" },
+        { "name": "Spartical Graffiti",   "file": "SparticalGraffiti_PERSONAL_USE_ONLY.otf" },
+        { "name": "Thelawes",             "file": "Thelawes.otf" },
+        { "name": "The Jacatra",          "file": "THE_JACATRA.otf" },
+        { "name": "Vandal Wupz",          "file": "Vandal Wupz.ttf" }
+    ]
+}
