@@ -2,7 +2,8 @@ const fs   = require('fs');
 const path = require('path');
 const server = require('./slots_server');
 
-const savePath = path.join(process.cwd(), 'slots_machines.json');
+const savePath = path.join(process.cwd(), 'data', 'slots', 'slots_machines.json');
+fs.mkdirSync(path.dirname(savePath), { recursive: true });
 
 // Slot machine prop models (index 1-17, 0 = no prop)
 const SLOT_PROPS = [

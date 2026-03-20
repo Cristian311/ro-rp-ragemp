@@ -11,7 +11,8 @@ const path = require('path');
 const { CONFIG } = require('./config');
 const dealer = require('./dealer');
 
-const savePath = path.join(process.cwd(), 'casino_roulette_gta_tables.json');
+const savePath = path.join(process.cwd(), 'data', 'casino_roulette_gta', 'casino_roulette_gta_tables.json');
+fs.mkdirSync(path.dirname(savePath), { recursive: true });
 
 // ──────────────────────────────────────────
 // GTA V DIAMOND CASINO SEAT POSITIONS (from func_21)

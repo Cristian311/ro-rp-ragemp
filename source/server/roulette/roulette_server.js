@@ -178,7 +178,7 @@ function joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tabl
     callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
 
     // Dacă masa e în waiting și acum avem destui jucători, pornim betting
-    if (lobby.state === 'waiting' && lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS) {
+    if (lobby.state === 'waiting' && lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS && !lobby.paused) {
         startBettingPhase(lobby);
     }
 }
@@ -436,11 +436,14 @@ function evaluateResults(lobby) {
         lobby.players.forEach((p, i) => { p.seat = i; });
 
         // Runda nouă sau așteptare
-        if (lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS) {
+        if (lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS && !lobby.paused) {
             broadcastToLobby(lobby, `!{Orange}[RULETĂ] !{White}Rundă nouă în ${ROULETTE_CONFIG.RESULT_DELAY} secunde...`);
             setTimeout(() => {
-                if (lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS) {
+                if (lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS && !lobby.paused) {
                     startBettingPhase(lobby);
+                } else if (lobby.paused) {
+                    lobby.state = 'waiting';
+                    broadcastToLobby(lobby, '!{Red}[RULETĂ] Masa este pe pauză.');
                 } else {
                     lobby.state = 'waiting';
                     broadcastToLobby(lobby, '!{Red}[RULETĂ] Nu sunt suficienți jucători.');
@@ -512,6 +515,113 @@ mp.events.add('Server_JoinRouletteTable', (player, tableIndex, tableName, casino
 
 mp.events.add('Server_LeaveRouletteTable', (player) => {
     leaveLobby(player);
+});
+
+// ──────────────────────────────────────────
+// SAVE HUD SETTINGS TO FILE
+// ──────────────────────────────────────────
+const fs   = require('fs');
+const path = require('path');
+
+const settingsSavePath = path.join(process.cwd(), 'data', 'roulette', 'roulette_hud_settings.json');
+fs.mkdirSync(path.dirname(settingsSavePath), { recursive: true });
+
+mp.events.add('Server_SaveRouletteSettings', (player, settingsJson) => {
+    try {
+        const settings = JSON.parse(settingsJson);
+        // Salvează cu timestamp și numele playerului
+        const data = {
+            savedBy: player.name,
+            savedAt: new Date().toISOString(),
+            settings: settings
+        };
+        fs.writeFileSync(settingsSavePath, JSON.stringify(data, null, 4));
+        player.outputChatBox('!{Green}[RULETĂ] Setările HUD au fost salvate în fișier!');
+        console.log(`[RULETĂ] HUD settings saved by ${player.name}: ${settingsSavePath}`);
+    } catch (e) {
+        player.outputChatBox('!{Red}[RULETĂ] Eroare la salvarea setărilor!');
+        console.log(`[RULETĂ] Error saving settings: ${e.message}`);
+    }
+});
+
+// ──────────────────────────────────────────
+// PAUSE / RESUME TABLE
+// ──────────────────────────────────────────
+mp.events.addCommand('pauseroulette', (player, _, idStr) => {
+    const index = parseInt(idStr);
+    if (isNaN(index)) {
+        player.outputChatBox('!{Red}[RULETĂ] Folosire: /pauseroulette <id>');
+        return;
+    }
+
+    const lobby = lobbies[index];
+    if (!lobby) {
+        player.outputChatBox(`!{Red}[RULETĂ] Nu există lobby activ pentru masa #${index}.`);
+        return;
+    }
+
+    if (lobby.paused) {
+        player.outputChatBox(`!{Yellow}[RULETĂ] Masa #${index} este deja pe pauză.`);
+        return;
+    }
+
+    lobby.paused = true;
+
+    // Oprește timer-ul de betting dacă e activ
+    if (lobby.betTimer) {
+        clearInterval(lobby.betTimer);
+        lobby.betTimer = null;
+    }
+
+    // Returnează pariurile dacă suntem în betting
+    if (lobby.state === 'betting') {
+        lobby.players.forEach(slot => {
+            if (slot.totalBet > 0) {
+                slot.chips += slot.totalBet;
+                slot.bets = [];
+                slot.totalBet = 0;
+                slot.player.call('rouletteUpdateBets', [JSON.stringify(slot.bets), slot.chips, slot.totalBet]);
+            }
+        });
+    }
+
+    lobby.state = 'waiting';
+    broadcastToLobby(lobby, '!{Red}[RULETĂ] ⏸ Masa a fost pusă pe pauză de un admin.');
+    callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
+    updateLobbyUI(lobby);
+    player.outputChatBox(`!{Green}[RULETĂ] Masa #${index} "${lobby.name}" a fost pusă pe pauză.`);
+    console.log(`[RULETĂ] PAUSE: Masa #${index} "${lobby.name}" paused by ${player.name}`);
+});
+
+mp.events.addCommand('resumeroulette', (player, _, idStr) => {
+    const index = parseInt(idStr);
+    if (isNaN(index)) {
+        player.outputChatBox('!{Red}[RULETĂ] Folosire: /resumeroulette <id>');
+        return;
+    }
+
+    const lobby = lobbies[index];
+    if (!lobby) {
+        player.outputChatBox(`!{Red}[RULETĂ] Nu există lobby activ pentru masa #${index}.`);
+        return;
+    }
+
+    if (!lobby.paused) {
+        player.outputChatBox(`!{Yellow}[RULETĂ] Masa #${index} nu este pe pauză.`);
+        return;
+    }
+
+    lobby.paused = false;
+    broadcastToLobby(lobby, '!{Green}[RULETĂ] ▶ Masa a fost repornită de un admin.');
+
+    // Dacă sunt destui jucători, pornește runda
+    if (lobby.players.length >= ROULETTE_CONFIG.MIN_PLAYERS) {
+        startBettingPhase(lobby);
+    }
+
+    updateLobbyUI(lobby);
+    player.outputChatBox(`!{Green}[RULETĂ] Masa #${index} "${lobby.name}" a fost repornită.`);
+    console.log(`[RULETĂ] RESUME: Masa #${index} "${lobby.name}" resumed by ${player.name}`);
 });
 
 mp.events.add('playerQuit', (player) => {

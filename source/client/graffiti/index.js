@@ -27,6 +27,15 @@ let previewSizeH       = GRAFFITI_SIZE;
 let previewRotation    = 0;
 let previewTextureReady = false;
 
+// ── SPRAY ANIMATION STATE ──
+let isSprayAnimating = false;
+let pendingPlacement = null;
+let sprayTimeout = null;
+const SPRAY_DURATION = 5000; // 5 seconds
+
+// ── GRAFFITI VIEW MODE ──
+let isGraffitiViewMode = false;
+
 // ──────────────────────────────────────────
 // 3D QUAD HELPERS — compute wall-aligned quad
 // ──────────────────────────────────────────
@@ -139,6 +148,164 @@ function exitPlacementMode() {
     }
 }
 
+// ──────────────────────────────────────────
+// SPRAY ANIMATION (5s scenario with spray can)
+// ──────────────────────────────────────────
+function startSprayAnimation(placementData) {
+    if (isSprayAnimating) return;
+    isSprayAnimating = true;
+    pendingPlacement = placementData;
+
+    const player = mp.players.local;
+
+    // Face the wall (opposite of surface normal)
+    const nx = placementData.normal.x;
+    const ny = placementData.normal.y;
+    const heading = Math.atan2(-nx, ny) * (180 / Math.PI);
+    player.setHeading(heading);
+
+    // Use built-in spray graffiti scenario (includes spray can prop + animation)
+    player.taskStartScenarioInPlace('WORLD_HUMAN_SPRAY_GRAFFITI', 0, true);
+
+    // After 5 seconds, finish and place the graffiti
+    sprayTimeout = setTimeout(() => {
+        finishSprayAnimation();
+    }, SPRAY_DURATION);
+}
+
+function finishSprayAnimation() {
+    if (!isSprayAnimating) return;
+    sprayTimeout = null;
+
+    // Stop the scenario animation
+    mp.players.local.clearTasks();
+
+    // Send placement data to server
+    if (pendingPlacement) {
+        const meta = JSON.stringify({
+            position: pendingPlacement.position,
+            normal: pendingPlacement.normal,
+            sizeW: previewSizeW,
+            sizeH: previewSizeH
+        });
+        const imgData = pendingPlacement.imageData;
+        const PLACE_CHUNK = 25000;
+        const totalChunks = Math.ceil(imgData.length / PLACE_CHUNK);
+
+        mp.events.callRemote('Server_GraffitiPlaceMeta', meta, '' + totalChunks);
+        for (let i = 0; i < totalChunks; i++) {
+            const chunk = imgData.substring(i * PLACE_CHUNK, (i + 1) * PLACE_CHUNK);
+            mp.events.callRemote('Server_GraffitiPlaceChunk', '' + i, chunk);
+        }
+    }
+
+    isSprayAnimating = false;
+    pendingPlacement = null;
+}
+
+function cancelSprayAnimation() {
+    if (!isSprayAnimating) return;
+    if (sprayTimeout) { clearTimeout(sprayTimeout); sprayTimeout = null; }
+
+    mp.players.local.clearTasks();
+
+    isSprayAnimating = false;
+    pendingPlacement = null;
+}
+
+// ──────────────────────────────────────────
+// GRAFFITI VIEW/SELECT MODE (admin)
+// ──────────────────────────────────────────
+function findNearestGraffiti(hitPos) {
+    let nearest = null;
+    let nearestDist = Infinity;
+    for (const id in graffitiData) {
+        const g = graffitiData[id];
+        const dx = g.position.x - hitPos.x;
+        const dy = g.position.y - hitPos.y;
+        const dz = g.position.z - hitPos.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        // Detection radius scales with graffiti size (half-diagonal + margin)
+        const gW = g.sizeW || g.size || GRAFFITI_SIZE;
+        const gH = g.sizeH || g.size || GRAFFITI_SIZE;
+        const radius = Math.sqrt(gW * gW + gH * gH) / 2 + 0.5;
+        if (dist < radius && dist < nearestDist) {
+            nearestDist = dist;
+            nearest = g;
+        }
+    }
+    return nearest;
+}
+
+mp.events.add('Graffiti_EnterViewMode', () => {
+    if (isCanvasOpen || isPlacementMode || isSprayAnimating) return;
+    isGraffitiViewMode = true;
+    ensureOverlay();
+    overlayBrowser.execute("showPlacementUI(true);");
+    overlayBrowser.execute("document.getElementById('placementHint').innerHTML = '&#x1F50D; GRAFFITI VIEWER &nbsp;&#x2022;&nbsp; CLICK STANGA = Selecteaza &nbsp;&#x2022;&nbsp; CLICK DREAPTA / ESC = Iesire &nbsp;&#x2022;&nbsp; DEL = Sterge selectat';");
+    mp.game.graphics.notify('~g~[GRAFFITI] Mod vizualizare activat.');
+});
+
+function exitGraffitiViewMode() {
+    isGraffitiViewMode = false;
+    viewHighlightId = null;
+    viewerPanelOpen = false;
+    if (overlayBrowser !== null) {
+        overlayBrowser.execute("if(typeof closeViewerPanel==='function')closeViewerPanel();");
+        overlayBrowser.execute("showPlacementUI(false);");
+        // Restore original hint text
+        overlayBrowser.execute("document.getElementById('placementHint').innerHTML = '&#x1F3AF; Tinteste un perete &#x2022; LEFT CLICK = Plaseaza &#x2022; SCROLL = Marime &#x2022; RIGHT CLICK / ESC = Anuleaza';");
+    }
+    mp.gui.cursor.show(false, false);
+    mp.game.graphics.notify('~y~[GRAFFITI] Mod vizualizare dezactivat.');
+}
+
+// Track which graffiti is currently highlighted in view mode
+let viewHighlightId  = null;
+let viewerPanelOpen  = false;
+
+// Receive graffiti info from server — show in CEF viewer panel
+mp.events.add('Graffiti_ViewInfoResult', (jsonStr) => {
+    try {
+        const info = JSON.parse(jsonStr);
+        if (info.error) {
+            mp.game.graphics.notify('~r~Graffiti-ul nu a fost gasit.');
+            return;
+        }
+        if (overlayBrowser) {
+            const safe = JSON.stringify(info).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            overlayBrowser.execute(`showViewerPanel('${safe}');`);
+        }
+    } catch (e) {
+        mp.game.graphics.notify('~r~Eroare la afisare info.');
+    }
+});
+
+mp.events.add('Graffiti_ViewPanelOpened', () => {
+    viewerPanelOpen = true;
+    mp.gui.cursor.show(true, true);
+});
+
+mp.events.add('Graffiti_ViewPanelClosed', () => {
+    viewerPanelOpen = false;
+    mp.gui.cursor.show(false, false);
+});
+
+mp.events.add('Graffiti_DeleteRequest', (idStr) => {
+    mp.events.callRemote('Server_GraffitiDeleteFromViewer', idStr);
+});
+
+mp.events.add('Graffiti_DeleteResult', (jsonStr) => {
+    try {
+        const data = JSON.parse(jsonStr);
+        if (data.success) {
+            mp.game.graphics.notify(`~g~[GRAFFITI] Graffiti #${data.id} sters cu succes!`);
+        } else {
+            mp.game.graphics.notify(`~r~[GRAFFITI] ${data.message || 'Eroare la stergere.'}`);
+        }
+    } catch (e) {}
+});
+
 // Raycast from camera to find wall surface
 function getCameraData() {
     // Get start position from player's head bone (close to actual camera pos)
@@ -191,7 +358,27 @@ function performRaycast() {
 
 // Left click during placement → place graffiti, Right click → cancel
 mp.events.add('click', (x, y, upOrDown, leftOrRight) => {
+    // Graffiti view mode click handling
+    if (isGraffitiViewMode) {
+        if (upOrDown === 'up') return;
+        if (leftOrRight === 1) {
+            exitGraffitiViewMode();
+            return;
+        }
+        const ray = performRaycast();
+        if (ray && ray.position) {
+            const nearest = findNearestGraffiti(ray.position);
+            if (nearest) {
+                mp.events.callRemote('Server_GraffitiViewInfo', '' + nearest.id);
+            } else {
+                mp.game.graphics.notify('~r~Nu exista graffiti aproape.');
+            }
+        }
+        return;
+    }
+
     if (!isPlacementMode || !pendingImageData) return;
+    if (isSprayAnimating) return;
 
     if (upOrDown === 'up') return;
 
@@ -222,34 +409,51 @@ mp.events.add('click', (x, y, upOrDown, leftOrRight) => {
         z: hitPos.z + normal.z * 0.02
     };
 
-    // Send metadata first, then image in chunks (callRemote has ~32KB limit)
-    const meta = JSON.stringify({
+    // Save data and hide placement UI
+    const sprayData = {
         position: placementPos,
         normal: { x: normal.x, y: normal.y, z: normal.z },
-        sizeW: previewSizeW,
-        sizeH: previewSizeH
-    });
-    const imgData = pendingImageData;
-    const PLACE_CHUNK = 25000;
-    const totalChunks = Math.ceil(imgData.length / PLACE_CHUNK);
+        imageData: pendingImageData
+    };
 
-    mp.events.callRemote('Server_GraffitiPlaceMeta', meta, '' + totalChunks);
-    for (let i = 0; i < totalChunks; i++) {
-        const chunk = imgData.substring(i * PLACE_CHUNK, (i + 1) * PLACE_CHUNK);
-        mp.events.callRemote('Server_GraffitiPlaceChunk', '' + i, chunk);
-    }
+    isPlacementMode = false;
+    previewTextureReady = false;
+    if (overlayBrowser) overlayBrowser.execute("showPlacementUI(false);");
+    pendingImageData = null;
 
-    exitPlacementMode();
+    // Start spray animation — graffiti will be placed after 5 seconds
+    startSprayAnimation(sprayData);
 });
 
-// ESC cancels canvas or placement
+// DEL key — delete currently selected/highlighted graffiti in view mode
+const KEY_DELETE = 0x2E;
+mp.keys.bind(KEY_DELETE, true, () => {
+    if (!isGraffitiViewMode) return;
+    if (viewerPanelOpen) {
+        // Panel open: trigger delete through the CEF panel
+        if (overlayBrowser) overlayBrowser.execute("requestDelete();");
+    } else if (viewHighlightId !== null) {
+        // Graffiti highlighted, no panel: delete directly
+        mp.events.callRemote('Server_GraffitiDeleteFromViewer', '' + viewHighlightId);
+    }
+});
+
+// ESC cancels canvas, spray animation, placement, or view mode
 mp.keys.bind(KEY_ESC, true, () => {
     if (isCanvasOpen) {
         closeCanvas();
         return;
     }
+    if (isSprayAnimating) {
+        cancelSprayAnimation();
+        return;
+    }
     if (isPlacementMode) {
         exitPlacementMode();
+        return;
+    }
+    if (isGraffitiViewMode) {
+        exitGraffitiViewMode();
         return;
     }
 });
@@ -444,6 +648,50 @@ mp.events.add('graffitiClearAll', () => {
 // ──────────────────────────────────────────
 // RENDER HELPERS
 // ──────────────────────────────────────────
+function drawHighlightBorder(pos, normal, sizeW, sizeH, rotation, r, g, b, alpha) {
+    const borderThickness = 0.06;
+    const ofsW = sizeW / 2 + borderThickness;
+    const ofsH = sizeH / 2 + borderThickness;
+    const iW = sizeW / 2;
+    const iH = sizeH / 2;
+    const { right, up } = computeQuadVectors(normal, rotation);
+    const nOfs = { x: normal.x * 0.01, y: normal.y * 0.01, z: normal.z * 0.01 };
+    const p = { x: pos.x + nOfs.x, y: pos.y + nOfs.y, z: pos.z + nOfs.z };
+
+    // Outer corners
+    const obl = { x: p.x - right.x*ofsW - up.x*ofsH, y: p.y - right.y*ofsW - up.y*ofsH, z: p.z - right.z*ofsW - up.z*ofsH };
+    const obr = { x: p.x + right.x*ofsW - up.x*ofsH, y: p.y + right.y*ofsW - up.y*ofsH, z: p.z + right.z*ofsW - up.z*ofsH };
+    const otl = { x: p.x - right.x*ofsW + up.x*ofsH, y: p.y - right.y*ofsW + up.y*ofsH, z: p.z - right.z*ofsW + up.z*ofsH };
+    const otr = { x: p.x + right.x*ofsW + up.x*ofsH, y: p.y + right.y*ofsW + up.y*ofsH, z: p.z + right.z*ofsW + up.z*ofsH };
+    // Inner corners
+    const ibl = { x: p.x - right.x*iW - up.x*iH, y: p.y - right.y*iW - up.y*iH, z: p.z - right.z*iW - up.z*iH };
+    const ibr = { x: p.x + right.x*iW - up.x*iH, y: p.y + right.y*iW - up.y*iH, z: p.z + right.z*iW - up.z*iH };
+    const itl = { x: p.x - right.x*iW + up.x*iH, y: p.y - right.y*iW + up.y*iH, z: p.z - right.z*iW + up.z*iH };
+    const itr = { x: p.x + right.x*iW + up.x*iH, y: p.y + right.y*iW + up.y*iH, z: p.z + right.z*iW + up.z*iH };
+
+    // Draw 4 border sides as colored polys (both winding orders for double-sided)
+    // Bottom
+    mp.game.graphics.drawPoly(obl.x,obl.y,obl.z, obr.x,obr.y,obr.z, ibl.x,ibl.y,ibl.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(ibl.x,ibl.y,ibl.z, obr.x,obr.y,obr.z, obl.x,obl.y,obl.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(ibl.x,ibl.y,ibl.z, obr.x,obr.y,obr.z, ibr.x,ibr.y,ibr.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(ibr.x,ibr.y,ibr.z, obr.x,obr.y,obr.z, ibl.x,ibl.y,ibl.z, r,g,b,alpha);
+    // Top
+    mp.game.graphics.drawPoly(otl.x,otl.y,otl.z, otr.x,otr.y,otr.z, itl.x,itl.y,itl.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(itl.x,itl.y,itl.z, otr.x,otr.y,otr.z, otl.x,otl.y,otl.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(itl.x,itl.y,itl.z, otr.x,otr.y,otr.z, itr.x,itr.y,itr.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(itr.x,itr.y,itr.z, otr.x,otr.y,otr.z, itl.x,itl.y,itl.z, r,g,b,alpha);
+    // Left
+    mp.game.graphics.drawPoly(obl.x,obl.y,obl.z, otl.x,otl.y,otl.z, ibl.x,ibl.y,ibl.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(ibl.x,ibl.y,ibl.z, otl.x,otl.y,otl.z, obl.x,obl.y,obl.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(ibl.x,ibl.y,ibl.z, otl.x,otl.y,otl.z, itl.x,itl.y,itl.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(itl.x,itl.y,itl.z, otl.x,otl.y,otl.z, ibl.x,ibl.y,ibl.z, r,g,b,alpha);
+    // Right
+    mp.game.graphics.drawPoly(obr.x,obr.y,obr.z, otr.x,otr.y,otr.z, ibr.x,ibr.y,ibr.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(ibr.x,ibr.y,ibr.z, otr.x,otr.y,otr.z, obr.x,obr.y,obr.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(ibr.x,ibr.y,ibr.z, otr.x,otr.y,otr.z, itr.x,itr.y,itr.z, r,g,b,alpha);
+    mp.game.graphics.drawPoly(itr.x,itr.y,itr.z, otr.x,otr.y,otr.z, ibr.x,ibr.y,ibr.z, r,g,b,alpha);
+}
+
 function drawGraffitiQuad(pos, normal, sizeW, sizeH, rotation, dictName, texName, alpha) {
     const hsW = sizeW / 2;
     const hsH = sizeH / 2;
@@ -506,12 +754,37 @@ mp.events.add('render', () => {
         mp.game.controls.disableControlAction(0, 37, true);
 
         if (mp.game.controls.isDisabledControlJustPressed(0, 14)) {
-            previewSizeW = Math.min(previewSizeW + 0.2, 12.0);
-            previewSizeH = Math.min(previewSizeH + 0.2, 12.0);
+            const scale = 1.1;
+            previewSizeW = Math.min(previewSizeW * scale, 12.0);
+            previewSizeH = Math.min(previewSizeH * scale, 12.0);
         }
         if (mp.game.controls.isDisabledControlJustPressed(0, 15)) {
-            previewSizeW = Math.max(previewSizeW - 0.2, 0.3);
-            previewSizeH = Math.max(previewSizeH - 0.2, 0.3);
+            const scale = 0.9;
+            previewSizeW = Math.max(previewSizeW * scale, 0.3);
+            previewSizeH = Math.max(previewSizeH * scale, 0.3);
+        }
+    }
+
+    // Handle graffiti view mode — find hovered graffiti for highlight
+    if (isGraffitiViewMode) {
+        mp.game.controls.disableControlAction(0, 14, true);
+        mp.game.controls.disableControlAction(0, 15, true);
+        mp.game.controls.disableControlAction(0, 37, true);
+
+        if (!viewerPanelOpen) {
+            // Detect right-click via native controls (more reliable than CEF click event)
+            mp.game.controls.disableControlAction(0, 25, true);
+            if (mp.game.controls.isDisabledControlJustPressed(0, 25)) {
+                exitGraffitiViewMode();
+            } else {
+                const viewRay = performRaycast();
+                if (viewRay && viewRay.position) {
+                    const hovered = findNearestGraffiti(viewRay.position);
+                    viewHighlightId = hovered ? hovered.id : null;
+                } else {
+                    viewHighlightId = null;
+                }
+            }
         }
     }
 
@@ -543,7 +816,15 @@ mp.events.add('render', () => {
         }
         if (alpha <= 0) continue;
 
-        drawGraffitiQuad(pos, g.normal, g.sizeW || g.size || GRAFFITI_SIZE, g.sizeH || g.size || GRAFFITI_SIZE, g.rotation || 0, dictName, texName, alpha);
+        const gSizeW = g.sizeW || g.size || GRAFFITI_SIZE;
+        const gSizeH = g.sizeH || g.size || GRAFFITI_SIZE;
+        drawGraffitiQuad(pos, g.normal, gSizeW, gSizeH, g.rotation || 0, dictName, texName, alpha);
+
+        // Green highlight border for hovered graffiti in view mode
+        if (isGraffitiViewMode && viewHighlightId !== null && parseInt(id) === viewHighlightId) {
+            const pulse = Math.floor(180 + 75 * Math.sin(Date.now() / 200));
+            drawHighlightBorder(pos, g.normal, gSizeW, gSizeH, g.rotation || 0, 0, 255, 100, pulse);
+        }
     }
 
     // 3D Preview on wall during placement mode

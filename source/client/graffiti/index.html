@@ -14,123 +14,187 @@
 </head>
 <body>
     <div class="graffiti-container">
-        <div class="graffiti-title">&#x1F3A8; SPRAY GRAFFITI</div>
+        <!-- LEFT PANEL: Controls -->
+        <div class="graffiti-left">
+            <div class="graffiti-title">&#x1F3A8; SPRAY GRAFFITI</div>
 
-        <!-- MODE TABS -->
-        <div class="mode-tabs">
-            <button class="mode-tab active" id="tabText">&#x1F4DD; TEXT</button>
-            <button class="mode-tab" id="tabDraw">&#x270F;&#xFE0F; DESEN</button>
-        </div>
-
-        <!-- COLOR PALETTE (shared by both modes) -->
-        <div class="toolbar">
-            <div class="toolbar-section">
-                <label>Culori</label>
-                <div class="color-btn active" style="background:#FFFFFF" data-color="#FFFFFF"></div>
-                <div class="color-btn" style="background:#000000; border-color: #333;" data-color="#000000"></div>
-                <div class="color-btn" style="background:#FF0000" data-color="#FF0000"></div>
-                <div class="color-btn" style="background:#FF6600" data-color="#FF6600"></div>
-                <div class="color-btn" style="background:#FFFF00" data-color="#FFFF00"></div>
-                <div class="color-btn" style="background:#00FF00" data-color="#00FF00"></div>
-                <div class="color-btn" style="background:#00FFFF" data-color="#00FFFF"></div>
-                <div class="color-btn" style="background:#0088FF" data-color="#0088FF"></div>
-                <div class="color-btn" style="background:#0000FF" data-color="#0000FF"></div>
-                <div class="color-btn" style="background:#8800FF" data-color="#8800FF"></div>
-                <div class="color-btn" style="background:#FF00FF" data-color="#FF00FF"></div>
-                <div class="color-btn" style="background:#FF88AA" data-color="#FF88AA"></div>
-                <div class="color-btn" style="background:#8B4513" data-color="#8B4513"></div>
-                <div class="color-btn" style="background:#808080" data-color="#808080"></div>
-                <input type="color" id="colorPicker" value="#00FF88" title="Custom color">
+            <!-- MODE TABS -->
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="tabText">&#x1F4DD; TEXT</button>
+                <button class="mode-tab" id="tabDraw">&#x270F;&#xFE0F; DESEN</button>
             </div>
-        </div>
 
-        <!-- TEXT MODE PANEL -->
-        <div id="textPanel" class="mode-panel">
-            <div class="toolbar">
-                <div class="toolbar-section" style="flex:1">
-                    <label>Text</label>
-                    <textarea id="textInput" class="text-input" placeholder="Scrie textul... (Enter = linie noua)" rows="3" maxlength="500"></textarea>
+            <!-- COLOR PALETTE (shared by both modes) -->
+            <div class="color-palette-section">
+                <label class="palette-label">Culori</label>
+                <div class="color-grid">
+                    <div class="color-btn active" style="background:#FFFFFF" data-color="#FFFFFF"></div>
+                    <div class="color-btn" style="background:#C0C0C0" data-color="#C0C0C0"></div>
+                    <div class="color-btn" style="background:#808080" data-color="#808080"></div>
+                    <div class="color-btn" style="background:#404040" data-color="#404040"></div>
+                    <div class="color-btn" style="background:#000000; border-color:#333" data-color="#000000"></div>
+                    <div class="color-btn" style="background:#FF0000" data-color="#FF0000"></div>
+                    <div class="color-btn" style="background:#CC0000" data-color="#CC0000"></div>
+                    <div class="color-btn" style="background:#FF6600" data-color="#FF6600"></div>
+                    <div class="color-btn" style="background:#FF8C00" data-color="#FF8C00"></div>
+                    <div class="color-btn" style="background:#FFA500" data-color="#FFA500"></div>
+                    <div class="color-btn" style="background:#FFFF00" data-color="#FFFF00"></div>
+                    <div class="color-btn" style="background:#CCFF00" data-color="#CCFF00"></div>
+                    <div class="color-btn" style="background:#00FF00" data-color="#00FF00"></div>
+                    <div class="color-btn" style="background:#00CC44" data-color="#00CC44"></div>
+                    <div class="color-btn" style="background:#008800" data-color="#008800"></div>
+                    <div class="color-btn" style="background:#00FFFF" data-color="#00FFFF"></div>
+                    <div class="color-btn" style="background:#00AAFF" data-color="#00AAFF"></div>
+                    <div class="color-btn" style="background:#0088FF" data-color="#0088FF"></div>
+                    <div class="color-btn" style="background:#0000FF" data-color="#0000FF"></div>
+                    <div class="color-btn" style="background:#0000AA" data-color="#0000AA"></div>
+                    <div class="color-btn" style="background:#8800FF" data-color="#8800FF"></div>
+                    <div class="color-btn" style="background:#AA00FF" data-color="#AA00FF"></div>
+                    <div class="color-btn" style="background:#FF00FF" data-color="#FF00FF"></div>
+                    <div class="color-btn" style="background:#FF00AA" data-color="#FF00AA"></div>
+                    <div class="color-btn" style="background:#FF88AA" data-color="#FF88AA"></div>
+                    <div class="color-btn" style="background:#FFD700" data-color="#FFD700"></div>
+                    <div class="color-btn" style="background:#8B4513" data-color="#8B4513"></div>
+                    <div class="color-btn" style="background:#D2691E" data-color="#D2691E"></div>
+                    <div class="color-btn" style="background:#2F4F4F" data-color="#2F4F4F"></div>
+                    <div class="color-btn" style="background:#191970" data-color="#191970"></div>
                 </div>
-            </div>
-            <div class="toolbar">
-                <div class="toolbar-section">
-                    <label>Font</label>
-                    <div class="font-dropdown" id="fontDropdown">
-                        <div class="font-dropdown-selected" id="fontSelected">
-                            <span class="font-preview-text" style="font-family: Impact">Impact</span>
-                            <span class="font-dropdown-arrow">&#9660;</span>
-                        </div>
-                        <div class="font-dropdown-list" id="fontList"></div>
+                <div class="color-wheel-row">
+                    <div class="custom-rgb-toggle" id="customRgbToggle">
+                        <div class="rgb-swatch" id="rgbSwatch" style="background:#FF8C00"></div>
+                        <span class="color-wheel-label">Custom RGB ▼</span>
                     </div>
-                    <input type="hidden" id="fontSelect" value="Impact">
+                </div>
+                <div class="custom-rgb-panel" id="customRgbPanel">
+                    <div class="rgb-slider-row">
+                        <label class="rgb-label" style="color:#ff4444">R</label>
+                        <input type="range" class="rgb-slider rgb-r" id="sliderR" min="0" max="255" value="255">
+                        <span class="rgb-val" id="valR">255</span>
+                    </div>
+                    <div class="rgb-slider-row">
+                        <label class="rgb-label" style="color:#44ff44">G</label>
+                        <input type="range" class="rgb-slider rgb-g" id="sliderG" min="0" max="255" value="140">
+                        <span class="rgb-val" id="valG">140</span>
+                    </div>
+                    <div class="rgb-slider-row">
+                        <label class="rgb-label" style="color:#4488ff">B</label>
+                        <input type="range" class="rgb-slider rgb-b" id="sliderB" min="0" max="255" value="0">
+                        <span class="rgb-val" id="valB">0</span>
+                    </div>
+                    <div class="rgb-hex-row">
+                        <label class="rgb-label">HEX</label>
+                        <input type="text" class="rgb-hex-input" id="hexInput" value="#FF8C00" maxlength="7" spellcheck="false">
+                        <button class="rgb-apply-btn" id="rgbApplyBtn">&#x2714; Aplica</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TEXT MODE PANEL -->
+            <div id="textPanel" class="mode-panel">
+                <div class="toolbar">
+                    <div class="toolbar-section" style="flex:1">
+                        <label>Text</label>
+                        <textarea id="textInput" class="text-input" placeholder="Scrie textul... (Enter = linie noua)" rows="3" maxlength="500"></textarea>
+                    </div>
+                </div>
+                <div class="toolbar">
+                    <div class="toolbar-section">
+                        <label>Font</label>
+                        <button class="tool-btn font-open-btn" id="fontSelectedBtn">
+                            <span class="font-preview-text" style="font-family: Arial">Arial</span>
+                        </button>
+                        <input type="hidden" id="fontSelect" value="Arial">
+                    </div>
+                    <div class="toolbar-section">
+                        <label>Stil</label>
+                        <button class="tool-btn" id="btnBold">&#x1D401; Bold</button>
+                        <button class="tool-btn" id="btnItalic">&#x1D43C; Italic</button>
+                        <button class="tool-btn" id="btnUnderline">&#x0332;U&#x0332; Underline</button>
+                        <button class="tool-btn" id="btnStrike">&#x0336;S&#x0336; Strike</button>
+                    </div>
+                </div>
+                <!-- INLINE FONT GRID (expandable) -->
+
+                <div class="toolbar">
+                    <div class="toolbar-section">
+                        <label>Efecte</label>
+                        <button class="tool-btn" id="btnOutline">&#x2B1C; Outline</button>
+                        <input type="color" id="outlineColorPicker" value="#000000" title="Outline color" class="outline-color-picker">
+                        <button class="tool-btn" id="btnShadow">&#x1F4A8; Shadow</button>
+                        <button class="tool-btn" id="btnGlow">&#x2728; Glow</button>
+                    </div>
+                    <div class="toolbar-section">
+                        <label>Aliniere</label>
+                        <button class="tool-btn" id="btnAlignLeft">&#x25C0;</button>
+                        <button class="tool-btn active" id="btnAlignCenter">&#x25CF;</button>
+                        <button class="tool-btn" id="btnAlignRight">&#x25B6;</button>
+                    </div>
+                </div>
+                <div class="keybinds-bar">
+                    <div class="keybind"><kbd>LClick</kbd> <span>Plaseaza text</span></div>
+                    <div class="keybind"><kbd>RClick</kbd><span>+</span><kbd>Drag</kbd> <span>Roteste</span></div>
+                    <div class="keybind"><kbd>Scroll</kbd> <span>Marime</span></div>
+                </div>
+            </div>
+
+            <!-- DRAW MODE PANEL -->
+            <div id="drawPanel" class="mode-panel" style="display:none">
+            <div class="toolbar">
+                <div class="toolbar-section">
+                    <label>Marime</label>
+                    <button class="size-btn" data-size="3">3</button>
+                    <button class="size-btn" data-size="6">6</button>
+                    <button class="size-btn active" data-size="12">12</button>
+                    <button class="size-btn" data-size="24">24</button>
+                    <button class="size-btn" data-size="40">40</button>
                 </div>
                 <div class="toolbar-section">
-                    <label>Stil</label>
-                    <button class="tool-btn" id="btnBold">&#x1D401; Bold</button>
-                    <button class="tool-btn" id="btnItalic">&#x1D43C; Italic</button>
-                    <button class="tool-btn" id="btnOutline">&#x2B1C; Outline</button>
-                    <button class="tool-btn" id="btnShadow">&#x1F4A8; Shadow</button>
+                    <label>Unelte</label>
+                    <button class="tool-btn active" id="btnBrush">&#x1F58C; Brush</button>
+                    <button class="tool-btn" id="btnSpray">&#x1F4A8; Spray</button>
+                    <button class="tool-btn" id="btnEraser">&#x1F9F9; Eraser</button>
+                    <button class="tool-btn" id="btnFill">&#x1FAA3; Fill</button>
+                </div>
+                <div class="toolbar-section">
+                    <button class="tool-btn" id="btnUndo">&#x21A9; Undo</button>
+                    <button class="tool-btn" id="btnClear">&#x1F5D1; Clear</button>
+                    <button class="tool-btn" id="btnImgUrl">&#x1F310; URL</button>
                 </div>
             </div>
-            <div class="stamp-info">Click pe canvas = Plaseaza text &bull; Right Click + Drag = Roteste &bull; Scroll = Marime</div>
+            </div><!-- /drawPanel -->
+
+            <!-- ACTION BUTTONS -->
+            <div class="actions">
+                <button class="btn-place" id="btnPlace">&#x2714; PLACE</button>
+                <button class="btn-cancel" id="btnCancel">&#x2716; CANCEL</button>
+            </div>
+
+            <div class="info-text">Deseneaza graffiti-ul tau, apoi apasa <kbd>PLACE</kbd> pentru a-l plasa pe un perete.</div>
         </div>
 
-        <!-- DRAW MODE PANEL -->
-        <div id="drawPanel" class="mode-panel" style="display:none">
-        <div class="toolbar">
-            <div class="toolbar-section">
-                <label>Marime</label>
-                <button class="size-btn" data-size="3">3</button>
-                <button class="size-btn" data-size="6">6</button>
-                <button class="size-btn active" data-size="12">12</button>
-                <button class="size-btn" data-size="24">24</button>
-                <button class="size-btn" data-size="40">40</button>
-            </div>
-            <div class="toolbar-section">
-                <label>Unelte</label>
-                <button class="tool-btn active" id="btnBrush">&#x1F58C; Brush</button>
-                <button class="tool-btn" id="btnSpray">&#x1F4A8; Spray</button>
-                <button class="tool-btn" id="btnEraser">&#x1F9F9; Eraser</button>
-                <button class="tool-btn" id="btnFill">&#x1FAA3; Fill</button>
-            </div>
-            <div class="toolbar-section">
-                <button class="tool-btn" id="btnUndo">&#x21A9; Undo</button>
-                <button class="tool-btn" id="btnClear">&#x1F5D1; Clear</button>
-                <button class="tool-btn" id="btnImgUrl">&#x1F310; URL</button>
+        <!-- RIGHT PANEL: Canvas Preview -->
+        <div class="graffiti-right">
+            <div class="canvas-wrapper">
+                <canvas id="graffitiCanvas" width="512" height="512"></canvas>
             </div>
         </div>
-        </div><!-- /drawPanel -->
-
-        <!-- PREVIEW SIZE CONTROLS -->
-        <div class="toolbar" id="previewSizeBar">
-            <div class="toolbar-section">
-                <label>Latime 3D</label>
-                <input type="range" id="previewW" class="preview-slider" min="0.5" max="10" step="0.1" value="2.0">
-                <span id="previewWVal" class="size-label">2.0</span>
-            </div>
-            <div class="toolbar-section">
-                <label>Inaltime 3D</label>
-                <input type="range" id="previewH" class="preview-slider" min="0.5" max="10" step="0.1" value="2.0">
-                <span id="previewHVal" class="size-label">2.0</span>
-            </div>
-        </div>
-
-        <!-- CANVAS -->
-        <div class="canvas-wrapper">
-            <canvas id="graffitiCanvas" width="512" height="512"></canvas>
-        </div>
-
-        <!-- ACTION BUTTONS -->
-        <div class="actions">
-            <button class="btn-place" id="btnPlace">&#x2714; PLACE</button>
-            <button class="btn-cancel" id="btnCancel">&#x2716; CANCEL</button>
-        </div>
-
-        <div class="info-text">Deseneaza graffiti-ul tau, apoi apasa PLACE pentru a-l plasa pe un perete.</div>
     </div>
 
     <!-- SPRAY CURSOR (visual indicator for brush size) -->
     <div class="spray-cursor" id="sprayCursor"></div>
+
+    <!-- FONT OVERLAY PANEL -->
+    <div class="font-overlay" id="fontInlinePanel">
+        <div class="font-overlay-inner">
+            <div class="font-inline-header">
+                <input type="text" id="fontGridSearch" class="font-grid-search" placeholder="&#x1F50D; Cauta font..." spellcheck="false">
+                <button class="font-grid-close" id="fontGridClose">&#x2716;</button>
+            </div>
+            <div class="font-grid-container" id="fontGridContainer"></div>
+        </div>
+    </div>
+
+
 
     <!-- IMAGE URL MODAL -->
     <div class="url-modal-overlay" id="urlModal">
@@ -159,6 +223,7 @@
         // Start with transparent canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // ──────────────────────────────────────────
         // ──────────────────────────────────────────
         // STATE
         // ──────────────────────────────────────────
@@ -296,7 +361,7 @@
         // ──────────────────────────────────────────
         // TEXT STAMP STATE
         // ──────────────────────────────────────────
-        let stampScale    = 1.0;
+        let stampScale    = 0.5;
         let stampRotation = 0;
         let stampMouseX   = canvas.width / 2;
         let stampMouseY   = canvas.height / 2;
@@ -321,28 +386,11 @@
 
             const fullFont = fontStyle + baseFontSize + 'px "' + font + '"';
 
-            // Measure and wrap text to fit within canvas
+            // Measure text — NO auto-wrap, only break on explicit newlines
             const measureCtx = document.createElement('canvas').getContext('2d');
             measureCtx.font = fullFont;
 
-            const maxWidth = 480;
-            const paragraphs = text.split('\n');
-            const lines = [];
-            for (const para of paragraphs) {
-                if (!para.length) { lines.push(''); continue; }
-                const words = para.split(' ');
-                let currentLine = '';
-                for (const word of words) {
-                    const testLine = currentLine ? currentLine + ' ' + word : word;
-                    if (measureCtx.measureText(testLine).width > maxWidth && currentLine) {
-                        lines.push(currentLine);
-                        currentLine = word;
-                    } else {
-                        currentLine = testLine;
-                    }
-                }
-                if (currentLine) lines.push(currentLine);
-            }
+            const lines = text.split('\n');
             if (lines.length === 0) lines.push('');
 
             const lineHeight = baseFontSize * 1.2;
@@ -362,8 +410,20 @@
             const offCtx = offCanvas.getContext('2d');
 
             offCtx.font = fullFont;
-            offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle';
+
+            // Text alignment
+            let textAlignX;
+            if (textAlign === 'left') {
+                offCtx.textAlign = 'left';
+                textAlignX = pad;
+            } else if (textAlign === 'right') {
+                offCtx.textAlign = 'right';
+                textAlignX = cw - pad;
+            } else {
+                offCtx.textAlign = 'center';
+                textAlignX = cw / 2;
+            }
 
             if (textShadow) {
                 offCtx.shadowColor = 'rgba(0,0,0,0.7)';
@@ -372,16 +432,58 @@
                 offCtx.shadowOffsetY = 4;
             }
 
+            if (textGlow) {
+                offCtx.shadowColor = currentColor;
+                offCtx.shadowBlur = 15;
+                offCtx.shadowOffsetX = 0;
+                offCtx.shadowOffsetY = 0;
+            }
+
             for (let i = 0; i < lines.length; i++) {
                 const y = pad + lineHeight / 2 + i * lineHeight;
+                const lineW = measureCtx.measureText(lines[i]).width;
                 if (textOutline) {
-                    offCtx.strokeStyle = '#000000';
+                    offCtx.strokeStyle = outlineColor;
                     offCtx.lineWidth = Math.max(2, baseFontSize / 12);
                     offCtx.lineJoin = 'round';
-                    offCtx.strokeText(lines[i], cw / 2, y);
+                    offCtx.strokeText(lines[i], textAlignX, y);
                 }
                 offCtx.fillStyle = currentColor;
-                offCtx.fillText(lines[i], cw / 2, y);
+                offCtx.fillText(lines[i], textAlignX, y);
+
+                // Underline
+                if (textUnderline) {
+                    let lx;
+                    if (textAlign === 'left') lx = pad;
+                    else if (textAlign === 'right') lx = cw - pad - lineW;
+                    else lx = (cw - lineW) / 2;
+                    offCtx.save();
+                    offCtx.shadowColor = 'transparent';
+                    offCtx.strokeStyle = currentColor;
+                    offCtx.lineWidth = Math.max(2, baseFontSize / 20);
+                    offCtx.beginPath();
+                    offCtx.moveTo(lx, y + baseFontSize * 0.45);
+                    offCtx.lineTo(lx + lineW, y + baseFontSize * 0.45);
+                    offCtx.stroke();
+                    offCtx.restore();
+                }
+
+                // Strikethrough
+                if (textStrike) {
+                    let lx;
+                    if (textAlign === 'left') lx = pad;
+                    else if (textAlign === 'right') lx = cw - pad - lineW;
+                    else lx = (cw - lineW) / 2;
+                    offCtx.save();
+                    offCtx.shadowColor = 'transparent';
+                    offCtx.strokeStyle = currentColor;
+                    offCtx.lineWidth = Math.max(2, baseFontSize / 20);
+                    offCtx.beginPath();
+                    offCtx.moveTo(lx, y);
+                    offCtx.lineTo(lx + lineW, y);
+                    offCtx.stroke();
+                    offCtx.restore();
+                }
             }
 
             offCtx.shadowColor = 'transparent';
@@ -586,8 +688,48 @@
             });
         });
 
-        document.getElementById('colorPicker').addEventListener('input', (e) => {
-            currentColor = e.target.value;
+        // ──────────────────────────────────────────
+        // CUSTOM RGB PICKER
+        // ──────────────────────────────────────────
+        const customRgbToggle = document.getElementById('customRgbToggle');
+        const customRgbPanel = document.getElementById('customRgbPanel');
+        const sliderR = document.getElementById('sliderR');
+        const sliderG = document.getElementById('sliderG');
+        const sliderB = document.getElementById('sliderB');
+        const valR = document.getElementById('valR');
+        const valG = document.getElementById('valG');
+        const valB = document.getElementById('valB');
+        const hexInput = document.getElementById('hexInput');
+        const rgbSwatch = document.getElementById('rgbSwatch');
+        const rgbApplyBtn = document.getElementById('rgbApplyBtn');
+        let rgbPanelOpen = false;
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+        }
+
+        function hexToRgb(hex) {
+            hex = hex.replace('#', '');
+            if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+            if (hex.length !== 6) return null;
+            const n = parseInt(hex, 16);
+            if (isNaN(n)) return null;
+            return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+        }
+
+        function updateRgbSwatch() {
+            const hex = rgbToHex(parseInt(sliderR.value), parseInt(sliderG.value), parseInt(sliderB.value));
+            rgbSwatch.style.background = hex;
+            hexInput.value = hex;
+            valR.textContent = sliderR.value;
+            valG.textContent = sliderG.value;
+            valB.textContent = sliderB.value;
+        }
+
+        function applyRgbColor() {
+            const hex = rgbToHex(parseInt(sliderR.value), parseInt(sliderG.value), parseInt(sliderB.value));
+            currentColor = hex;
+            rgbSwatch.style.background = hex;
             document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
             if (currentTool === 'eraser') {
                 currentTool = 'brush';
@@ -595,6 +737,30 @@
             }
             generateStampImage();
             renderCanvasWithStampPreview();
+        }
+
+        customRgbToggle.addEventListener('click', () => {
+            rgbPanelOpen = !rgbPanelOpen;
+            customRgbPanel.classList.toggle('open', rgbPanelOpen);
+        });
+
+        [sliderR, sliderG, sliderB].forEach(s => {
+            s.addEventListener('input', updateRgbSwatch);
+        });
+
+        rgbApplyBtn.addEventListener('click', applyRgbColor);
+
+        hexInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const rgb = hexToRgb(hexInput.value);
+                if (rgb) {
+                    sliderR.value = rgb.r;
+                    sliderG.value = rgb.g;
+                    sliderB.value = rgb.b;
+                    updateRgbSwatch();
+                    applyRgbColor();
+                }
+            }
         });
 
         // ──────────────────────────────────────────
@@ -822,8 +988,8 @@
         // CHUNKED EXPORT TO CLIENT (avoids mp.trigger size limits)
         // ──────────────────────────────────────────
         function sendChunkedToClient(dataURL) {
-            const pw = document.getElementById('previewW').value;
-            const ph = document.getElementById('previewH').value;
+            const pw = '2.0';
+            const ph = '2.0';
             const CHUNK = 25000;
             const total = Math.ceil(dataURL.length / CHUNK);
             mp.trigger('Graffiti_CanvasStart', '' + total, pw, ph);
@@ -854,6 +1020,11 @@
         let textItalic = false;
         let textOutline = false;
         let textShadow = false;
+        let textUnderline = false;
+        let textStrike = false;
+        let textGlow = false;
+        let textAlign = 'center';
+        let outlineColor = '#000000';
 
         document.getElementById('tabText').addEventListener('click', () => {
             currentMode = 'text';
@@ -911,111 +1082,130 @@
         });
         document.getElementById('btnShadow').addEventListener('click', () => {
             textShadow = !textShadow;
+            if (textShadow) textGlow = false;
             document.getElementById('btnShadow').classList.toggle('active', textShadow);
+            document.getElementById('btnGlow').classList.toggle('active', textGlow);
             generateStampImage();
             renderCanvasWithStampPreview();
         });
 
-        // Preview size slider listeners — also resize the canvas
-        document.getElementById('previewW').addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            document.getElementById('previewWVal').textContent = val.toFixed(1);
-            const hVal = parseFloat(document.getElementById('previewH').value);
-            resizeCanvasPreview(val, hVal);
+        document.getElementById('btnUnderline').addEventListener('click', () => {
+            textUnderline = !textUnderline;
+            document.getElementById('btnUnderline').classList.toggle('active', textUnderline);
+            generateStampImage();
+            renderCanvasWithStampPreview();
         });
-        document.getElementById('previewH').addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
-            document.getElementById('previewHVal').textContent = val.toFixed(1);
-            const wVal = parseFloat(document.getElementById('previewW').value);
-            resizeCanvasPreview(wVal, val);
+        document.getElementById('btnStrike').addEventListener('click', () => {
+            textStrike = !textStrike;
+            document.getElementById('btnStrike').classList.toggle('active', textStrike);
+            generateStampImage();
+            renderCanvasWithStampPreview();
+        });
+        document.getElementById('btnGlow').addEventListener('click', () => {
+            textGlow = !textGlow;
+            if (textGlow) textShadow = false;
+            document.getElementById('btnGlow').classList.toggle('active', textGlow);
+            document.getElementById('btnShadow').classList.toggle('active', textShadow);
+            generateStampImage();
+            renderCanvasWithStampPreview();
+        });
+        document.getElementById('outlineColorPicker').addEventListener('input', (e) => {
+            outlineColor = e.target.value;
+            generateStampImage();
+            renderCanvasWithStampPreview();
         });
 
-        function resizeCanvasPreview(w, h) {
-            // Save current canvas content
-            const imgData = canvas.toDataURL();
-            const ratio = w / h;
-            // Base dimension: keep the larger side at 512
-            let newW, newH;
-            if (ratio >= 1) {
-                newW = 512;
-                newH = Math.round(512 / ratio);
-            } else {
-                newH = 512;
-                newW = Math.round(512 * ratio);
-            }
-            newW = Math.max(64, newW);
-            newH = Math.max(64, newH);
-            canvas.width = newW;
-            canvas.height = newH;
-            // Restore content
-            const img = new Image();
-            img.onload = () => {
-                ctx.clearRect(0, 0, newW, newH);
-                ctx.drawImage(img, 0, 0, newW, newH);
-                // Update history with new size
-                historyStack = [canvas.toDataURL()];
-            };
-            img.src = imgData;
+        // Text alignment buttons
+        function setTextAlign(align) {
+            textAlign = align;
+            document.getElementById('btnAlignLeft').classList.toggle('active', align === 'left');
+            document.getElementById('btnAlignCenter').classList.toggle('active', align === 'center');
+            document.getElementById('btnAlignRight').classList.toggle('active', align === 'right');
+            generateStampImage();
+            renderCanvasWithStampPreview();
         }
+        document.getElementById('btnAlignLeft').addEventListener('click', () => setTextAlign('left'));
+        document.getElementById('btnAlignCenter').addEventListener('click', () => setTextAlign('center'));
+        document.getElementById('btnAlignRight').addEventListener('click', () => setTextAlign('right'));
+
+
 
         // ──────────────────────────────────────────
         // CUSTOM FONT DROPDOWN
         // ──────────────────────────────────────────
         const builtinFonts = [
-            { name: 'Impact', family: 'Impact' },
-            { name: 'Arial Black', family: 'Arial Black' },
-            { name: 'Comic Sans', family: 'Comic Sans MS' },
-            { name: 'Segoe Script', family: 'Segoe Script' },
-            { name: 'Georgia', family: 'Georgia' },
-            { name: 'Courier', family: 'Courier New' },
-            { name: 'Verdana', family: 'Verdana' },
-            { name: 'Trebuchet', family: 'Trebuchet MS' },
-            { name: 'Lucida Console', family: 'Lucida Console' },
+            { name: 'Arial', family: 'Arial' },
             { name: 'Times New Roman', family: 'Times New Roman' }
         ];
 
         let allFonts = [...builtinFonts];
-        let selectedFont = 'Impact';
+        let selectedFont = 'Arial';
 
-        const fontDropdown = document.getElementById('fontDropdown');
-        const fontSelected = document.getElementById('fontSelected');
-        const fontList = document.getElementById('fontList');
         const fontSelect = document.getElementById('fontSelect');
+        const fontInlinePanel = document.getElementById('fontInlinePanel');
+        const fontGridContainer = document.getElementById('fontGridContainer');
+        const fontGridSearch = document.getElementById('fontGridSearch');
+        const fontSelectedBtn = document.getElementById('fontSelectedBtn');
 
-        function buildFontList() {
-            fontList.innerHTML = '';
+        function buildFontGrid(filter) {
+            fontGridContainer.innerHTML = '';
+            const filterLower = (filter || '').toLowerCase();
             allFonts.forEach(f => {
-                const item = document.createElement('div');
-                item.className = 'font-dropdown-item' + (f.family === selectedFont ? ' active' : '');
-                item.dataset.family = f.family;
-                item.innerHTML = '<span class="font-preview-text" style="font-family: \'' + f.family + '\'">' + f.name + '</span>';
-                item.addEventListener('click', (e) => {
-                    e.stopPropagation();
+                if (filterLower && !f.name.toLowerCase().includes(filterLower)) return;
+                const card = document.createElement('div');
+                card.className = 'font-grid-card' + (f.family === selectedFont ? ' active' : '');
+                card.dataset.family = f.family;
+                card.innerHTML = '<div class="font-grid-preview" style="font-family: \'' + f.family + '\'">'+f.name+'</div>' +
+                    '<div class="font-grid-name">' + f.name + '</div>';
+                card.addEventListener('click', () => {
                     selectFont(f.family, f.name);
                 });
-                fontList.appendChild(item);
+                fontGridContainer.appendChild(card);
             });
         }
 
         function selectFont(family, name) {
             selectedFont = family;
             fontSelect.value = family;
-            fontSelected.innerHTML = '<span class="font-preview-text" style="font-family: \'' + family + '\'">' + name + '</span><span class="font-dropdown-arrow">&#9660;</span>';
-            fontDropdown.classList.remove('open');
-            buildFontList();
+            fontSelectedBtn.innerHTML = '<span class="font-preview-text" style="font-family: \'' + family + '\'">' + name + '</span>';
+            closeFontGrid();
             generateStampImage();
             renderCanvasWithStampPreview();
         }
 
-        fontSelected.addEventListener('click', (e) => {
+        let fontPanelOpen = false;
+
+        function openFontGrid() {
+            if (fontPanelOpen) return;
+            fontPanelOpen = true;
+            fontGridSearch.value = '';
+            buildFontGrid('');
+            fontInlinePanel.style.display = 'flex';
+            fontSelectedBtn.classList.add('expanded');
+            setTimeout(() => fontGridSearch.focus(), 100);
+        }
+
+        function closeFontGrid() {
+            if (!fontPanelOpen) return;
+            fontPanelOpen = false;
+            fontInlinePanel.style.display = 'none';
+            fontSelectedBtn.classList.remove('expanded');
+        }
+
+        function toggleFontGrid() {
+            if (fontPanelOpen) closeFontGrid();
+            else openFontGrid();
+        }
+
+        fontSelectedBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            fontDropdown.classList.toggle('open');
+            toggleFontGrid();
         });
 
-        document.addEventListener('click', (e) => {
-            if (!fontDropdown.contains(e.target)) {
-                fontDropdown.classList.remove('open');
-            }
+        document.getElementById('fontGridClose').addEventListener('click', closeFontGrid);
+
+        fontGridSearch.addEventListener('input', () => {
+            buildFontGrid(fontGridSearch.value);
         });
 
         // Load custom fonts from fonts/fonts.json
@@ -1046,18 +1236,17 @@
                     allFonts.push({ name: f.name, family: f.name });
                 });
 
-                // Wait for fonts to actually load, then rebuild
+                // Wait for fonts to actually load, then rebuild grid
                 document.fonts.ready.then(() => {
-                    buildFontList();
+                    buildFontGrid('');
                 });
 
-                // Also rebuild immediately so they show up (they'll render with correct font once loaded)
-                buildFontList();
+                buildFontGrid('');
             };
             xhr.send();
         }
 
-        buildFontList();
+        buildFontGrid('');
         loadCustomFonts();
 
         // Auto-focus text input on load

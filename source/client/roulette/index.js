@@ -17,8 +17,18 @@ const CAM_TRANSITION_IN  = 2000;  // ms — tranziție spre masă
 const CAM_TRANSITION_OUT = 1500;  // ms — tranziție înapoi la player
 const CAM_FOV_TABLE      = 60;    // field of view pe masă
 
+// Saved from CEF sliders
+let currentCamHeight = CAM_HEIGHT;
+let currentCamFov    = CAM_FOV_TABLE;
+let currentCamRot    = 0;
+let currentCamOx     = 0;
+let currentCamOy     = 0;
+let currentTablePos  = null; // { x, y, z, heading }
+
 function startRouletteCamera(tableX, tableY, tableZ, tableHeading) {
     destroyRouletteCameras();
+
+    currentTablePos = { x: tableX, y: tableY, z: tableZ, heading: tableHeading };
 
     const player = mp.players.local;
     const pPos   = player.position;
@@ -34,11 +44,15 @@ function startRouletteCamera(tableX, tableY, tableZ, tableHeading) {
         50
     );
 
-    // Camera "to" — top-down deasupra mesei
+    // Camera "to" — top-down deasupra mesei (with offsets)
+    const headRad = (tableHeading + currentCamRot) * Math.PI / 180;
+    const camX = tableX + currentCamOx * Math.cos(headRad) - currentCamOy * Math.sin(headRad);
+    const camY = tableY + currentCamOx * Math.sin(headRad) + currentCamOy * Math.cos(headRad);
+
     rouletteCamTo = mp.cameras.new('default',
-        new mp.Vector3(tableX, tableY, tableZ + CAM_HEIGHT),
-        new mp.Vector3(-90.0, 0.0, tableHeading),
-        CAM_FOV_TABLE
+        new mp.Vector3(camX, camY, tableZ + currentCamHeight),
+        new mp.Vector3(-90.0, 0.0, tableHeading + currentCamRot),
+        currentCamFov
     );
 
     // Activăm "from" camera și render script cams
@@ -127,6 +141,13 @@ mp.events.add('openRouletteUI', (tableX, tableY, tableZ, tableHeading) => {
     if (rouletteBrowser === null) {
         rouletteBrowser = mp.browsers.new('package://roulette/index.html');
         mp.gui.cursor.show(true, true);
+
+        // After CEF loads, ask it to send saved camera settings
+        setTimeout(() => {
+            if (rouletteBrowser) {
+                rouletteBrowser.execute('sendCameraUpdate();');
+            }
+        }, 500);
     }
 });
 
@@ -192,4 +213,32 @@ mp.events.add('Roulette_ClearBets', () => {
 mp.events.add('Roulette_LeaveTable', () => {
     closeRouletteUI();
     mp.events.callRemote('Server_LeaveRouletteTable');
+});
+
+// ──────────────────────────────────────────
+// LIVE CAMERA ADJUSTMENTS FROM CEF SLIDERS
+// ──────────────────────────────────────────
+mp.events.add('Roulette_UpdateCamera', (height, fov, rot, ox, oy) => {
+    currentCamHeight = height;
+    currentCamFov    = fov;
+    currentCamRot    = rot;
+    currentCamOx     = ox;
+    currentCamOy     = oy;
+
+    // Live update: reposition camera if we're at a table
+    if (rouletteCamTo && currentTablePos) {
+        const tp = currentTablePos;
+        const headRad = (tp.heading + currentCamRot) * Math.PI / 180;
+        const camX = tp.x + currentCamOx * Math.cos(headRad) - currentCamOy * Math.sin(headRad);
+        const camY = tp.y + currentCamOx * Math.sin(headRad) + currentCamOy * Math.cos(headRad);
+
+        rouletteCamTo.setCoord(camX, camY, tp.z + currentCamHeight);
+        rouletteCamTo.setRot(-90.0, 0.0, tp.heading + currentCamRot, 2);
+        rouletteCamTo.setFov(currentCamFov);
+    }
+});
+
+// Forward save settings from CEF to server
+mp.events.add('Roulette_SaveSettingsToFile', (settingsJson) => {
+    mp.events.callRemote('Server_SaveRouletteSettings', settingsJson);
 });

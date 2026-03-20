@@ -73,11 +73,11 @@
 
         #placementHint {
             position: fixed;
-            bottom: 120px;
+            bottom: 10vh;
             left: 50%;
             transform: translateX(-50%);
             font-family: 'Segoe UI', Arial, sans-serif;
-            font-size: 16px;
+            font-size: clamp(12px, 1.5vw, 16px);
             color: #00ff88;
             text-shadow: 0 0 10px rgba(0,255,136,0.5), 0 2px 4px rgba(0,0,0,0.8);
             text-align: center;
@@ -85,6 +85,61 @@
             pointer-events: none;
             white-space: nowrap;
         }
+
+        /* ── VIEWER INFO PANEL ── */
+        #viewerPanel {
+            position: fixed;
+            top: 50%;
+            right: 24px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.90);
+            border: 1px solid #00ff88;
+            border-radius: 12px;
+            padding: 20px 24px;
+            min-width: 300px;
+            max-width: 360px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: all;
+            z-index: 1000;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            box-shadow: 0 0 24px rgba(0, 255, 136, 0.2);
+        }
+        .v-header {
+            color: #00ff88;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        .v-row {
+            color: #ccc;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .v-val  { color: #ffaa00; }
+        .v-online  { color: #00ff88; font-weight: bold; }
+        .v-offline { color: #888; }
+        .v-btns {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .v-btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: opacity 0.15s;
+        }
+        .v-btn:hover { opacity: 0.8; }
+        .v-btn-del { background: #c0392b; color: #fff; }
+        .v-btn-cls { background: #2c3e50; color: #aaa; border: 1px solid #444; }
     </style>
 </head>
 <body>
@@ -96,6 +151,20 @@
     </div>
     <div id="placementHint">
         &#x1F3AF; Tinteste un perete &bull; LEFT CLICK = Plaseaza &bull; SCROLL = Marime &bull; RIGHT CLICK / ESC = Anuleaza
+    </div>
+
+    <!-- GRAFFITI VIEWER INFO PANEL -->
+    <div id="viewerPanel">
+        <div class="v-header">&#x1F4CD; GRAFFITI #<span id="vId"></span></div>
+        <div class="v-row">&#x1F464; <b>Owner:</b> <span class="v-val" id="vOwner"></span></div>
+        <div class="v-row">&#x1F4E1; <b>Status:</b> <span id="vOnline"></span></div>
+        <div class="v-row">&#x1F4CC; <b>Pozitie:</b> <span class="v-val" id="vPos"></span></div>
+        <div class="v-row">&#x1F4D0; <b>Marime:</b> <span class="v-val" id="vSize"></span></div>
+        <div class="v-row">&#x1F4C5; <b>Data:</b> <span class="v-val" id="vDate"></span></div>
+        <div class="v-btns">
+            <button class="v-btn v-btn-del" onclick="requestDelete()">&#x1F5D1; Sterge Graffiti</button>
+            <button class="v-btn v-btn-cls" onclick="closeViewerPanel()">&#x2715; Inchide</button>
+        </div>
     </div>
 
     <script>
@@ -232,6 +301,41 @@
                 preview.style.display = 'block';
             } else {
                 preview.style.display = 'none';
+            }
+        }
+
+        // ──────────────────────────────────────────
+        // VIEWER PANEL LOGIC
+        // ──────────────────────────────────────────
+        let currentViewerId = null;
+
+        function showViewerPanel(infoJson) {
+            const info = (typeof infoJson === 'string') ? JSON.parse(infoJson) : infoJson;
+            currentViewerId = info.id;
+            document.getElementById('vId').textContent = info.id;
+            document.getElementById('vOwner').textContent = info.playerName + ' (' + info.socialClub + ')';
+            const onlineEl = document.getElementById('vOnline');
+            onlineEl.textContent = info.isOnline ? '\u{1F7E2} Online' : '\u26AB Offline';
+            onlineEl.className   = info.isOnline ? 'v-online' : 'v-offline';
+            document.getElementById('vPos').textContent =
+                info.position.x.toFixed(2) + ', ' + info.position.y.toFixed(2) + ', ' + info.position.z.toFixed(2);
+            document.getElementById('vSize').textContent = info.sizeW.toFixed(1) + ' x ' + info.sizeH.toFixed(1);
+            document.getElementById('vDate').textContent = info.date;
+            document.getElementById('viewerPanel').style.display = 'flex';
+            mp.trigger('Graffiti_ViewPanelOpened');
+        }
+
+        function closeViewerPanel() {
+            document.getElementById('viewerPanel').style.display = 'none';
+            currentViewerId = null;
+            mp.trigger('Graffiti_ViewPanelClosed');
+        }
+
+        function requestDelete() {
+            if (currentViewerId !== null) {
+                const id = currentViewerId;
+                closeViewerPanel();
+                mp.trigger('Graffiti_DeleteRequest', '' + id);
             }
         }
 

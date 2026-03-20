@@ -3,7 +3,8 @@ const fs   = require('fs');
 const path = require('path');
 const server = require('./poker_server');
 
-const savePath = path.join(process.cwd(), 'poker_tables.json');
+const savePath = path.join(process.cwd(), 'data', 'poker', 'poker_tables.json');
+fs.mkdirSync(path.dirname(savePath), { recursive: true });
 
 // References by tableIndex
 const tableLabels         = {};  // index → mp.TextLabel

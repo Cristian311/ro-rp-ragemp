@@ -3,7 +3,8 @@ const fs   = require('fs');
 const path = require('path');
 const server = require('./blackjack_server');
 
-const savePath = path.join(process.cwd(), 'blackjack_tables.json');
+const savePath = path.join(process.cwd(), 'data', 'blackjack', 'blackjack_tables.json');
+fs.mkdirSync(path.dirname(savePath), { recursive: true });
 
 const tableLabels         = {};
 const tableColshapes      = {};

@@ -5,9 +5,10 @@ const logger = require('./graffiti_logger');
 // ──────────────────────────────────────────
 // PERSISTENCE
 // ──────────────────────────────────────────
-const SAVE_PATH = path.join(process.cwd(), 'graffiti_data.json');
+const SAVE_PATH = path.join(process.cwd(), 'data', 'graffiti', 'graffiti_data.json');
+fs.mkdirSync(path.dirname(SAVE_PATH), { recursive: true });
 
-const MAX_PER_PLAYER = 199;
+const MAX_PER_PLAYER = 1999;
 const COOLDOWN_MS    = 1000;       // 1 second
 const MAX_IMAGE_SIZE = 2000000;     // ~2 MB base64
 
@@ -221,6 +222,112 @@ mp.events.addCommand('graffitilist', (player) => {
     for (const g of graffitiList) {
         player.outputChatBox(`  !{FFFFFF}#${g.id} | ${g.playerName} | (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(1)}, ${g.position.z.toFixed(1)})`);
     }
+});
+
+// /graffitiview — admin: enter graffiti view/select mode (click to inspect)
+mp.events.addCommand('graffitiview', (player) => {
+    player.call('Graffiti_EnterViewMode', []);
+    player.outputChatBox('!{00FF88}[GRAFFITI] Mod vizualizare activat. Click pe un graffiti pentru informatii.');
+});
+
+// /nearestgraffiti — show info about the nearest graffiti to player
+mp.events.addCommand('nearestgraffiti', (player) => {
+    const pos = player.position;
+    let nearest = null;
+    let nearestDist = 50.0;
+
+    for (const g of graffitiList) {
+        const dx = g.position.x - pos.x;
+        const dy = g.position.y - pos.y;
+        const dz = g.position.z - pos.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist < nearestDist) {
+            nearest = g;
+            nearestDist = dist;
+        }
+    }
+
+    if (!nearest) {
+        player.outputChatBox('!{FF4444}[GRAFFITI] Nu exista niciun graffiti in raza de 50m.');
+        return;
+    }
+
+    const date = new Date(nearest.timestamp).toLocaleString('ro-RO');
+    const sW = (nearest.sizeW || nearest.size || 2).toFixed(1);
+    const sH = (nearest.sizeH || nearest.size || 2).toFixed(1);
+
+    let isOnline = false;
+    mp.players.forEach(p => { if (p && p.socialClub === nearest.socialClub) isOnline = true; });
+
+    player.outputChatBox('!{FF8C00}=================================');
+    player.outputChatBox(`!{FF8C00}  NEAREST GRAFFITI #${nearest.id}`);
+    player.outputChatBox('!{FF8C00}=================================');
+    player.outputChatBox(`!{FFFFFF}  Owner: !{FFAA00}${nearest.playerName} !{888888}(${nearest.socialClub}) !{${isOnline ? '00FF88' : '888888'}}[${isOnline ? 'ONLINE' : 'OFFLINE'}]`);
+    player.outputChatBox(`!{FFFFFF}  Distanta: !{FFAA00}${nearestDist.toFixed(1)}m`);
+    player.outputChatBox(`!{FFFFFF}  Pozitie: !{FFAA00}${nearest.position.x.toFixed(2)}, ${nearest.position.y.toFixed(2)}, ${nearest.position.z.toFixed(2)}`);
+    player.outputChatBox(`!{FFFFFF}  Marime: !{FFAA00}${sW} x ${sH}`);
+    player.outputChatBox(`!{FFFFFF}  Data: !{FFAA00}${date}`);
+    player.outputChatBox('!{FF8C00}=================================');
+});
+
+// Client requests info about a specific graffiti (from view mode)
+mp.events.add('Server_GraffitiViewInfo', (player, idStr) => {
+    const id = parseInt(idStr);
+    const g = graffitiList.find(item => item.id === id);
+    if (!g) {
+        player.outputChatBox('!{FF4444}[GRAFFITI] Graffiti-ul nu a fost gasit.');
+        player.call('Graffiti_ViewInfoResult', [JSON.stringify({ error: true })]);
+        return;
+    }
+    const date = new Date(g.timestamp).toLocaleString('ro-RO');
+    const sW = (g.sizeW || g.size || 2).toFixed(1);
+    const sH = (g.sizeH || g.size || 2).toFixed(1);
+
+    let isOnline = false;
+    mp.players.forEach(p => { if (p && p.socialClub === g.socialClub) isOnline = true; });
+
+    // Send to chat
+    player.outputChatBox('!{00FF88}=================================');
+    player.outputChatBox(`!{00FF88}  GRAFFITI #${g.id}`);
+    player.outputChatBox('!{00FF88}=================================');
+    player.outputChatBox(`!{FFFFFF}  Owner: !{FFAA00}${g.playerName} !{888888}(${g.socialClub}) !{${isOnline ? '00FF88' : '888888'}}[${isOnline ? 'ONLINE' : 'OFFLINE'}]`);
+    player.outputChatBox(`!{FFFFFF}  Pozitie: !{FFAA00}${g.position.x.toFixed(2)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(2)}`);
+    player.outputChatBox(`!{FFFFFF}  Marime: !{FFAA00}${sW} x ${sH}`);
+    player.outputChatBox(`!{FFFFFF}  Data: !{FFAA00}${date}`);
+    player.outputChatBox('!{00FF88}=================================');
+
+    // Also send to client for CEF panel display
+    player.call('Graffiti_ViewInfoResult', [JSON.stringify({
+        id: g.id,
+        playerName: g.playerName,
+        socialClub: g.socialClub,
+        position: g.position,
+        sizeW: parseFloat(sW),
+        sizeH: parseFloat(sH),
+        date: date,
+        isOnline: isOnline
+    })]);
+});
+
+// Client requests to delete a specific graffiti (from viewer panel)
+mp.events.add('Server_GraffitiDeleteFromViewer', (player, idStr) => {
+    const id = parseInt(idStr);
+    const idx = graffitiList.findIndex(item => item.id === id);
+    if (idx === -1) {
+        player.call('Graffiti_DeleteResult', [JSON.stringify({ success: false, message: 'Graffiti-ul nu a fost gasit.' })]);
+        return;
+    }
+    const g = graffitiList[idx];
+    const ownerName = g.playerName;
+    graffitiList.splice(idx, 1);
+    saveGraffiti();
+    logger.logDeleted(player.name, id, ownerName);
+    // Broadcast deletion to all connected clients
+    mp.players.forEach(p => {
+        try { p.call('graffitiDeleted', [JSON.stringify({ id })]); } catch(e) {}
+    });
+    player.call('Graffiti_DeleteResult', [JSON.stringify({ success: true, id })]);
+    player.outputChatBox(`!{00FF88}[GRAFFITI] Graffiti #${id} (de la ${ownerName}) sters!`);
 });
 
 // ──────────────────────────────────────────

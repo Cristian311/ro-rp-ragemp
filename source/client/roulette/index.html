@@ -13,7 +13,71 @@
   <div class="sep"></div>
   <div class="info" id="phase-label">WAITING</div>
   <div class="info">RageMP v1.1</div>
+  <button id="settings-toggle" onclick="toggleSettings()" title="Setări">⚙</button>
   <button id="btn-leave" onclick="leaveTable()">✕ LEAVE</button>
+</div>
+
+<!-- Settings Panel -->
+<div id="settings-panel">
+  <div class="settings-title">⚙ SETĂRI AFIȘARE</div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Poziție Board</div>
+    <div class="slider-row">
+      <span class="slider-label">X</span>
+      <input type="range" class="slider-input" id="sl-board-x" min="-50" max="50" step="0.5" value="0">
+      <span class="slider-value" id="sv-board-x">0</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Y</span>
+      <input type="range" class="slider-input" id="sl-board-y" min="-50" max="50" step="0.5" value="0">
+      <span class="slider-value" id="sv-board-y">0</span>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Mărime Board</div>
+    <div class="slider-row">
+      <span class="slider-label">Scală</span>
+      <input type="range" class="slider-input" id="sl-board-scale" min="0.3" max="2.0" step="0.05" value="1">
+      <span class="slider-value" id="sv-board-scale">1.00</span>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Cameră</div>
+    <div class="slider-row">
+      <span class="slider-label">Înălțime</span>
+      <input type="range" class="slider-input" id="sl-cam-height" min="1.0" max="6.0" step="0.1" value="2.5">
+      <span class="slider-value" id="sv-cam-height">2.5</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">FOV</span>
+      <input type="range" class="slider-input" id="sl-cam-fov" min="30" max="100" step="1" value="60">
+      <span class="slider-value" id="sv-cam-fov">60</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Rotație</span>
+      <input type="range" class="slider-input" id="sl-cam-rot" min="-180" max="180" step="1" value="0">
+      <span class="slider-value" id="sv-cam-rot">0</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Offset X</span>
+      <input type="range" class="slider-input" id="sl-cam-ox" min="-3.0" max="3.0" step="0.05" value="0">
+      <span class="slider-value" id="sv-cam-ox">0.00</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Offset Y</span>
+      <input type="range" class="slider-input" id="sl-cam-oy" min="-3.0" max="3.0" step="0.05" value="0">
+      <span class="slider-value" id="sv-cam-oy">0.00</span>
+    </div>
+  </div>
+
+  <div class="settings-buttons">
+    <button class="btn-settings btn-save" onclick="saveSettings()">💾 Salvează</button>
+    <button class="btn-settings btn-reset" onclick="resetSettings()">↺ Resetează</button>
+  </div>
+  <div class="save-feedback" id="save-feedback">✓ Setări salvate!</div>
 </div>
 
 <!-- Chips info -->
@@ -793,6 +857,120 @@ document.addEventListener('keydown', (e) => {
     }
 });
 document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ══════════════════════════════════════════
+// SETTINGS PANEL
+// ══════════════════════════════════════════
+const SETTINGS_KEY = 'roulette_hud_settings';
+const DEFAULT_SETTINGS = {
+    boardX: 0, boardY: 0, boardScale: 1,
+    camHeight: 2.5, camFov: 60, camRot: 0, camOx: 0, camOy: 0
+};
+
+function loadSettings() {
+    try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (raw) return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(raw));
+    } catch(e) {}
+    return Object.assign({}, DEFAULT_SETTINGS);
+}
+
+function applySettings(s) {
+    document.documentElement.style.setProperty('--board-x', s.boardX);
+    document.documentElement.style.setProperty('--board-y', s.boardY);
+    document.documentElement.style.setProperty('--board-scale', s.boardScale);
+
+    document.getElementById('sl-board-x').value = s.boardX;
+    document.getElementById('sl-board-y').value = s.boardY;
+    document.getElementById('sl-board-scale').value = s.boardScale;
+    document.getElementById('sl-cam-height').value = s.camHeight;
+    document.getElementById('sl-cam-fov').value = s.camFov;
+    document.getElementById('sl-cam-rot').value = s.camRot;
+    document.getElementById('sl-cam-ox').value = s.camOx;
+    document.getElementById('sl-cam-oy').value = s.camOy;
+
+    document.getElementById('sv-board-x').textContent = s.boardX;
+    document.getElementById('sv-board-y').textContent = s.boardY;
+    document.getElementById('sv-board-scale').textContent = Number(s.boardScale).toFixed(2);
+    document.getElementById('sv-cam-height').textContent = Number(s.camHeight).toFixed(1);
+    document.getElementById('sv-cam-fov').textContent = s.camFov;
+    document.getElementById('sv-cam-rot').textContent = s.camRot;
+    document.getElementById('sv-cam-ox').textContent = Number(s.camOx).toFixed(2);
+    document.getElementById('sv-cam-oy').textContent = Number(s.camOy).toFixed(2);
+}
+
+function getCurrentSettings() {
+    return {
+        boardX:    parseFloat(document.getElementById('sl-board-x').value),
+        boardY:    parseFloat(document.getElementById('sl-board-y').value),
+        boardScale:parseFloat(document.getElementById('sl-board-scale').value),
+        camHeight: parseFloat(document.getElementById('sl-cam-height').value),
+        camFov:    parseFloat(document.getElementById('sl-cam-fov').value),
+        camRot:    parseFloat(document.getElementById('sl-cam-rot').value),
+        camOx:     parseFloat(document.getElementById('sl-cam-ox').value),
+        camOy:     parseFloat(document.getElementById('sl-cam-oy').value),
+    };
+}
+
+function onSliderInput(sliderId, valueId, cssVar, decimals) {
+    const slider = document.getElementById(sliderId);
+    const display = document.getElementById(valueId);
+    slider.addEventListener('input', () => {
+        const v = parseFloat(slider.value);
+        display.textContent = decimals > 0 ? v.toFixed(decimals) : v;
+        if (cssVar) document.documentElement.style.setProperty(cssVar, v);
+        sendCameraUpdate();
+    });
+}
+
+function sendCameraUpdate() {
+    const s = getCurrentSettings();
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Roulette_UpdateCamera', s.camHeight, s.camFov, s.camRot, s.camOx, s.camOy);
+    }
+}
+
+function saveSettings() {
+    const s = getCurrentSettings();
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    sendCameraUpdate();
+    // Trimite setările la server pentru salvare în fișier
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Roulette_SaveSettingsToFile', JSON.stringify(s));
+    }
+    const fb = document.getElementById('save-feedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+    showToast('Setări salvate!', 1500);
+}
+
+function resetSettings() {
+    localStorage.removeItem(SETTINGS_KEY);
+    applySettings(DEFAULT_SETTINGS);
+    sendCameraUpdate();
+    showToast('Setări resetate!', 1500);
+}
+
+function toggleSettings() {
+    const panel = document.getElementById('settings-panel');
+    const btn = document.getElementById('settings-toggle');
+    const isVisible = panel.classList.contains('visible');
+    panel.classList.toggle('visible');
+    btn.classList.toggle('active');
+}
+
+// Initialize sliders
+onSliderInput('sl-board-x',     'sv-board-x',     '--board-x',     1);
+onSliderInput('sl-board-y',     'sv-board-y',     '--board-y',     1);
+onSliderInput('sl-board-scale', 'sv-board-scale', '--board-scale', 2);
+onSliderInput('sl-cam-height',  'sv-cam-height',  null,            1);
+onSliderInput('sl-cam-fov',     'sv-cam-fov',     null,            0);
+onSliderInput('sl-cam-rot',     'sv-cam-rot',     null,            0);
+onSliderInput('sl-cam-ox',      'sv-cam-ox',      null,            2);
+onSliderInput('sl-cam-oy',      'sv-cam-oy',      null,            2);
+
+// Load saved settings on startup
+applySettings(loadSettings());
 </script>
 </body>
 </html>

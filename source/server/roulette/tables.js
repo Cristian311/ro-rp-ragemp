@@ -3,7 +3,8 @@ const fs   = require('fs');
 const path = require('path');
 const server = require('./roulette_server');
 
-const savePath = path.join(process.cwd(), 'roulette_tables.json');
+const savePath = path.join(process.cwd(), 'data', 'roulette', 'roulette_tables.json');
+fs.mkdirSync(path.dirname(savePath), { recursive: true });
 
 // References by tableIndex
 const tableLabels         = {};
