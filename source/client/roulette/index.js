@@ -21,7 +21,7 @@ const CAM_FOV_TABLE      = 60;    // field of view pe masă
 let currentCamHeight = CAM_HEIGHT;
 let currentCamFov    = CAM_FOV_TABLE;
 let currentCamRot    = 0;
-let currentCamOx     = 0;
+let currentCamOx     = -0.1;
 let currentCamOy     = 0;
 let currentTablePos  = null; // { x, y, z, heading }
 

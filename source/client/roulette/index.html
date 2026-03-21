@@ -22,25 +22,64 @@
   <div class="settings-title">⚙ SETĂRI AFIȘARE</div>
 
   <div class="settings-section">
-    <div class="settings-section-title">Poziție Board</div>
+    <div class="settings-section-title">Poziție Roată</div>
     <div class="slider-row">
       <span class="slider-label">X</span>
-      <input type="range" class="slider-input" id="sl-board-x" min="-50" max="50" step="0.5" value="0">
-      <span class="slider-value" id="sv-board-x">0</span>
+      <input type="range" class="slider-input" id="sl-wheel-x" min="-50" max="80" step="0.5" value="13">
+      <span class="slider-value" id="sv-wheel-x">13</span>
     </div>
     <div class="slider-row">
       <span class="slider-label">Y</span>
-      <input type="range" class="slider-input" id="sl-board-y" min="-50" max="50" step="0.5" value="0">
-      <span class="slider-value" id="sv-board-y">0</span>
+      <input type="range" class="slider-input" id="sl-wheel-y" min="-50" max="50" step="0.5" value="15.5">
+      <span class="slider-value" id="sv-wheel-y">15.5</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Scală</span>
+      <input type="range" class="slider-input" id="sl-wheel-scale" min="0.2" max="1.5" step="0.02" value="1.02">
+      <span class="slider-value" id="sv-wheel-scale">1.02</span>
     </div>
   </div>
 
   <div class="settings-section">
-    <div class="settings-section-title">Mărime Board</div>
+    <div class="settings-section-title">Poziție Board</div>
+    <div class="slider-row">
+      <span class="slider-label">X</span>
+      <input type="range" class="slider-input" id="sl-board-x" min="-50" max="50" step="0.1" value="-15.5">
+      <span class="slider-value" id="sv-board-x">-15.5</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Y</span>
+      <input type="range" class="slider-input" id="sl-board-y" min="-50" max="50" step="0.1" value="7.5">
+      <span class="slider-value" id="sv-board-y">7.5</span>
+    </div>
     <div class="slider-row">
       <span class="slider-label">Scală</span>
-      <input type="range" class="slider-input" id="sl-board-scale" min="0.3" max="2.0" step="0.05" value="1">
-      <span class="slider-value" id="sv-board-scale">1.00</span>
+      <input type="range" class="slider-input" id="sl-board-scale" min="0.3" max="2.0" step="0.05" value="1.25">
+      <span class="slider-value" id="sv-board-scale">1.25</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Lățime Btn</span>
+      <input type="range" class="slider-input" id="sl-btn-w" min="20" max="80" step="1" value="38">
+      <span class="slider-value" id="sv-btn-w">38</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Înălțime Btn</span>
+      <input type="range" class="slider-input" id="sl-btn-h" min="20" max="80" step="1" value="71">
+      <span class="slider-value" id="sv-btn-h">71</span>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Butoane Jos (Dozens/Outside)</div>
+    <div class="slider-row">
+      <span class="slider-label">Înălțime</span>
+      <input type="range" class="slider-input" id="sl-bot-h" min="10" max="60" step="1" value="30">
+      <span class="slider-value" id="sv-bot-h">30</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Font</span>
+      <input type="range" class="slider-input" id="sl-bot-font" min="6" max="20" step="1" value="10">
+      <span class="slider-value" id="sv-bot-font">10</span>
     </div>
   </div>
 
@@ -63,8 +102,8 @@
     </div>
     <div class="slider-row">
       <span class="slider-label">Offset X</span>
-      <input type="range" class="slider-input" id="sl-cam-ox" min="-3.0" max="3.0" step="0.05" value="0">
-      <span class="slider-value" id="sv-cam-ox">0.00</span>
+      <input type="range" class="slider-input" id="sl-cam-ox" min="-3.0" max="3.0" step="0.05" value="-0.1">
+      <span class="slider-value" id="sv-cam-ox">-0.10</span>
     </div>
     <div class="slider-row">
       <span class="slider-label">Offset Y</span>
@@ -124,22 +163,23 @@
   <!-- Built by JS -->
 </div>
 
-<!-- ═══ ROULETTE WHEEL ═══ -->
+<!-- ═══ ROULETTE WHEEL (fixed position, top-left during spin) ═══ -->
 <div id="wheel-container">
   <div id="wheel-glow"></div>
-  <canvas id="wheel-canvas" width="420" height="420"></canvas>
-  <div id="wheel-center">
-    <div id="wheel-logo">🎰</div>
-  </div>
-  <div id="ball"></div>
+  <canvas id="wheel-canvas" width="460" height="460"></canvas>
   <div id="wheel-pointer">▼</div>
+  <!-- Result overlay inside wheel center -->
+  <div id="wheel-result-overlay">
+    <div id="wheel-result-number">0</div>
+    <div id="wheel-result-text">0 — Verde</div>
+  </div>
   <div id="wheel-status">BILA SE ÎNVÂRTE...</div>
 </div>
 
 <!-- Confetti container for wins -->
 <div id="confetti-container"></div>
 
-<!-- Result banner -->
+<!-- Result banner (win/loss popup) -->
 <div id="result-banner">
   <div id="result-glow"></div>
   <div id="result-number">0</div>
@@ -171,9 +211,9 @@ const RED_NUMBERS  = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 const BLACK_NUMBERS= [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35];
 const CIRCUMFERENCE = 2 * Math.PI * 22;
 
-// European roulette wheel order
-const WHEEL_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
-const SLOT_COUNT = WHEEL_ORDER.length; // 37
+// American roulette wheel order (38 slots: 0, 00, 1-36)
+const WHEEL_ORDER = [0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,'00',27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2];
+const SLOT_COUNT = WHEEL_ORDER.length; // 38
 const SLOT_ANGLE = 360 / SLOT_COUNT;
 
 let selectedChipAmount = 10;
@@ -189,157 +229,395 @@ let wheelAnimFrame = null;
 let wheelCurrentAngle = 0;
 
 // ══════════════════════════════════════════
-// ROULETTE WHEEL — Canvas Drawing
+// ROULETTE WHEEL — Realistic 3D Canvas
 // ══════════════════════════════════════════
 const canvas = document.getElementById('wheel-canvas');
 const ctx = canvas.getContext('2d');
-const CX = 210, CY = 210, RADIUS = 190;
+const CX = 230, CY = 230, RADIUS = 200;
+
+// Wheel ring zones (from outside in)
+const RIM_OUTER    = RADIUS + 18;   // wooden rim outer edge
+const RIM_INNER    = RADIUS + 2;    // wooden rim inner edge
+const BALL_TRACK_R = RADIUS - 2;    // ball track (smooth groove)
+const BALL_TRACK_INNER = RADIUS - 16; // inner edge of ball track
+const POCKET_OUTER = RADIUS - 18;   // pockets outer
+const POCKET_INNER = RADIUS * 0.52; // pockets inner
+const NUMBER_R     = RADIUS * 0.70; // where numbers are drawn
+const HUB_R        = RADIUS * 0.40; // center hub radius
+const CONE_R       = RADIUS * 0.30; // metallic cone
 
 function getNumberColor(num) {
-    if (num === 0) return 'green';
+    if (num === 0 || num === '00') return 'green';
     if (RED_NUMBERS.includes(num)) return 'red';
     return 'black';
 }
 
 const COLOR_MAP = {
-    red:   '#b71c1c',
-    black: '#1a1a2e',
-    green: '#1b5e20',
+    red:   '#9b1b1b',
+    black: '#141420',
+    green: '#14611e',
 };
 const COLOR_MAP_LIGHT = {
-    red:   '#e53935',
-    black: '#3d3d5c',
-    green: '#2e7d32',
+    red:   '#d42a2a',
+    black: '#2e2e42',
+    green: '#28843a',
+};
+const COLOR_MAP_DARK = {
+    red:   '#6b1212',
+    black: '#08080f',
+    green: '#0c3a12',
 };
 
+// Ball state (drawn on canvas)
+let ballState = { x: 0, y: 0, r: 7, visible: false, shadow: true };
+
 function drawWheel(rotation) {
-    ctx.clearRect(0, 0, 420, 420);
+    ctx.clearRect(0, 0, 460, 460);
     ctx.save();
     ctx.translate(CX, CY);
+
+    // ── Outer shadow (drop shadow under whole wheel) ──
+    ctx.beginPath();
+    ctx.arc(0, 0, RIM_OUTER + 4, 0, Math.PI * 2);
+    const outerShadow = ctx.createRadialGradient(0, 0, RIM_OUTER - 5, 0, 0, RIM_OUTER + 12);
+    outerShadow.addColorStop(0, 'rgba(0,0,0,0.5)');
+    outerShadow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = outerShadow;
+    ctx.fill();
+
+    // ── Wooden rim ──
+    const woodGrad = ctx.createRadialGradient(0, 0, RIM_INNER, 0, 0, RIM_OUTER);
+    woodGrad.addColorStop(0, '#5a3a1a');
+    woodGrad.addColorStop(0.25, '#8b5e2f');
+    woodGrad.addColorStop(0.5, '#a06b35');
+    woodGrad.addColorStop(0.75, '#7a4e22');
+    woodGrad.addColorStop(1, '#4a2e10');
+    ctx.beginPath();
+    ctx.arc(0, 0, RIM_OUTER, 0, Math.PI * 2);
+    ctx.fillStyle = woodGrad;
+    ctx.fill();
+
+    // Rim highlight (top-left light source)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, RIM_OUTER, 0, Math.PI * 2);
+    const rimHL = ctx.createLinearGradient(-RIM_OUTER, -RIM_OUTER, RIM_OUTER, RIM_OUTER);
+    rimHL.addColorStop(0, 'rgba(255,220,160,0.25)');
+    rimHL.addColorStop(0.4, 'rgba(255,220,160,0.05)');
+    rimHL.addColorStop(0.6, 'rgba(0,0,0,0)');
+    rimHL.addColorStop(1, 'rgba(0,0,0,0.2)');
+    ctx.fillStyle = rimHL;
+    ctx.fill();
+    ctx.restore();
+
+    // Rim inner chrome ring
+    ctx.beginPath();
+    ctx.arc(0, 0, RIM_INNER, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Rim outer chrome ring
+    ctx.beginPath();
+    ctx.arc(0, 0, RIM_OUTER, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // ── Ball track groove ──
+    const trackGrad = ctx.createRadialGradient(0, 0, BALL_TRACK_INNER, 0, 0, BALL_TRACK_R);
+    trackGrad.addColorStop(0, '#1a1a1a');
+    trackGrad.addColorStop(0.3, '#2a2a2a');
+    trackGrad.addColorStop(0.7, '#333');
+    trackGrad.addColorStop(1, '#222');
+    ctx.beginPath();
+    ctx.arc(0, 0, BALL_TRACK_R, 0, Math.PI * 2);
+    ctx.fillStyle = trackGrad;
+    ctx.fill();
+
+    // Ball track inner edge (subtle ring)
+    ctx.beginPath();
+    ctx.arc(0, 0, BALL_TRACK_INNER, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // 8 ball deflectors on the track
+    for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const dx = Math.cos(a);
+        const dy = Math.sin(a);
+        const r1 = BALL_TRACK_INNER + 2;
+        const r2 = (BALL_TRACK_R + BALL_TRACK_INNER) / 2 + 4;
+        ctx.beginPath();
+        ctx.moveTo(dx * r1, dy * r1);
+        ctx.lineTo(dx * r2 - dy * 3, dy * r2 + dx * 3);
+        ctx.lineTo(dx * r2 + dy * 3, dy * r2 - dx * 3);
+        ctx.closePath();
+        const deflGrad = ctx.createLinearGradient(dx * r1, dy * r1, dx * r2, dy * r2);
+        deflGrad.addColorStop(0, '#666');
+        deflGrad.addColorStop(0.5, '#aaa');
+        deflGrad.addColorStop(1, '#555');
+        ctx.fillStyle = deflGrad;
+        ctx.fill();
+    }
+
+    // ── Rotating part (pockets + numbers) ──
+    ctx.save();
     ctx.rotate(rotation * Math.PI / 180);
 
     const slotArc = (2 * Math.PI) / SLOT_COUNT;
 
-    // Outer shadow ring
+    // Pocket base ring (dark recessed floor)
     ctx.beginPath();
-    ctx.arc(0, 0, RADIUS + 6, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.arc(0, 0, POCKET_OUTER, 0, Math.PI * 2);
+    ctx.fillStyle = '#060606';
     ctx.fill();
 
-    // Outer chrome ring
-    const chromeGrad = ctx.createRadialGradient(0, 0, RADIUS - 2, 0, 0, RADIUS + 5);
-    chromeGrad.addColorStop(0, 'rgba(201,168,76,0.5)');
-    chromeGrad.addColorStop(0.5, 'rgba(201,168,76,0.2)');
-    chromeGrad.addColorStop(1, 'rgba(201,168,76,0.05)');
+    // Deep pocket floor shadow — makes pockets look recessed
+    const pocketDepth = ctx.createRadialGradient(0, 0, POCKET_INNER, 0, 0, POCKET_OUTER);
+    pocketDepth.addColorStop(0, 'rgba(0,0,0,0.6)');
+    pocketDepth.addColorStop(0.3, 'rgba(0,0,0,0.3)');
+    pocketDepth.addColorStop(0.7, 'rgba(0,0,0,0.1)');
+    pocketDepth.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.beginPath();
-    ctx.arc(0, 0, RADIUS + 4, 0, Math.PI * 2);
-    ctx.fillStyle = chromeGrad;
+    ctx.arc(0, 0, POCKET_OUTER, 0, Math.PI * 2);
+    ctx.fillStyle = pocketDepth;
     ctx.fill();
 
-    // Draw each slot
+    // Draw each pocket — split into lower pocket area and raised number ring
+    const NUMBER_RING_INNER = POCKET_OUTER - 22; // where the number ring starts (raised platform)
+    const POCKET_FLOOR_OUTER = NUMBER_RING_INNER - 2; // gap between ring and pocket floor
+
     for (let i = 0; i < SLOT_COUNT; i++) {
         const startAngle = i * slotArc - Math.PI / 2 - slotArc / 2;
         const endAngle = startAngle + slotArc;
+        const midAngle = startAngle + slotArc / 2;
         const num = WHEEL_ORDER[i];
         const color = getNumberColor(num);
 
-        // Slot fill
+        // ─ Lower pocket floor (recessed, darker) ─
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.arc(0, 0, RADIUS, startAngle, endAngle);
+        ctx.arc(0, 0, POCKET_FLOOR_OUTER, startAngle, endAngle);
+        ctx.arc(0, 0, POCKET_INNER, endAngle, startAngle, true);
         ctx.closePath();
-
-        // 3D gradient per slot
-        const midAngle = startAngle + slotArc / 2;
-        const grad = ctx.createRadialGradient(0, 0, RADIUS * 0.55, 0, 0, RADIUS);
-        grad.addColorStop(0, COLOR_MAP_LIGHT[color]);
-        grad.addColorStop(0.7, COLOR_MAP[color]);
-        grad.addColorStop(1, color === 'black' ? '#0d0d1a' : COLOR_MAP[color]);
-        ctx.fillStyle = grad;
+        const pfloorGrad = ctx.createRadialGradient(0, 0, POCKET_INNER, 0, 0, POCKET_FLOOR_OUTER);
+        pfloorGrad.addColorStop(0, COLOR_MAP_DARK[color]);
+        pfloorGrad.addColorStop(0.5, COLOR_MAP_DARK[color]);
+        pfloorGrad.addColorStop(0.85, COLOR_MAP[color]);
+        pfloorGrad.addColorStop(1, COLOR_MAP_DARK[color]);
+        ctx.fillStyle = pfloorGrad;
         ctx.fill();
 
-        // Slot divider
+        // ─ Raised number ring (outer band, brighter = elevated) ─
         ctx.beginPath();
-        ctx.moveTo(Math.cos(startAngle) * RADIUS * 0.6, Math.sin(startAngle) * RADIUS * 0.6);
-        ctx.lineTo(Math.cos(startAngle) * RADIUS, Math.sin(startAngle) * RADIUS);
-        ctx.strokeStyle = 'rgba(201,168,76,0.4)';
+        ctx.arc(0, 0, POCKET_OUTER, startAngle, endAngle);
+        ctx.arc(0, 0, NUMBER_RING_INNER, endAngle, startAngle, true);
+        ctx.closePath();
+        const nRingGrad = ctx.createRadialGradient(0, 0, NUMBER_RING_INNER, 0, 0, POCKET_OUTER);
+        nRingGrad.addColorStop(0, COLOR_MAP[color]);
+        nRingGrad.addColorStop(0.3, COLOR_MAP_LIGHT[color]);
+        nRingGrad.addColorStop(0.7, COLOR_MAP_LIGHT[color]);
+        nRingGrad.addColorStop(1, COLOR_MAP[color]);
+        ctx.fillStyle = nRingGrad;
+        ctx.fill();
+
+        // ─ Shadow under the raised number ring (depth transition) ─
+        ctx.beginPath();
+        ctx.arc(0, 0, NUMBER_RING_INNER, startAngle, endAngle);
+        ctx.arc(0, 0, NUMBER_RING_INNER - 5, endAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fill();
+
+        // ─ Highlight on top edge of number ring ─
+        ctx.beginPath();
+        ctx.arc(0, 0, POCKET_OUTER, startAngle, endAngle);
+        ctx.arc(0, 0, POCKET_OUTER - 3, endAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fill();
+
+        // Fret (divider) between pockets — metallic raised look
+        const fretInner = POCKET_INNER + 2;
+        const fretOuter = POCKET_OUTER;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(startAngle) * fretInner, Math.sin(startAngle) * fretInner);
+        ctx.lineTo(Math.cos(startAngle) * fretOuter, Math.sin(startAngle) * fretOuter);
+        ctx.strokeStyle = 'rgba(201,168,76,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Fret on pocket floor (smaller, subtler)
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(startAngle) * (POCKET_INNER + 2), Math.sin(startAngle) * (POCKET_INNER + 2));
+        ctx.lineTo(Math.cos(startAngle) * POCKET_FLOOR_OUTER, Math.sin(startAngle) * POCKET_FLOOR_OUTER);
+        ctx.strokeStyle = 'rgba(201,168,76,0.25)';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Number text
+        // Number text — drawn on the raised band
+        const numR = (POCKET_OUTER + NUMBER_RING_INNER) / 2; // center of the raised ring
         ctx.save();
         ctx.rotate(midAngle);
-        ctx.translate(RADIUS * 0.8, 0);
+        ctx.translate(numR, 0);
         ctx.rotate(Math.PI / 2);
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 12px "Bebas Neue", sans-serif';
+        ctx.font = 'bold 11px "Bebas Neue", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 4;
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 3;
         ctx.fillText(String(num), 0, 0);
         ctx.shadowBlur = 0;
         ctx.restore();
     }
 
-    // Inner decorative ring
+    // Outer pocket ring — chrome trim on the raised number ring
     ctx.beginPath();
-    ctx.arc(0, 0, RADIUS * 0.58, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(201,168,76,0.3)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Middle ring fill (dark)
-    const midGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, RADIUS * 0.58);
-    midGrad.addColorStop(0, '#1a252f');
-    midGrad.addColorStop(0.7, '#0d1117');
-    midGrad.addColorStop(1, '#080c14');
-    ctx.beginPath();
-    ctx.arc(0, 0, RADIUS * 0.55, 0, Math.PI * 2);
-    ctx.fillStyle = midGrad;
-    ctx.fill();
-
-    // Spokes from center to inner ring
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * 48, Math.sin(angle) * 48);
-        ctx.lineTo(Math.cos(angle) * RADIUS * 0.53, Math.sin(angle) * RADIUS * 0.53);
-        ctx.strokeStyle = 'rgba(201,168,76,0.15)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-    }
-
-    // Hub (center circle)
-    const hubGrad = ctx.createRadialGradient(-10, -10, 5, 0, 0, 50);
-    hubGrad.addColorStop(0, '#3a4a5e');
-    hubGrad.addColorStop(0.4, '#1a252f');
-    hubGrad.addColorStop(1, '#0a0f16');
-    ctx.beginPath();
-    ctx.arc(0, 0, 45, 0, Math.PI * 2);
-    ctx.fillStyle = hubGrad;
-    ctx.fill();
-
-    // Hub border - gold ring
-    ctx.beginPath();
-    ctx.arc(0, 0, 45, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(201,168,76,0.6)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Hub inner shine
-    ctx.beginPath();
-    ctx.arc(0, 0, 30, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(201,168,76,0.15)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Outer ring stroke
-    ctx.beginPath();
-    ctx.arc(0, 0, RADIUS, 0, Math.PI * 2);
+    ctx.arc(0, 0, POCKET_OUTER, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(201,168,76,0.5)';
     ctx.lineWidth = 2;
     ctx.stroke();
+
+    // Ring between number band and pocket floor (gold divider)
+    ctx.beginPath();
+    ctx.arc(0, 0, NUMBER_RING_INNER, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Inner pocket ring
+    ctx.beginPath();
+    ctx.arc(0, 0, POCKET_INNER, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // ── Center hub ──
+    // Hub base
+    const hubGrad = ctx.createRadialGradient(-15, -15, 5, 0, 0, HUB_R);
+    hubGrad.addColorStop(0, '#3a4a5e');
+    hubGrad.addColorStop(0.4, '#1a252f');
+    hubGrad.addColorStop(1, '#080c14');
+    ctx.beginPath();
+    ctx.arc(0, 0, HUB_R, 0, Math.PI * 2);
+    ctx.fillStyle = hubGrad;
+    ctx.fill();
+
+    // Gold ring around hub
+    ctx.beginPath();
+    ctx.arc(0, 0, HUB_R, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.6)';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // ── GTA-style cross turret ──
+    const CROSS_ARM_LEN = HUB_R - 6;
+    const CROSS_ARM_W = 8;
+    for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2;
+        ctx.save();
+        ctx.rotate(a);
+        // Arm body
+        const armGrad = ctx.createLinearGradient(0, 0, CROSS_ARM_LEN, 0);
+        armGrad.addColorStop(0, '#888');
+        armGrad.addColorStop(0.3, '#aaa');
+        armGrad.addColorStop(0.6, '#777');
+        armGrad.addColorStop(1, '#555');
+        ctx.beginPath();
+        ctx.moveTo(14, -CROSS_ARM_W / 2);
+        ctx.lineTo(CROSS_ARM_LEN, -CROSS_ARM_W / 2 + 1);
+        ctx.lineTo(CROSS_ARM_LEN, CROSS_ARM_W / 2 - 1);
+        ctx.lineTo(14, CROSS_ARM_W / 2);
+        ctx.closePath();
+        ctx.fillStyle = armGrad;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(201,168,76,0.35)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        // Arm diamond tip
+        ctx.beginPath();
+        ctx.moveTo(CROSS_ARM_LEN - 2, -CROSS_ARM_W / 2 + 1);
+        ctx.lineTo(CROSS_ARM_LEN + 5, 0);
+        ctx.lineTo(CROSS_ARM_LEN - 2, CROSS_ARM_W / 2 - 1);
+        ctx.closePath();
+        ctx.fillStyle = '#999';
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Metallic cone (center dome)
+    const coneGrad = ctx.createRadialGradient(-8, -8, 3, 0, 0, CONE_R);
+    coneGrad.addColorStop(0, '#d0d0d0');
+    coneGrad.addColorStop(0.15, '#aaa');
+    coneGrad.addColorStop(0.4, '#777');
+    coneGrad.addColorStop(0.7, '#444');
+    coneGrad.addColorStop(1, '#222');
+    ctx.beginPath();
+    ctx.arc(0, 0, CONE_R, 0, Math.PI * 2);
+    ctx.fillStyle = coneGrad;
+    ctx.fill();
+
+    // Cone ring
+    ctx.beginPath();
+    ctx.arc(0, 0, CONE_R, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Cone highlight
+    ctx.beginPath();
+    ctx.arc(-CONE_R * 0.25, -CONE_R * 0.25, CONE_R * 0.45, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fill();
+
+    // Cone tip
+    const tipGrad = ctx.createRadialGradient(-2, -2, 1, 0, 0, 10);
+    tipGrad.addColorStop(0, '#eee');
+    tipGrad.addColorStop(0.4, '#999');
+    tipGrad.addColorStop(1, '#555');
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.fillStyle = tipGrad;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.restore(); // end rotating part
+
+    // ── Draw ball (on canvas, not CSS) ──
+    if (ballState.visible) {
+        // Ball shadow
+        if (ballState.shadow) {
+            ctx.beginPath();
+            ctx.ellipse(ballState.x + 2, ballState.y + 3, ballState.r + 1, ballState.r * 0.6, 0.3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fill();
+        }
+        // Ball body
+        const bGrad = ctx.createRadialGradient(
+            ballState.x - ballState.r * 0.3,
+            ballState.y - ballState.r * 0.35,
+            ballState.r * 0.15,
+            ballState.x, ballState.y, ballState.r
+        );
+        bGrad.addColorStop(0, '#ffffff');
+        bGrad.addColorStop(0.3, '#f0f0f0');
+        bGrad.addColorStop(0.7, '#c8c8c8');
+        bGrad.addColorStop(1, '#808080');
+        ctx.beginPath();
+        ctx.arc(ballState.x, ballState.y, ballState.r, 0, Math.PI * 2);
+        ctx.fillStyle = bGrad;
+        ctx.fill();
+        // Ball edge
+        ctx.strokeStyle = 'rgba(100,100,100,0.4)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+    }
 
     ctx.restore();
 }
@@ -353,11 +631,16 @@ drawWheel(0);
 function getTargetAngle(winningNumber) {
     const idx = WHEEL_ORDER.indexOf(winningNumber);
     const slotCenterAngle = idx * SLOT_ANGLE;
-    const extraSpins = 6 + Math.floor(Math.random() * 3); // 6-8 full rotations
-    return extraSpins * 360 + (360 - slotCenterAngle);
+    const currentAngleMod = wheelCurrentAngle % 360;
+    const targetStopAngle = (360 - slotCenterAngle) % 360;
+    let delta = targetStopAngle - currentAngleMod;
+    if (delta <= 0) delta += 360;
+    const extraSpins = 5 + Math.floor(Math.random() * 2);
+    return extraSpins * 360 + delta;
 }
 
 function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+function easeOutQuint(t) { return 1 - Math.pow(1 - t, 5); }
 function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
 
 function animateWheel(winningNumber, duration, callback) {
@@ -366,101 +649,124 @@ function animateWheel(winningNumber, duration, callback) {
     const startTime = performance.now();
     const durationMs = duration * 1000;
 
-    const ball = document.getElementById('ball');
-    ball.style.display = 'block';
-    ball.style.opacity = '1';
+    ballState.visible = true;
+    ballState.shadow = true;
 
-    // Ball params
-    let ballOrbitalAngle = Math.random() * 360;
-    const ballBaseSpeed = -14; // opposite direction to wheel
-    const BALL_OUTER_R = 200;
-    const BALL_INNER_R = 153;
+    // Ball orbital state (screen-space angle, CCW)
+    let ballAngle = Math.random() * 360;
+    const ballSpeed0 = -14;  // deg/frame, counter-clockwise
 
-    // Pre-calculate winning slot ball position
+    // Radii for canvas-space ball drawing
+    const OUTER_R = (BALL_TRACK_R + BALL_TRACK_INNER) / 2;  // ball track center
+    const NUMBER_RING_IN = POCKET_OUTER - 22;               // inner edge of raised number ring
+    const POCKET_FLOOR_R = (NUMBER_RING_IN - 2 + POCKET_INNER) / 2; // center of pocket floor
+    const INNER_R = POCKET_FLOOR_R;                          // ball settles here
+
+    // Where the winning slot center is (local angle before wheel rotation)
     const winIdx = WHEEL_ORDER.indexOf(winningNumber);
-    const winSlotAngleDeg = -90 + winIdx * SLOT_ANGLE + SLOT_ANGLE / 2;
+    const winSlotAngle = -90 + winIdx * SLOT_ANGLE;
 
     function frame(now) {
         const elapsed = now - startTime;
-        let progress = Math.min(elapsed / durationMs, 1);
-        const easedProgress = easeOutQuart(progress);
+        let t = Math.min(elapsed / durationMs, 1);
+        const wheelEased = easeOutQuart(t);
 
-        // === Wheel rotation ===
-        const currentAngle = startAngle + (targetAngle - startAngle) * easedProgress;
+        // Wheel rotation
+        const currentAngle = startAngle + (targetAngle - startAngle) * wheelEased;
         wheelCurrentAngle = currentAngle;
+
+        // Ball phases
+        let bx, by;
+
+        if (t < 0.60) {
+            // ═══ Phase 1: Fast orbit on outer track ═══
+            const phaseT = t / 0.60;
+            const speed = ballSpeed0 * (1 - phaseT * 0.55);
+            ballAngle += speed;
+            const wobble = Math.sin(t * 80) * 1.2 * (1 - phaseT);
+            const r = OUTER_R + wobble;
+            const rad = ballAngle * Math.PI / 180;
+            bx = Math.cos(rad) * r;
+            by = Math.sin(rad) * r;
+            ballState.r = 7;
+            ballState.shadow = true;
+
+        } else if (t < 0.78) {
+            // ═══ Phase 2: Drop inward + bounce off deflectors ═══
+            const phaseT = (t - 0.60) / 0.18;
+            const dropEase = easeInOutCubic(phaseT);
+
+            // Still orbiting but much slower
+            const speed = ballSpeed0 * 0.45 * (1 - phaseT * 0.7);
+            ballAngle += speed;
+
+            // Drop from outer track to inner with bouncing
+            const bounce = Math.sin(phaseT * Math.PI * 4) * 14 * (1 - phaseT);
+            const r = OUTER_R - (OUTER_R - INNER_R - 8) * dropEase + bounce;
+
+            const rad = ballAngle * Math.PI / 180;
+            bx = Math.cos(rad) * r;
+            by = Math.sin(rad) * r;
+            ballState.r = 6.5;
+            ballState.shadow = true;
+
+        } else {
+            // ═══ Phase 3: Settle into winning pocket (lock to wheel) ═══
+            const phaseT = (t - 0.78) / 0.22;
+            const settleEase = easeOutQuart(phaseT);
+
+            // Target: ball locked to winning slot, rotating WITH the wheel
+            const lockedAngle = (winSlotAngle + currentAngle) * Math.PI / 180;
+            const lockedR = INNER_R;
+            const targetX = Math.cos(lockedAngle) * lockedR;
+            const targetY = Math.sin(lockedAngle) * lockedR;
+
+            // Current free-flying ball position (continues drifting)
+            const driftSpeed = ballSpeed0 * 0.12 * (1 - phaseT);
+            ballAngle += driftSpeed;
+            const driftR = INNER_R + 8 * (1 - settleEase);
+            const driftRad = ballAngle * Math.PI / 180;
+            const driftX = Math.cos(driftRad) * driftR;
+            const driftY = Math.sin(driftRad) * driftR;
+
+            // Blend from free-flying position to locked position
+            bx = driftX + (targetX - driftX) * settleEase;
+            by = driftY + (targetY - driftY) * settleEase;
+
+            // Micro-bouncing in the pocket near the end
+            if (phaseT > 0.4) {
+                const bounceT = (phaseT - 0.4) / 0.6;
+                const micro = Math.sin(bounceT * Math.PI * 4) * 3.5 * (1 - bounceT);
+                const bDir = lockedAngle + Math.PI;
+                bx += Math.cos(bDir) * micro;
+                by += Math.sin(bDir) * micro;
+            }
+
+            ballState.r = 6;
+            ballState.shadow = phaseT < 0.7;
+        }
+
+        ballState.x = bx;
+        ballState.y = by;
+
         drawWheel(currentAngle);
 
-        // === Ball animation ===
-        if (progress < 0.65) {
-            // Phase 1: Ball orbits fast counterclockwise on the outer track
-            const speed = ballBaseSpeed * (1 - (progress / 0.65) * 0.6);
-            ballOrbitalAngle += speed;
-            const r = BALL_OUTER_R;
-            const bx = CX + Math.cos(ballOrbitalAngle * Math.PI / 180) * r;
-            const by = CY + Math.sin(ballOrbitalAngle * Math.PI / 180) * r;
-            ball.style.left = bx + 'px';
-            ball.style.top = by + 'px';
-        } else if (progress < 0.80) {
-            // Phase 2: Ball decelerates & drops inward (bouncing between tracks)
-            const dropP = (progress - 0.65) / 0.15;
-            const dropEase = easeInOutCubic(dropP);
-
-            // Still moving but much slower
-            const speed = ballBaseSpeed * 0.4 * (1 - dropP);
-            ballOrbitalAngle += speed;
-
-            // Drop from outer to inner with bounce
-            const bounce = Math.sin(dropP * Math.PI * 4) * 15 * (1 - dropP);
-            const r = BALL_OUTER_R - (BALL_OUTER_R - BALL_INNER_R - 10) * dropEase + bounce;
-
-            const bx = CX + Math.cos(ballOrbitalAngle * Math.PI / 180) * r;
-            const by = CY + Math.sin(ballOrbitalAngle * Math.PI / 180) * r;
-            ball.style.left = bx + 'px';
-            ball.style.top = by + 'px';
-        } else {
-            // Phase 3: Ball settles into winning pocket (moves with wheel)
-            const settleP = (progress - 0.80) / 0.20;
-            const settleEase = easeOutQuart(settleP);
-
-            // Target: ball locked to winning slot, rotating with wheel
-            const finalAngle = (winSlotAngleDeg + currentAngle) * Math.PI / 180;
-            const finalR = BALL_INNER_R;
-            const targetBx = CX + Math.cos(finalAngle) * finalR;
-            const targetBy = CY + Math.sin(finalAngle) * finalR;
-
-            // Current ball position
-            const currR = BALL_INNER_R + 10 * (1 - settleEase);
-            const currBx = CX + Math.cos(ballOrbitalAngle * Math.PI / 180) * currR;
-            const currBy = CY + Math.sin(ballOrbitalAngle * Math.PI / 180) * currR;
-
-            // Interpolate + tiny bounce at the very end
-            const bx = currBx + (targetBx - currBx) * settleEase;
-            const by = currBy + (targetBy - currBy) * settleEase;
-
-            const microBounce = settleP > 0.6
-                ? Math.sin((settleP - 0.6) / 0.4 * Math.PI * 3) * 3 * (1 - settleP)
-                : 0;
-
-            ball.style.left = (bx + microBounce) + 'px';
-            ball.style.top = (by + microBounce) + 'px';
-        }
-
-        // === Glow intensifies near end ===
+        // Glow near end
         const glow = document.getElementById('wheel-glow');
-        if (progress > 0.7) {
-            const intensity = (progress - 0.7) / 0.3;
-            glow.style.opacity = String(0.2 + intensity * 0.6);
+        if (t > 0.6) {
+            glow.style.opacity = String(0.1 + ((t - 0.6) / 0.4) * 0.7);
         }
 
-        if (progress < 1) {
+        if (t < 1) {
             wheelAnimFrame = requestAnimationFrame(frame);
         } else {
-            // Done — final lock
-            const finalAngle = (winSlotAngleDeg + currentAngle) * Math.PI / 180;
-            ball.style.left = (CX + Math.cos(finalAngle) * BALL_INNER_R) + 'px';
-            ball.style.top = (CY + Math.sin(finalAngle) * BALL_INNER_R) + 'px';
-            ball.classList.add('settled');
-
+            // Final lock
+            const finalAngle = (winSlotAngle + currentAngle) * Math.PI / 180;
+            ballState.x = Math.cos(finalAngle) * INNER_R;
+            ballState.y = Math.sin(finalAngle) * INNER_R;
+            ballState.r = 6;
+            ballState.shadow = false;
+            drawWheel(currentAngle);
             if (callback) callback();
         }
     }
@@ -523,78 +829,97 @@ function buildBoard() {
     const container = document.getElementById('roulette-board');
     container.innerHTML = '';
 
-    const grid = document.createElement('div');
-    grid.className = 'board-grid';
+    const table = document.createElement('div');
+    table.className = 'board-table';
 
-    // Zero
+    // Main section: zeros | numbers | 2:1 columns
+    const main = document.createElement('div');
+    main.className = 'board-main';
+
+    // Zero column (left side) — 00 on top, 0 on bottom (GTA layout)
+    const zeros = document.createElement('div');
+    zeros.className = 'board-zeros';
+    const dblZeroCell = document.createElement('div');
+    dblZeroCell.className = 'board-cell green zero-cell';
+    dblZeroCell.textContent = '00';
+    dblZeroCell.id = 'cell-00';
+    dblZeroCell.onclick = () => placeBetOnBoard('straight', '00');
+    zeros.appendChild(dblZeroCell);
+
     const zeroCell = document.createElement('div');
     zeroCell.className = 'board-cell green zero-cell';
     zeroCell.textContent = '0';
     zeroCell.id = 'cell-0';
     zeroCell.onclick = () => placeBetOnBoard('straight', 0);
-    grid.appendChild(zeroCell);
+    zeros.appendChild(zeroCell);
+    main.appendChild(zeros);
 
+    // Number grid (3 rows x 12 cols)
+    const numGrid = document.createElement('div');
+    numGrid.className = 'board-numbers';
     const rows = [
         [3,6,9,12,15,18,21,24,27,30,33,36],
         [2,5,8,11,14,17,20,23,26,29,32,35],
         [1,4,7,10,13,16,19,22,25,28,31,34],
     ];
-
-    rows.forEach((row, rowIdx) => {
-        row.forEach((num, colIdx) => {
+    rows.forEach(row => {
+        row.forEach(num => {
             const cell = document.createElement('div');
-            cell.className = `board-cell ${getNumberColor(num)}`;
+            cell.className = `board-cell board-num ${getNumberColor(num)}`;
             cell.textContent = num;
             cell.id = `cell-${num}`;
-            cell.style.gridRow = rowIdx + 1;
-            cell.style.gridColumn = colIdx + 2;
             cell.onclick = () => placeBetOnBoard('straight', num);
-            grid.appendChild(cell);
+            numGrid.appendChild(cell);
         });
-
-        const colCell = document.createElement('div');
-        colCell.className = 'board-cell col-cell';
-        colCell.textContent = '2:1';
-        colCell.style.gridRow = rowIdx + 1;
-        colCell.style.gridColumn = 14;
-        const colNum = 3 - rowIdx;
-        colCell.onclick = () => placeBetOnBoard('column', colNum);
-        grid.appendChild(colCell);
     });
+    main.appendChild(numGrid);
 
-    container.appendChild(grid);
+    // 2:1 column bets (right side)
+    const cols = document.createElement('div');
+    cols.className = 'board-cols';
+    [3, 2, 1].forEach(colNum => {
+        const cell = document.createElement('div');
+        cell.className = 'board-cell col-cell';
+        cell.textContent = '2 to 1';
+        cell.onclick = () => placeBetOnBoard('column', colNum);
+        cols.appendChild(cell);
+    });
+    main.appendChild(cols);
+
+    table.appendChild(main);
 
     // Dozen row
     const dozenRow = document.createElement('div');
-    dozenRow.className = 'board-bottom';
-    dozenRow.innerHTML = '<div></div>';
+    dozenRow.className = 'board-bottom-row';
     [{label:'1st 12',value:1},{label:'2nd 12',value:2},{label:'3rd 12',value:3}].forEach(d => {
         const cell = document.createElement('div');
-        cell.className = 'board-cell outside';
+        cell.className = 'board-cell dozen-cell';
         cell.textContent = d.label;
         cell.onclick = () => placeBetOnBoard('dozen', d.value);
         dozenRow.appendChild(cell);
     });
-    dozenRow.innerHTML += '<div></div>';
-    container.appendChild(dozenRow);
+    table.appendChild(dozenRow);
 
     // Outside bets row
     const outsideRow = document.createElement('div');
-    outsideRow.className = 'board-outside';
-    outsideRow.innerHTML = '<div></div>';
+    outsideRow.className = 'board-bottom-row';
     [
-        {label:'1-18',type:'low'},{label:'PAR',type:'even'},
-        {label:'◆ ROȘU',type:'red',cls:'red-bet'},{label:'◆ NEGRU',type:'black',cls:'black-bet'},
-        {label:'IMPAR',type:'odd'},{label:'19-36',type:'high'},
+        {label:'1 to 18',type:'low'},
+        {label:'EVEN',type:'even'},
+        {label:'◆',type:'red',cls:'red-bet'},
+        {label:'◆',type:'black',cls:'black-bet'},
+        {label:'ODD',type:'odd'},
+        {label:'19 to 36',type:'high'},
     ].forEach(b => {
         const cell = document.createElement('div');
-        cell.className = `board-cell outside ${b.cls||''}`;
+        cell.className = `board-cell outside-cell ${b.cls||''}`;
         cell.textContent = b.label;
         cell.onclick = () => placeBetOnBoard(b.type, null);
         outsideRow.appendChild(cell);
     });
-    outsideRow.innerHTML += '<div></div>';
-    container.appendChild(outsideRow);
+    table.appendChild(outsideRow);
+
+    container.appendChild(table);
 }
 buildBoard();
 
@@ -683,16 +1008,17 @@ function onBettingStart(betTime) {
     document.getElementById('bet-selector').classList.add('visible');
     document.getElementById('actions').classList.add('visible');
 
-    document.getElementById('wheel-container').classList.remove('visible');
+    // Hide result overlays only
     document.getElementById('result-banner').classList.remove('visible');
+    document.getElementById('wheel-result-overlay').classList.remove('visible');
+    document.getElementById('wheel-status').classList.remove('visible');
 
     document.querySelectorAll('.board-cell.winning').forEach(el => el.classList.remove('winning'));
 
-    const ball = document.getElementById('ball');
-    ball.style.display = 'none';
-    ball.style.opacity = '0';
-    ball.classList.remove('settled');
+    // Reset ball state
+    ballState.visible = false;
     document.getElementById('wheel-glow').style.opacity = '0';
+    drawWheel(wheelCurrentAngle);
 
     showToast('Plasați pariurile!', 2000);
 }
@@ -721,14 +1047,15 @@ function updateBetTimer(timeLeft) {
 // SPIN PHASE — Real Wheel Animation
 // ══════════════════════════════════════════
 function onSpinStart(winningNumber, winningColor, spinTime) {
-    document.getElementById('roulette-board').classList.remove('visible');
+    // Hide bet controls, keep board visible
     document.getElementById('bet-selector').classList.remove('visible');
     document.getElementById('actions').classList.remove('visible');
     document.getElementById('timer-wrap').classList.remove('visible');
     document.getElementById('result-banner').classList.remove('visible');
 
-    const wc = document.getElementById('wheel-container');
-    wc.classList.add('visible');
+    // Board stays visible
+    document.getElementById('roulette-board').classList.add('visible');
+    document.getElementById('wheel-result-overlay').classList.remove('visible');
 
     const ws = document.getElementById('wheel-status');
     ws.textContent = 'BILA SE ÎNVÂRTE...';
@@ -739,6 +1066,15 @@ function onSpinStart(winningNumber, winningColor, spinTime) {
     animateWheel(winningNumber, spinTime, () => {
         const colorName = winningColor === 'red' ? 'ROȘU' : winningColor === 'black' ? 'NEGRU' : 'VERDE';
         ws.innerHTML = `<span class="result-flash ${winningColor}">${winningNumber}</span> — ${colorName}`;
+
+        // Show result in wheel center
+        const overlay = document.getElementById('wheel-result-overlay');
+        const numEl = document.getElementById('wheel-result-number');
+        const txtEl = document.getElementById('wheel-result-text');
+        numEl.textContent = winningNumber;
+        numEl.className = winningColor;
+        txtEl.textContent = `${winningNumber} — ${colorName}`;
+        overlay.classList.add('visible');
     });
 }
 
@@ -787,7 +1123,8 @@ function onShowResult(number, color, stateJson) {
     clearTimeout(resultBannerTimeout);
     resultBannerTimeout = setTimeout(() => {
         banner.classList.remove('visible');
-        document.getElementById('wheel-container').classList.remove('visible');
+        document.getElementById('wheel-result-overlay').classList.remove('visible');
+        document.getElementById('wheel-status').classList.remove('visible');
     }, 5000);
 
     renderPlayerList(state.players || []);
@@ -863,8 +1200,10 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 // ══════════════════════════════════════════
 const SETTINGS_KEY = 'roulette_hud_settings';
 const DEFAULT_SETTINGS = {
-    boardX: 0, boardY: 0, boardScale: 1,
-    camHeight: 2.5, camFov: 60, camRot: 0, camOx: 0, camOy: 0
+    wheelX: 13, wheelY: 15.5, wheelScale: 1.02,
+    boardX: -15.5, boardY: 7.5, boardScale: 1.25, btnW: 38, btnH: 71,
+    botH: 30, botFont: 10,
+    camHeight: 2.5, camFov: 60, camRot: 0, camOx: -0.1, camOy: 0
 };
 
 function loadSettings() {
@@ -876,22 +1215,53 @@ function loadSettings() {
 }
 
 function applySettings(s) {
+    // Wheel CSS vars
+    document.documentElement.style.setProperty('--wheel-x', s.wheelX);
+    document.documentElement.style.setProperty('--wheel-y', s.wheelY);
+    document.documentElement.style.setProperty('--wheel-scale', s.wheelScale);
+    // Board CSS vars
     document.documentElement.style.setProperty('--board-x', s.boardX);
     document.documentElement.style.setProperty('--board-y', s.boardY);
     document.documentElement.style.setProperty('--board-scale', s.boardScale);
 
+    // Wheel sliders
+    document.getElementById('sl-wheel-x').value = s.wheelX;
+    document.getElementById('sl-wheel-y').value = s.wheelY;
+    document.getElementById('sl-wheel-scale').value = s.wheelScale;
+    document.getElementById('sv-wheel-x').textContent = s.wheelX;
+    document.getElementById('sv-wheel-y').textContent = s.wheelY;
+    document.getElementById('sv-wheel-scale').textContent = Number(s.wheelScale).toFixed(2);
+
+    // Board sliders
     document.getElementById('sl-board-x').value = s.boardX;
     document.getElementById('sl-board-y').value = s.boardY;
     document.getElementById('sl-board-scale').value = s.boardScale;
+    document.getElementById('sv-board-x').textContent = s.boardX;
+    document.getElementById('sv-board-y').textContent = s.boardY;
+    document.getElementById('sv-board-scale').textContent = Number(s.boardScale).toFixed(2);
+
+    // Button size
+    document.documentElement.style.setProperty('--btn-w', s.btnW || 42);
+    document.documentElement.style.setProperty('--btn-h', s.btnH || 42);
+    document.getElementById('sl-btn-w').value = s.btnW || 42;
+    document.getElementById('sl-btn-h').value = s.btnH || 42;
+    document.getElementById('sv-btn-w').textContent = s.btnW || 42;
+    document.getElementById('sv-btn-h').textContent = s.btnH || 42;
+
+    // Bottom rows
+    document.documentElement.style.setProperty('--bot-h', s.botH || 30);
+    document.documentElement.style.setProperty('--bot-font', s.botFont || 10);
+    document.getElementById('sl-bot-h').value = s.botH || 30;
+    document.getElementById('sl-bot-font').value = s.botFont || 10;
+    document.getElementById('sv-bot-h').textContent = s.botH || 30;
+    document.getElementById('sv-bot-font').textContent = s.botFont || 10;
+
+    // Camera sliders
     document.getElementById('sl-cam-height').value = s.camHeight;
     document.getElementById('sl-cam-fov').value = s.camFov;
     document.getElementById('sl-cam-rot').value = s.camRot;
     document.getElementById('sl-cam-ox').value = s.camOx;
     document.getElementById('sl-cam-oy').value = s.camOy;
-
-    document.getElementById('sv-board-x').textContent = s.boardX;
-    document.getElementById('sv-board-y').textContent = s.boardY;
-    document.getElementById('sv-board-scale').textContent = Number(s.boardScale).toFixed(2);
     document.getElementById('sv-cam-height').textContent = Number(s.camHeight).toFixed(1);
     document.getElementById('sv-cam-fov').textContent = s.camFov;
     document.getElementById('sv-cam-rot').textContent = s.camRot;
@@ -901,9 +1271,16 @@ function applySettings(s) {
 
 function getCurrentSettings() {
     return {
+        wheelX:    parseFloat(document.getElementById('sl-wheel-x').value),
+        wheelY:    parseFloat(document.getElementById('sl-wheel-y').value),
+        wheelScale:parseFloat(document.getElementById('sl-wheel-scale').value),
         boardX:    parseFloat(document.getElementById('sl-board-x').value),
         boardY:    parseFloat(document.getElementById('sl-board-y').value),
         boardScale:parseFloat(document.getElementById('sl-board-scale').value),
+        btnW:      parseInt(document.getElementById('sl-btn-w').value),
+        btnH:      parseInt(document.getElementById('sl-btn-h').value),
+        botH:      parseInt(document.getElementById('sl-bot-h').value),
+        botFont:   parseInt(document.getElementById('sl-bot-font').value),
         camHeight: parseFloat(document.getElementById('sl-cam-height').value),
         camFov:    parseFloat(document.getElementById('sl-cam-fov').value),
         camRot:    parseFloat(document.getElementById('sl-cam-rot').value),
@@ -932,12 +1309,15 @@ function sendCameraUpdate() {
 
 function saveSettings() {
     const s = getCurrentSettings();
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
     sendCameraUpdate();
-    // Trimite setările la server pentru salvare în fișier
+    // Trimite setările la server pentru salvare în fișier PRIMUL
     if (typeof mp !== 'undefined') {
-        mp.trigger('Roulette_SaveSettingsToFile', JSON.stringify(s));
+        try {
+            mp.trigger('Roulette_SaveSettingsToFile', JSON.stringify(s));
+        } catch(e) { console.error('mp.trigger failed:', e); }
     }
+    // localStorage poate să nu meargă în RAGE CEF
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch(e) {}
     const fb = document.getElementById('save-feedback');
     fb.classList.add('show');
     setTimeout(() => fb.classList.remove('show'), 2000);
@@ -960,9 +1340,16 @@ function toggleSettings() {
 }
 
 // Initialize sliders
+onSliderInput('sl-wheel-x',     'sv-wheel-x',     '--wheel-x',     1);
+onSliderInput('sl-wheel-y',     'sv-wheel-y',     '--wheel-y',     1);
+onSliderInput('sl-wheel-scale', 'sv-wheel-scale', '--wheel-scale', 2);
 onSliderInput('sl-board-x',     'sv-board-x',     '--board-x',     1);
 onSliderInput('sl-board-y',     'sv-board-y',     '--board-y',     1);
 onSliderInput('sl-board-scale', 'sv-board-scale', '--board-scale', 2);
+onSliderInput('sl-btn-w',       'sv-btn-w',       '--btn-w',       0);
+onSliderInput('sl-btn-h',       'sv-btn-h',       '--btn-h',       0);
+onSliderInput('sl-bot-h',       'sv-bot-h',       '--bot-h',       0);
+onSliderInput('sl-bot-font',    'sv-bot-font',    '--bot-font',    0);
 onSliderInput('sl-cam-height',  'sv-cam-height',  null,            1);
 onSliderInput('sl-cam-fov',     'sv-cam-fov',     null,            0);
 onSliderInput('sl-cam-rot',     'sv-cam-rot',     null,            0);

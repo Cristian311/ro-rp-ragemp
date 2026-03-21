@@ -16,13 +16,16 @@ const ROULETTE_CONFIG = {
 };
 
 // ──────────────────────────────────────────
-// ROULETTE NUMBERS & COLORS
+// ROULETTE NUMBERS & COLORS (American Roulette — 0 + 00)
 // ──────────────────────────────────────────
 const RED_NUMBERS  = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
 const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35];
 
+// All possible numbers on the wheel (0, 00, 1-36)
+const ALL_NUMBERS = [0, '00', 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36];
+
 function getNumberColor(num) {
-    if (num === 0) return 'green';
+    if (num === 0 || num === '00') return 'green';
     if (RED_NUMBERS.includes(num)) return 'red';
     return 'black';
 }
@@ -353,8 +356,9 @@ function startSpin(lobby) {
 
     rouletteLog.onBetsPlaced(lobby);
 
-    // Generează numărul câștigător
-    const winningNumber = Math.floor(Math.random() * 37); // 0-36
+    // Generează numărul câștigător (American: 0, 00, 1-36 = 38 outcomes)
+    const rng = Math.floor(Math.random() * 38);
+    const winningNumber = rng === 37 ? '00' : rng; // 0-36 normal, 37 = "00"
     const winningColor = getNumberColor(winningNumber);
 
     lobby.lastResult = { number: winningNumber, color: winningColor };
@@ -364,7 +368,7 @@ function startSpin(lobby) {
     rouletteLog.onSpinStart(lobby);
 
     broadcastToLobby(lobby, '!{Orange}[RULETĂ] !{White}Bila se învârte...');
-    callToLobby(lobby, 'rouletteSpinStart', [winningNumber, winningColor, ROULETTE_CONFIG.SPIN_TIME]);
+    callToLobby(lobby, 'rouletteSpinStart', [winningNumber === '00' ? '00' : winningNumber, winningColor, ROULETTE_CONFIG.SPIN_TIME]);
 
     // După animație, evaluează rezultatele
     setTimeout(() => {
@@ -523,24 +527,41 @@ mp.events.add('Server_LeaveRouletteTable', (player) => {
 const fs   = require('fs');
 const path = require('path');
 
-const settingsSavePath = path.join(process.cwd(), 'data', 'roulette', 'roulette_hud_settings.json');
-fs.mkdirSync(path.dirname(settingsSavePath), { recursive: true });
+const settingsDumpPath = path.join(process.cwd(), 'data', 'roulette', 'hud_positions.json');
+fs.mkdirSync(path.dirname(settingsDumpPath), { recursive: true });
 
 mp.events.add('Server_SaveRouletteSettings', (player, settingsJson) => {
     try {
         const settings = JSON.parse(settingsJson);
-        // Salvează cu timestamp și numele playerului
         const data = {
             savedBy: player.name,
             savedAt: new Date().toISOString(),
-            settings: settings
+            wheel: {
+                x: settings.wheelX,
+                y: settings.wheelY,
+                scale: settings.wheelScale
+            },
+            board: {
+                x: settings.boardX,
+                y: settings.boardY,
+                scale: settings.boardScale,
+                btnW: settings.btnW,
+                btnH: settings.btnH
+            },
+            camera: {
+                height: settings.camHeight,
+                fov: settings.camFov,
+                rotation: settings.camRot,
+                offsetX: settings.camOx,
+                offsetY: settings.camOy
+            }
         };
-        fs.writeFileSync(settingsSavePath, JSON.stringify(data, null, 4));
-        player.outputChatBox('!{Green}[RULETĂ] Setările HUD au fost salvate în fișier!');
-        console.log(`[RULETĂ] HUD settings saved by ${player.name}: ${settingsSavePath}`);
+        fs.writeFileSync(settingsDumpPath, JSON.stringify(data, null, 4));
+        player.outputChatBox('!{Green}[RULETĂ] Pozițiile au fost salvate în data/roulette/hud_positions.json!');
+        console.log(`[RULETĂ] HUD positions dumped by ${player.name}: ${settingsDumpPath}`);
     } catch (e) {
-        player.outputChatBox('!{Red}[RULETĂ] Eroare la salvarea setărilor!');
-        console.log(`[RULETĂ] Error saving settings: ${e.message}`);
+        player.outputChatBox('!{Red}[RULETĂ] Eroare la salvare!');
+        console.log(`[RULETĂ] Error saving positions: ${e.message}`);
     }
 });
 
@@ -638,6 +659,7 @@ module.exports = {
     getLobbyByPlayer,
     RED_NUMBERS,
     BLACK_NUMBERS,
+    ALL_NUMBERS,
     getNumberColor,
     BET_TYPES,
 };

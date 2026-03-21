@@ -201,4 +201,41 @@ mp.events.add('playerQuit', (player) => {
     pendingTpRequests.delete(player.id);
 });
 
+/**
+ * Set in-game time command
+ */
+mp.events.addCommand('time', (player, fullText, hourStr, minuteStr) => {
+    if (denyIfNoLevel(player, 1)) return;
+
+    if (!hourStr) {
+        const h = mp.world.time.hour;
+        const m = mp.world.time.minute;
+        player.outputChatBox(`!{#8ab4ff}Current time: ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}. Usage: /time <hour> [minute]`);
+        return;
+    }
+
+    const hour = parseInt(hourStr);
+    const minute = parseInt(minuteStr) || 0;
+
+    if (!Number.isFinite(hour) || hour < 0 || hour > 23) {
+        return player.outputChatBox('!{Red}Hour must be between 0 and 23.');
+    }
+    if (minute < 0 || minute > 59) {
+        return player.outputChatBox('!{Red}Minute must be between 0 and 59.');
+    }
+
+    mp.world.time.hour = hour;
+    mp.world.time.minute = minute;
+    mp.world.time.second = 0;
+
+    const timeStr = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+    mp.players.forEach(p => {
+        if (p && p.id !== undefined) {
+            p.outputChatBox(`!{#6dffb0}[ADMIN] ${player.name} set the time to ${timeStr}.`);
+        }
+    });
+}, {
+    description: 'Sets the in-game time. Usage: /time <hour> [minute]'
+});
+
 console.log('[COMMANDS] Admin commands loaded!');
