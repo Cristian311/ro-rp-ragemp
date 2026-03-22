@@ -4,5 +4,7 @@ require('roulette/index.js');
 require('slots/index.js');
 require('casino_roulette_gta/index.js');
 require('graffiti/index.js');
+require('raytrace/index.js');
+require('roulette/test.js');
 require('mp-commands');
 require('chat');

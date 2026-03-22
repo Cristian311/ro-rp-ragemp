@@ -13,27 +13,12 @@ const tableBlips          = {};
 const tableLeaveColshapes = {};
 
 function getMarkerText(index, state, players, maxPlayers) {
-    let statusLine;
-    if (state === 'spinning' || state === 'result') {
-        statusLine = `~r~Bila se invarte`;
-    } else if (state === 'betting') {
-        statusLine = `~g~Se accepta pariuri`;
-    } else {
-        statusLine = `~y~Asteapta jucatori`;
-    }
-    return `~g~Masa Ruleta ~w~#${index}\n${statusLine} ~w~(${players}/${maxPlayers})\n~y~Apasa ~g~E ~w~pentru a juca`;
+    // label removed
+    return '';
 }
 
 function updateTableMarker(tableIndex, state, players, maxPlayers) {
-    const old = tableLabels[tableIndex];
-    if (!old) return;
-    const pos = old.position;
-    old.destroy();
-    tableLabels[tableIndex] = mp.labels.new(
-        getMarkerText(tableIndex, state, players, maxPlayers),
-        pos,
-        { los: true, font: 4, drawDistance: 10, dimension: 0 }
-    );
+    // labels removed
 }
 
 // Load data on server start
@@ -61,16 +46,11 @@ mp.events.addCommand('createroulette', (player, _, name) => {
     const pos = player.position;
     const rot = player.heading;
 
-    mp.objects.new(mp.joaat('prop_roulette_01'), pos, {
-        rotation: new mp.Vector3(0, 0, rot),
-        dimension: 0
-    });
-
     const newTable = {
         name:     name || `RouletteTable_${Date.now()}`,
         x:        parseFloat(pos.x.toFixed(2)),
         y:        parseFloat(pos.y.toFixed(2)),
-        z:        parseFloat(pos.z.toFixed(2) - 1.0), // Adjust for marker height
+        z:        parseFloat(pos.z.toFixed(2) - 1.0),
         heading:  parseFloat(rot.toFixed(2)),
         casinoId: null
     };
@@ -84,6 +64,9 @@ mp.events.addCommand('createroulette', (player, _, name) => {
     fs.writeFileSync(savePath, JSON.stringify(tables, null, 4));
 
     const newIndex = tables.length - 1;
+    const propPos = new mp.Vector3(newTable.x, newTable.y, newTable.z);
+    createProp(propPos, newTable.heading);
+    createBlip(propPos, newIndex);
     createMarker(newTable, newIndex);
     createColshape(newTable, newIndex, newTable.name, newTable.casinoId);
     createLeaveColshape(newTable, newIndex);
@@ -171,13 +154,8 @@ function createBlip(position, index) {
 }
 
 function createMarker(table, index) {
-    const label = mp.labels.new(
-        getMarkerText(index, 'waiting', 0, 8),
-        new mp.Vector3(table.x, table.y, table.z + 1.1),
-        { los: true, font: 4, drawDistance: 10, dimension: 0 }
-    );
-    tableLabels[index] = label;
-    return label;
+    // label removed - no more 3D text above table
+    return null;
 }
 
 function createColshape(position, index, name, casinoId) {

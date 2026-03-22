@@ -1,6 +1,41 @@
 const rouletteLog = require('./roulette_logger');
 
 // ──────────────────────────────────────────
+// RAYTRACE DEBUG LOG
+// ──────────────────────────────────────────
+mp.events.add('Raytrace:LogPosition', (player, rayCoords, tableCoords) => {
+    console.log(`[RAYTRACE] Player: ${player.name}`);
+    console.log(`[RAYTRACE]   Ray hit: ${rayCoords}`);
+    console.log(`[RAYTRACE]   Nearest obj: ${tableCoords}`);
+});
+
+mp.events.add('Roulette:CalibrationData', (player, dataJson) => {
+    console.log(`\n[CALIBRARE] Player: ${player.name}`);
+    try {
+        const data = JSON.parse(dataJson);
+        if (data.corners) {
+            console.log('[CALIBRARE] === CORNER VALUES ===');
+            console.log(`  C_1  = { f: ${data.corners.C_1.f},  r: ${data.corners.C_1.r} }`);
+            console.log(`  C_3  = { f: ${data.corners.C_3.f},  r: ${data.corners.C_3.r} }`);
+            console.log(`  C_34 = { f: ${data.corners.C_34.f}, r: ${data.corners.C_34.r} }`);
+            console.log(`  C_36 = { f: ${data.corners.C_36.f}, r: ${data.corners.C_36.r} }`);
+        }
+        if (data.raw) {
+            console.log('[CALIBRARE] === RAW DATA ===');
+            for (const [num, pos] of Object.entries(data.raw)) {
+                console.log(`  ${num}: F=${pos.f} R=${pos.r}`);
+            }
+        }
+        if (data.maxError !== undefined) {
+            console.log(`[CALIBRARE] Max error: ${data.maxError}`);
+        }
+        console.log('[CALIBRARE] ==================\n');
+    } catch(e) {
+        console.log('[CALIBRARE] Raw: ' + dataJson);
+    }
+});
+
+// ──────────────────────────────────────────
 // CONFIG
 // ──────────────────────────────────────────
 const ROULETTE_CONFIG = {

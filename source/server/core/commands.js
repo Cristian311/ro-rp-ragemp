@@ -12,6 +12,13 @@ mp.events.addCommand('kill', (player) => {
     player.health = 0;
 });
 
+mp.events.addCommand('slap', (player) => {
+    let pos = player.position;
+    pos.z += 1.0; 
+    player.setPosition(pos);
+});
+
+
 mp.events.addCommand('addmoney', (player, amount) => {
     amount = parseInt(amount);
     if (isNaN(amount)) {
