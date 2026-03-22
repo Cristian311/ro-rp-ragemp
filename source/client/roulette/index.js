@@ -25,6 +25,7 @@ let nativeTablePos      = null;
 let nativeTableHeading  = 0;
 let hiddenServerProp    = null;
 let isAtRouletteTable   = false;
+let currentTableIndex   = -1;
 let placedChipObjects   = [];
 
 const NUMBER_TO_ANIM = {
@@ -110,6 +111,7 @@ function playAllAnimations(winningNumber) {
 // RAYTRACE
 // ──────────────────────────────────────────
 let rayHitPos     = null;
+let rayPlanePos   = null;
 let rayHitBetZone = null;
 let selectedChipAmount = 10;
 
@@ -134,51 +136,150 @@ for (let r = 0; r < 3; r++) {
     }
 }
 
-// Corner calibration (initial defaults — will be overwritten by calibration)
-const C_1  = { f: -0.1,   r:  0.2   };
-const C_3  = { f:  0.35,  r: -0.2   };
-const C_34 = { f:  1.1,   r:  0.5   };
-const C_36 = { f:  1.085, r: -0.24  };
+// ──────────────────────────────────────────
+// GRID SYSTEM — LOCAL COORDINATES (relative to table pos + heading)
+// One calibration works for ALL tables of same model
+// ──────────────────────────────────────────
 
-// Bilinear interpolation
-function gridToLocal(c, r) {
-    const u = (c + 0.5) / 12;
-    const v = (r + 0.5) / 3;
+// Convert world position to local (forward, right) relative to table
+function worldToLocal(wx, wy, wz) {
+    if (!nativeTablePos) return null;
+    const dx = wx - nativeTablePos.x;
+    const dy = wy - nativeTablePos.y;
+    const dz = wz - nativeTablePos.z;
+    const hRad = nativeTableHeading * Math.PI / 180;
     return {
-        f: (1-u)*(1-v)*C_1.f + u*(1-v)*C_34.f + (1-u)*v*C_3.f + u*v*C_36.f,
-        r: (1-u)*(1-v)*C_1.r + u*(1-v)*C_34.r + (1-u)*v*C_3.r + u*v*C_36.r,
+        f: dx * (-Math.sin(hRad)) + dy * Math.cos(hRad),
+        r: dx * Math.cos(hRad) + dy * Math.sin(hRad),
+        u: dz
     };
 }
 
-// Bet zones array — rebuilt by rebuildBetZones()
-let BET_ZONES = [];
+// Convert local (forward, right) to world position using current table
+function localToWorld(f, r, u) {
+    if (!nativeTablePos) return null;
+    const hRad = nativeTableHeading * Math.PI / 180;
+    return new mp.Vector3(
+        nativeTablePos.x + f * (-Math.sin(hRad)) + r * Math.cos(hRad),
+        nativeTablePos.y + f * Math.cos(hRad) + r * Math.sin(hRad),
+        nativeTablePos.z + u
+    );
+}
 
+// Local offsets for 8 calibration corners {f, r, u}
+let localCorners = {
+    c1:  null,  // number 1  (col 0, row 0)
+    c3:  null,  // number 3  (col 0, row 2)
+    c16: null,  // number 16 (col 5, row 0)
+    c18: null,  // number 18 (col 5, row 2)
+    c34: null,  // number 34 (col 11, row 0)
+    c36: null,  // number 36 (col 11, row 2)
+    cBotL: null, // "1-18" zone center  (col 0.5, row -1.25)
+    cBotR: null, // "19-36" zone center (col 10.5, row -1.25)
+};
+const CORNER_KEYS = ['c1', 'c3', 'c16', 'c18', 'c34', 'c36', 'cBotL', 'cBotR'];
+const CORNER_NAMES = ['nr 1', 'nr 3', 'nr 16', 'nr 18', 'nr 34', 'nr 36', '1-18 (stanga-jos)', '19-36 (dreapta-jos)'];
+const CORNER_COLORS = [[255,255,0], [0,255,255], [255,128,0], [0,255,128], [255,0,255], [0,255,0], [255,100,100], [100,100,255]];
+
+// Piecewise bilinear interpolation in LOCAL space, then convert to world
+function gridToWorld(c, r) {
+    if (!localCorners.c1 || !localCorners.c3 || !localCorners.c34 || !localCorners.c36) return null;
+    let lf, lr, lu;
+
+    // For rows below 0 (dozens, outside bets): use bottom calibration points
+    if (r < 0 && localCorners.cBotL && localCorners.cBotR) {
+        // Top reference: point at (c, 0) from the number grid
+        const top = gridToLocal(c, 0);
+        if (!top) return null;
+        // Bottom reference: lerp between cBotL (col 0.5) and cBotR (col 10.5)
+        const uBot = Math.max(0, Math.min(1, (c - 0.5) / 10.0));
+        const botF = (1-uBot) * localCorners.cBotL.f + uBot * localCorners.cBotR.f;
+        const botR = (1-uBot) * localCorners.cBotL.r + uBot * localCorners.cBotR.r;
+        const botU = (1-uBot) * localCorners.cBotL.u + uBot * localCorners.cBotR.u;
+        // t: 0 at row 0, 1 at row -1.25 (where bottom cal points are)
+        const t = Math.abs(r) / 1.25;
+        lf = top.f + t * (botF - top.f);
+        lr = top.r + t * (botR - top.r);
+        lu = top.u + t * (botU - top.u);
+        return localToWorld(lf, lr, lu);
+    }
+
+    const v = r / 2;
+
+    // Piecewise: split at col 5 if middle points exist
+    if (localCorners.c16 && localCorners.c18) {
+        let l0, l2, r0, r2, u;
+        if (c <= 5) {
+            l0 = localCorners.c1; l2 = localCorners.c3;
+            r0 = localCorners.c16; r2 = localCorners.c18;
+            u = c / 5;
+        } else {
+            l0 = localCorners.c16; l2 = localCorners.c18;
+            r0 = localCorners.c34; r2 = localCorners.c36;
+            u = (c - 5) / 6;
+        }
+        lf = (1-u)*(1-v)*l0.f + u*(1-v)*r0.f + (1-u)*v*l2.f + u*v*r2.f;
+        lr = (1-u)*(1-v)*l0.r + u*(1-v)*r0.r + (1-u)*v*l2.r + u*v*r2.r;
+        lu = (1-u)*(1-v)*l0.u + u*(1-v)*r0.u + (1-u)*v*l2.u + u*v*r2.u;
+    } else {
+        const u = c / 11;
+        lf = (1-u)*(1-v)*localCorners.c1.f + u*(1-v)*localCorners.c34.f + (1-u)*v*localCorners.c3.f + u*v*localCorners.c36.f;
+        lr = (1-u)*(1-v)*localCorners.c1.r + u*(1-v)*localCorners.c34.r + (1-u)*v*localCorners.c3.r + u*v*localCorners.c36.r;
+        lu = (1-u)*(1-v)*localCorners.c1.u + u*(1-v)*localCorners.c34.u + (1-u)*v*localCorners.c3.u + u*v*localCorners.c36.u;
+    }
+
+    return localToWorld(lf, lr, lu);
+}
+
+// Helper: get local coords for a grid point (rows >= 0 only, for number grid)
+function gridToLocal(c, r) {
+    if (!localCorners.c1 || !localCorners.c3 || !localCorners.c34 || !localCorners.c36) return null;
+    const v = r / 2;
+    if (localCorners.c16 && localCorners.c18) {
+        let l0, l2, r0, r2, u;
+        if (c <= 5) {
+            l0 = localCorners.c1; l2 = localCorners.c3;
+            r0 = localCorners.c16; r2 = localCorners.c18;
+            u = c / 5;
+        } else {
+            l0 = localCorners.c16; l2 = localCorners.c18;
+            r0 = localCorners.c34; r2 = localCorners.c36;
+            u = (c - 5) / 6;
+        }
+        return {
+            f: (1-u)*(1-v)*l0.f + u*(1-v)*r0.f + (1-u)*v*l2.f + u*v*r2.f,
+            r: (1-u)*(1-v)*l0.r + u*(1-v)*r0.r + (1-u)*v*l2.r + u*v*r2.r,
+            u: (1-u)*(1-v)*l0.u + u*(1-v)*r0.u + (1-u)*v*l2.u + u*v*r2.u
+        };
+    }
+    const u = c / 11;
+    return {
+        f: (1-u)*(1-v)*localCorners.c1.f + u*(1-v)*localCorners.c34.f + (1-u)*v*localCorners.c3.f + u*v*localCorners.c36.f,
+        r: (1-u)*(1-v)*localCorners.c1.r + u*(1-v)*localCorners.c34.r + (1-u)*v*localCorners.c3.r + u*v*localCorners.c36.r,
+        u: (1-u)*(1-v)*localCorners.c1.u + u*(1-v)*localCorners.c34.u + (1-u)*v*localCorners.c3.u + u*v*localCorners.c36.u
+    };
+}
+
+let BET_ZONES = [];
 function rebuildBetZones() {
     BET_ZONES = [];
-    // 36 numbers
     for (let r = 0; r < 3; r++) {
         for (let c = 0; c < 12; c++) {
-            const p = gridToLocal(c, r);
             const num = GRID_ROWS[r][c];
-            BET_ZONES.push({ type: 'straight', value: num, label: `${num}`, color: getNumberColor(num), f: p.f, r: p.r });
+            BET_ZONES.push({ type: 'straight', value: num, label: `${num}`, color: getNumberColor(num), col: c, row: r });
         }
     }
-    // 0 at top (row 0 side), 00 at bottom (row 2 side) — swapped vs before
-    const p00 = gridToLocal(-1, 0.5);
-    const p0  = gridToLocal(-1, 1.5);
-    BET_ZONES.push({ type: 'straight', value: 0, label: '0', color: 'green', f: p00.f, r: p00.r });
-    BET_ZONES.push({ type: 'straight', value: '00', label: '00', color: 'green', f: p0.f, r: p0.r });
-    // Dozens — below row 2 (row index 3.5)
+    BET_ZONES.push({ type: 'straight', value: 0, label: '0', color: 'green', col: -1, row: 0.5 });
+    BET_ZONES.push({ type: 'straight', value: '00', label: '00', color: 'green', col: -1, row: 1.5 });
+    // Dozens: each spans 4 cols, half-row height below the numbers
     for (let d = 0; d < 3; d++) {
-        const p = gridToLocal(d * 4 + 1.5, -1.0);
-        BET_ZONES.push({ type: 'dozen', value: d + 1, label: `${d === 0 ? '1st' : d === 1 ? '2nd' : '3rd'} 12`, color: 'white', f: p.f, r: p.r });
+        BET_ZONES.push({ type: 'dozen', value: d + 1, label: `${d === 0 ? '1st' : d === 1 ? '2nd' : '3rd'} 12`, color: 'white', col: d * 4 + 1.5, row: -0.75 });
     }
-    // Columns (2:1) — right of col 11
+    // Columns (2:1): right side of grid
     for (let r = 0; r < 3; r++) {
-        const p = gridToLocal(12.5, r);
-        BET_ZONES.push({ type: 'column', value: r + 1, label: `Col ${r+1} (2:1)`, color: 'white', f: p.f, r: p.r });
+        BET_ZONES.push({ type: 'column', value: r + 1, label: `2:1`, color: 'white', col: 12, row: r });
     }
-    // Outside bets — below dozens
+    // Outside bets: each spans 2 cols, half-row below dozens
     const OUTSIDE = [
         { type: 'low', value: null, label: '1-18', color: 'white' },
         { type: 'even', value: null, label: 'EVEN', color: 'white' },
@@ -188,34 +289,39 @@ function rebuildBetZones() {
         { type: 'high', value: null, label: '19-36', color: 'white' },
     ];
     for (let i = 0; i < 6; i++) {
-        const p = gridToLocal(i * 2 + 0.5, -2.0);
-        BET_ZONES.push({ ...OUTSIDE[i], f: p.f, r: p.r });
+        BET_ZONES.push({ ...OUTSIDE[i], col: i * 2 + 0.5, row: -1.25 });
     }
 }
 rebuildBetZones();
 
-let nearestDist2 = 0; // for debug display
-let showDebugGrid = false; // toggle with G key
+function getBetZoneFromHit(hitX, hitY) {
+    if (!localCorners.c1) return null;
+    let bestD2 = Infinity, best = null;
+    for (const z of BET_ZONES) {
+        const wp = gridToWorld(z.col, z.row);
+        if (!wp) continue;
+        const d2 = (hitX - wp.x) ** 2 + (hitY - wp.y) ** 2;
+        if (d2 < bestD2) { bestD2 = d2; best = z; }
+    }
+    nearestDist2 = bestD2;
+    if (best && bestD2 < 0.04) return best;
+    return null;
+}
+
+let nearestDist2 = 0;
+let showDebugGrid = false;
 
 // ──────────────────────────────────────────
 // GRID EDITOR MODE (press H)
 // ──────────────────────────────────────────
 let gridEditorActive = false;
-let gridEditorCorner = 0; // 0=C_1, 1=C_3, 2=C_34, 3=C_36
-const CORNER_NAMES = ['C_1 (nr 1)', 'C_3 (nr 3)', 'C_34 (nr 34)', 'C_36 (nr 36)'];
-const CORNER_REFS = [C_1, C_3, C_34, C_36];
-const CORNER_COLORS = [
-    [255, 255, 0],   // yellow
-    [0, 255, 255],   // cyan
-    [255, 0, 255],   // magenta
-    [0, 255, 0],     // green
-];
+let gridEditorCorner = 0;
 
-function gridEditorNudge(dF, dR) {
-    const c = CORNER_REFS[gridEditorCorner];
-    c.f += dF;
-    c.r += dR;
-    rebuildBetZones();
+function gridEditorNudge(dx, dy) {
+    const key = CORNER_KEYS[gridEditorCorner];
+    if (!localCorners[key]) return;
+    localCorners[key].f += dy; // forward
+    localCorners[key].r += dx; // right
 }
 
 mp.keys.bind(KEY_H, true, () => {
@@ -223,81 +329,57 @@ mp.keys.bind(KEY_H, true, () => {
     gridEditorActive = !gridEditorActive;
     if (gridEditorActive) {
         showDebugGrid = true;
-        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[EDITOR] Grid editor ON — Tab: schimba colt, Sageti: muta, LMB: pune colt la crosshair, H: salveaza si inchide'})); } catch(e) {}
+        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[EDITOR] Grid editor ON — Tab: colt, Sageti: muta, LMB: pune la crosshair, H: salveaza'})); } catch(e) {}
     } else {
-        // Print final values to console on close
-        mp.console.logInfo('=== GRID EDITOR FINAL VALUES ===');
-        mp.console.logInfo(`const C_1  = { f: ${C_1.f.toFixed(6)}, r: ${C_1.r.toFixed(6)} };`);
-        mp.console.logInfo(`const C_3  = { f: ${C_3.f.toFixed(6)}, r: ${C_3.r.toFixed(6)} };`);
-        mp.console.logInfo(`const C_34 = { f: ${C_34.f.toFixed(6)}, r: ${C_34.r.toFixed(6)} };`);
-        mp.console.logInfo(`const C_36 = { f: ${C_36.f.toFixed(6)}, r: ${C_36.r.toFixed(6)} };`);
-        mp.console.logInfo('================================');
-        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[EDITOR] Salvat! C_1={${C_1.f.toFixed(3)},${C_1.r.toFixed(3)}} C_3={${C_3.f.toFixed(3)},${C_3.r.toFixed(3)}} C_34={${C_34.f.toFixed(3)},${C_34.r.toFixed(3)}} C_36={${C_36.f.toFixed(3)},${C_36.r.toFixed(3)}}`})); } catch(e) {}
-        mp.events.callRemote('Roulette:CalibrationData', JSON.stringify({
-            corners: {
-                C_1: { f: C_1.f.toFixed(6), r: C_1.r.toFixed(6) },
-                C_3: { f: C_3.f.toFixed(6), r: C_3.r.toFixed(6) },
-                C_34: { f: C_34.f.toFixed(6), r: C_34.r.toFixed(6) },
-                C_36: { f: C_36.f.toFixed(6), r: C_36.r.toFixed(6) },
+        if (localCorners.c1) {
+            mp.console.logInfo('=== GRID EDITOR SAVED (LOCAL) ===');
+            for (const k of CORNER_KEYS) {
+                const c = localCorners[k];
+                if (c) mp.console.logInfo(`  ${k}: F:${c.f.toFixed(4)} R:${c.r.toFixed(4)} U:${c.u.toFixed(4)}`);
             }
-        }));
+            mp.console.logInfo('=================================');
+            try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[EDITOR] Grid salvat!'})); } catch(e) {}
+            mp.events.callRemote('Roulette:SaveGridCorners', 'global', JSON.stringify(localCorners));
+        }
     }
 });
 
 mp.keys.bind(KEY_TAB, true, () => {
     if (!isAtRouletteTable || !gridEditorActive) return;
-    gridEditorCorner = (gridEditorCorner + 1) % 4;
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[EDITOR] Colt selectat: ${CORNER_NAMES[gridEditorCorner]}`})); } catch(e) {}
+    gridEditorCorner = (gridEditorCorner + 1) % CORNER_KEYS.length;
+    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[EDITOR] Colt: ${CORNER_NAMES[gridEditorCorner]}`})); } catch(e) {}
 });
 
-// Arrow keys — small step 0.005, hold Shift for 0.02
 mp.keys.bind(KEY_UP, true, () => {
     if (!isAtRouletteTable || !gridEditorActive) return;
-    const step = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    gridEditorNudge(step, 0);
+    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
+    gridEditorNudge(0, s);
 });
 mp.keys.bind(KEY_DN, true, () => {
     if (!isAtRouletteTable || !gridEditorActive) return;
-    const step = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    gridEditorNudge(-step, 0);
+    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
+    gridEditorNudge(0, -s);
 });
 mp.keys.bind(KEY_RT, true, () => {
     if (!isAtRouletteTable || !gridEditorActive) return;
-    const step = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    gridEditorNudge(0, step);
+    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
+    gridEditorNudge(s, 0);
 });
 mp.keys.bind(KEY_LT, true, () => {
     if (!isAtRouletteTable || !gridEditorActive) return;
-    const step = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    gridEditorNudge(0, -step);
+    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
+    gridEditorNudge(-s, 0);
 });
 
-// Convert local (F, R) to world position
-function localToWorld(lF, lR) {
-    if (!nativeTablePos) return null;
-    const hRad = -nativeTableHeading * Math.PI / 180;
-    const sinH = Math.sin(hRad);
-    const cosH = Math.cos(hRad);
-    // Inverse of: lF = dx*sinH + dy*cosH, lR = dx*cosH - dy*sinH
-    // => dx = lF*sinH + lR*cosH, dy = lF*cosH - lR*sinH
-    const wx = nativeTablePos.x + lF * sinH + lR * cosH;
-    const wy = nativeTablePos.y + lF * cosH - lR * sinH;
-    const wz = nativeTablePos.z + 1.0; // table surface height
-    return new mp.Vector3(wx, wy, wz);
-}
-
 // ──────────────────────────────────────────
-// CALIBRATION MODE (press F to start)
-// All 37 numbers: 0, then 1-36 in table order
+// CALIBRATION MODE (press F — 8 clicks: 1, 3, 16, 18, 34, 36, 1-18, 19-36)
 // ──────────────────────────────────────────
 let calibrationActive = false;
 let calibrationStep = 0;
-let calibrationData = {};
 let calibrationMessages = [];
 let calibrationMsgTime = 0;
-
-// Only 4 corners needed: 1 (top-left), 3 (bottom-left), 34 (top-right), 36 (bottom-right)
-const CALIBRATION_SEQUENCE = [1, 3, 34, 36];
+const CALIBRATION_SEQUENCE = ['1', '3', '16', '18', '34', '36', '1-18', '19-36'];
+const CALIBRATION_LABELS = ['numarul 1', 'numarul 3', 'numarul 16', 'numarul 18', 'numarul 34', 'numarul 36', 'zona 1-18 (stanga-jos)', 'zona 19-36 (dreapta-jos)'];
 
 function calLog(msg) {
     mp.console.logInfo('[CAL] ' + msg);
@@ -310,19 +392,21 @@ function calLog(msg) {
 function startCalibration() {
     calibrationActive = true;
     calibrationStep = 0;
-    calibrationData = {};
     calibrationMessages = [];
-    calLog('Calibrare pornita! Doar 4 clickuri: 1, 3, 34, 36');
-    calLog(`>> Apasa pe CENTRUL numarului ${CALIBRATION_SEQUENCE[0]} (1/4)`);
+    calLog('Calibrare: 8 clickuri (6 numere + 2 zone laterale)');
+    calLog(`>> Click pe CENTRUL: ${CALIBRATION_LABELS[0]} (1/${CALIBRATION_SEQUENCE.length})`);
 }
 
-function recordCalibrationPoint(lF, lR) {
-    const num = CALIBRATION_SEQUENCE[calibrationStep];
-    calibrationData[num] = { f: lF, r: lR };
-    calLog(`#${num} -> F:${lF.toFixed(4)} R:${lR.toFixed(4)}`);
+function recordCalibrationPoint(loc) {
+    const label = CALIBRATION_LABELS[calibrationStep];
+    const key = CORNER_KEYS[calibrationStep];
+    // For corners after c1, use c1's U to keep grid flat on table
+    const fixedU = (calibrationStep > 0 && localCorners.c1) ? localCorners.c1.u : loc.u;
+    localCorners[key] = { f: loc.f, r: loc.r, u: fixedU };
+    calLog(`${label} -> F:${loc.f.toFixed(4)} R:${loc.r.toFixed(4)}${fixedU !== loc.u ? ' (U fixat)' : ''}`);
     calibrationStep++;
     if (calibrationStep < CALIBRATION_SEQUENCE.length) {
-        calLog(`>> Apasa pe CENTRUL numarului ${CALIBRATION_SEQUENCE[calibrationStep]} (${calibrationStep+1}/${CALIBRATION_SEQUENCE.length})`);
+        calLog(`>> Click pe CENTRUL: ${CALIBRATION_LABELS[calibrationStep]} (${calibrationStep+1}/${CALIBRATION_SEQUENCE.length})`);
     } else {
         finishCalibration();
     }
@@ -331,44 +415,23 @@ function recordCalibrationPoint(lF, lR) {
 function finishCalibration() {
     calibrationActive = false;
     calLog('=== CALIBRARE COMPLETA ===');
-
-    // Direct corner assignment from 4 clicks: 1→C_1, 3→C_3, 34→C_34, 36→C_36
-    const d1  = calibrationData[1];
-    const d3  = calibrationData[3];
-    const d34 = calibrationData[34];
-    const d36 = calibrationData[36];
-
-    if (d1 && d3 && d34 && d36) {
-        C_1.f  = d1.f;   C_1.r  = d1.r;
-        C_3.f  = d3.f;   C_3.r  = d3.r;
-        C_34.f = d34.f;  C_34.r = d34.r;
-        C_36.f = d36.f;  C_36.r = d36.r;
-
-        rebuildBetZones();
-        calLog('Grid recalculat din 4 colturi!');
-
-        calLog(`C_1={f:${C_1.f.toFixed(4)},r:${C_1.r.toFixed(4)}}`);
-        calLog(`C_3={f:${C_3.f.toFixed(4)},r:${C_3.r.toFixed(4)}}`);
-        calLog(`C_34={f:${C_34.f.toFixed(4)},r:${C_34.r.toFixed(4)}}`);
-        calLog(`C_36={f:${C_36.f.toFixed(4)},r:${C_36.r.toFixed(4)}}`);
-
-        // Also print to F8 console
-        mp.console.logInfo('=== COPY INTO CODE ===');
-        mp.console.logInfo(`const C_1  = { f: ${C_1.f.toFixed(6)}, r: ${C_1.r.toFixed(6)} };`);
-        mp.console.logInfo(`const C_3  = { f: ${C_3.f.toFixed(6)}, r: ${C_3.r.toFixed(6)} };`);
-        mp.console.logInfo(`const C_34 = { f: ${C_34.f.toFixed(6)}, r: ${C_34.r.toFixed(6)} };`);
-        mp.console.logInfo(`const C_36 = { f: ${C_36.f.toFixed(6)}, r: ${C_36.r.toFixed(6)} };`);
-        mp.console.logInfo('=====================');
-
-        // Send to server console
-        mp.events.callRemote('Roulette:CalibrationData', JSON.stringify({
-            corners: {
-                C_1: { f: C_1.f.toFixed(6), r: C_1.r.toFixed(6) },
-                C_3: { f: C_3.f.toFixed(6), r: C_3.r.toFixed(6) },
-                C_34: { f: C_34.f.toFixed(6), r: C_34.r.toFixed(6) },
-                C_36: { f: C_36.f.toFixed(6), r: C_36.r.toFixed(6) },
-            }
-        }));
+    if (localCorners.c1 && localCorners.c3 && localCorners.c16 && localCorners.c18 && localCorners.c34 && localCorners.c36 && localCorners.cBotL && localCorners.cBotR) {
+        const tableU = localCorners.c1.u;
+        localCorners.c3.u  = tableU;
+        localCorners.c16.u = tableU;
+        localCorners.c18.u = tableU;
+        localCorners.c34.u = tableU;
+        localCorners.c36.u = tableU;
+        localCorners.cBotL.u = tableU;
+        localCorners.cBotR.u = tableU;
+        calLog('Grid salvat in coordonate locale (relativ la masa)!');
+        calLog('Functioneaza pe ORICE masa cu aceeasi orientare.');
+        for (const k of CORNER_KEYS) {
+            const c = localCorners[k];
+            if (c) calLog(`${k}: F:${c.f.toFixed(4)} R:${c.r.toFixed(4)}`);
+        }
+        // Save with key 'global' so it applies to all tables
+        mp.events.callRemote('Roulette:SaveGridCorners', 'global', JSON.stringify(localCorners));
     } else {
         calLog('EROARE: Nu toate colturile au fost calibrate!');
     }
@@ -392,23 +455,6 @@ mp.keys.bind(KEY_G, true, () => {
     try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[DEBUG] Grid overlay: ${showDebugGrid ? 'ON' : 'OFF'}`})); } catch(e) {}
 });
 
-function getBetZoneFromWorldPos(hitX, hitY, tableX, tableY, heading) {
-    const hRad = -heading * Math.PI / 180;
-    const dx = hitX - tableX;
-    const dy = hitY - tableY;
-    const lF =  dx * Math.sin(hRad) + dy * Math.cos(hRad);
-    const lR =  dx * Math.cos(hRad) - dy * Math.sin(hRad);
-    let bestD2 = Infinity;
-    let best = null;
-    for (const z of BET_ZONES) {
-        const d2 = (lF - z.f) * (lF - z.f) + (lR - z.r) * (lR - z.r);
-        if (d2 < bestD2) { bestD2 = d2; best = z; }
-    }
-    nearestDist2 = bestD2;
-    if (best && bestD2 < 0.025) return best; // within ~0.16 units
-    return null;
-}
-
 // ──────────────────────────────────────────
 // RENDER LOOP — raytrace from gameplay camera + LMB bet
 // ──────────────────────────────────────────
@@ -425,29 +471,26 @@ mp.events.add('render', () => {
     // ── LMB BET ──
     const lmbNow = mp.game.controls.isDisabledControlPressed(0, 24);
     if (lmbNow && !lmbWasPressed) {
-        if (gridEditorActive && rayHitPos && nativeTablePos) {
-            // Grid editor: place selected corner at raytrace hit
-            const hR2 = -nativeTableHeading * Math.PI / 180;
-            const ddx2 = rayHitPos.x - nativeTablePos.x;
-            const ddy2 = rayHitPos.y - nativeTablePos.y;
-            const hitF = ddx2 * Math.sin(hR2) + ddy2 * Math.cos(hR2);
-            const hitR = ddx2 * Math.cos(hR2) - ddy2 * Math.sin(hR2);
-            CORNER_REFS[gridEditorCorner].f = hitF;
-            CORNER_REFS[gridEditorCorner].r = hitR;
-            rebuildBetZones();
-            try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[EDITOR] ${CORNER_NAMES[gridEditorCorner]} = F:${hitF.toFixed(4)} R:${hitR.toFixed(4)}`})); } catch(e) {}
-        } else if (calibrationActive && rayHitPos && nativeTablePos) {
-            // Calibration mode: record this point
-            const hR2 = -nativeTableHeading * Math.PI / 180;
-            const ddx2 = rayHitPos.x - nativeTablePos.x;
-            const ddy2 = rayHitPos.y - nativeTablePos.y;
-            const calF = ddx2 * Math.sin(hR2) + ddy2 * Math.cos(hR2);
-            const calR = ddx2 * Math.cos(hR2) - ddy2 * Math.sin(hR2);
-            recordCalibrationPoint(calF, calR);
-        } else if (rayHitPos && rayHitBetZone) {
+        if (gridEditorActive && (rayPlanePos || rayHitPos)) {
+            const pos = rayPlanePos || rayHitPos;
+            const key = CORNER_KEYS[gridEditorCorner];
+            const loc = worldToLocal(pos.x, pos.y, pos.z);
+            if (loc) {
+                const fixedU = (key !== 'c1' && localCorners.c1) ? localCorners.c1.u : loc.u;
+                localCorners[key] = { f: loc.f, r: loc.r, u: fixedU };
+                try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[EDITOR] ${CORNER_NAMES[gridEditorCorner]} = F:${loc.f.toFixed(3)} R:${loc.r.toFixed(3)}`})); } catch(e) {}
+            }
+        } else if (calibrationActive) {
+            const pos = (calibrationStep === 0) ? rayHitPos : (rayPlanePos || rayHitPos);
+            if (pos) {
+                const loc = worldToLocal(pos.x, pos.y, pos.z);
+                if (loc) recordCalibrationPoint(loc);
+            }
+        } else if ((rayPlanePos || rayHitPos) && rayHitBetZone) {
             mp.events.callRemote('Server_ReceiveRouletteBet', rayHitBetZone.type, String(rayHitBetZone.value), selectedChipAmount);
-            spawnChipOnTable(rayHitPos.x, rayHitPos.y, rayHitPos.z);
-            mp.gui.chat.push(`~y~[RULETA] ~w~Pariu: ${rayHitBetZone.label} - $${selectedChipAmount}`);
+            const chipPos = rayPlanePos || rayHitPos;
+            spawnChipOnTable(chipPos.x, chipPos.y, chipPos.z);
+            try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[RULETA] Pariu: ${rayHitBetZone.label} - $${selectedChipAmount}`})); } catch(e) {}
         }
     }
     lmbWasPressed = lmbNow;
@@ -467,11 +510,27 @@ mp.events.add('render', () => {
     const ray = mp.raycasting.testPointToPoint(gameCam, endP, [mp.players.local.handle], 31);
     if (ray && ray.position) {
         rayHitPos = ray.position;
-        if (nativeTablePos) {
-            rayHitBetZone = getBetZoneFromWorldPos(rayHitPos.x, rayHitPos.y, nativeTablePos.x, nativeTablePos.y, nativeTableHeading);
-        }
     } else {
         rayHitPos = null;
+    }
+
+    // Ray-plane intersection: project crosshair onto table surface
+    // Uses c1 local U offset to get world Z of table surface
+    rayPlanePos = null;
+    if (localCorners.c1 && nativeTablePos && Math.abs(dZ) > 0.001) {
+        const tableZ = nativeTablePos.z + localCorners.c1.u;
+        const t = (tableZ - gameCam.z) / dZ;
+        if (t > 0 && t < rl) {
+            rayPlanePos = new mp.Vector3(gameCam.x + dX * t, gameCam.y + dY * t, tableZ);
+        }
+    }
+
+    // Use plane projection for bet zone (accurate from any angle)
+    if (rayPlanePos) {
+        rayHitBetZone = getBetZoneFromHit(rayPlanePos.x, rayPlanePos.y);
+    } else if (rayHitPos) {
+        rayHitBetZone = getBetZoneFromHit(rayHitPos.x, rayHitPos.y);
+    } else {
         rayHitBetZone = null;
     }
 
@@ -481,14 +540,14 @@ mp.events.add('render', () => {
 
     // ── CALIBRATION PROMPT ──
     if (calibrationActive && calibrationStep < CALIBRATION_SEQUENCE.length) {
-        const calNum = CALIBRATION_SEQUENCE[calibrationStep];
+        const calLabel = CALIBRATION_LABELS[calibrationStep];
         mp.game.graphics.drawText(
-            `~r~CALIBRARE: ~y~Click pe numarul ~g~${calNum}`,
+            `~r~CALIBRARE: ~y~Click pe ~g~${calLabel}`,
             [0.5, 0.12],
             { font: 4, color: [255, 255, 100, 255], scale: [0.55, 0.55], outline: true, centre: true }
         );
         mp.game.graphics.drawText(
-            `~w~Pune crosshair-ul FIX pe ~y~CENTRUL ~w~numarului de pe masa`,
+            `~w~Pune crosshair-ul FIX pe ~y~CENTRUL ~w~zonei de pe masa`,
             [0.5, 0.16],
             { font: 4, color: [255, 255, 255, 230], scale: [0.3, 0.3], outline: true, centre: true }
         );
@@ -511,61 +570,79 @@ mp.events.add('render', () => {
     }
 
     // ── DEBUG GRID OVERLAY ──
-    if (showDebugGrid && nativeTablePos) {
+    if (showDebugGrid && localCorners.c1) {
         for (const z of BET_ZONES) {
-            if (z.type !== 'straight') continue;
-            const wp = localToWorld(z.f, z.r);
+            const wp = gridToWorld(z.col, z.row);
             if (!wp) continue;
             let mr = 255, mg = 255, mb = 255, ma = 200;
             if (z.color === 'red')   { mr = 255; mg = 50;  mb = 50; }
             if (z.color === 'black') { mr = 30;  mg = 30;  mb = 30; }
             if (z.color === 'green') { mr = 0;   mg = 200; mb = 60; }
+            const sz = z.type === 'straight' ? 0.025 : 0.035;
             mp.game.graphics.drawMarker(25, wp.x, wp.y, wp.z + 0.003,
-                0, 0, 0, 0, 0, 0, 0.025, 0.025, 0.005,
+                0, 0, 0, 0, 0, 0, sz, sz, 0.005,
                 mr, mg, mb, ma, false, false, 2, false, null, null, false);
-            // Draw number label at each zone in 3D
-            if (gridEditorActive) {
-                mp.game.graphics.drawText(`~w~${z.label}`, mp.game.graphics.world3dToScreen2d(wp.x, wp.y, wp.z + 0.02) || [0,0],
+            if (gridEditorActive || z.type !== 'straight') {
+                const scr = mp.game.graphics.world3dToScreen2d(wp.x, wp.y, wp.z + 0.02);
+                if (scr) mp.game.graphics.drawText(`~w~${z.label}`, scr,
                     { font: 4, color: [255,255,255,220], scale: [0.2, 0.2], outline: true, centre: true });
             }
         }
-        // Draw grid lines
+        // ── Grid lines ──
+        // Main number grid: rows -0.5 to 2.5, cols -0.5 to 11.5
+        const gridLines = [];
+        // Horizontal: number rows
         for (let r = -0.5; r <= 2.5; r += 1.0) {
-            const a = localToWorld(gridToLocal(-0.5, r).f, gridToLocal(-0.5, r).r);
-            const b = localToWorld(gridToLocal(11.5, r).f, gridToLocal(11.5, r).r);
-            if (a && b) mp.game.graphics.drawLine(a.x, a.y, a.z, b.x, b.y, b.z, 255, 255, 0, 120);
+            gridLines.push([[-1.5, r], [12.5, r]]);
         }
+        // Horizontal: dozen/outside half-rows
+        gridLines.push([[-0.5, -1.0], [11.5, -1.0]]);  // between dozens and outside
+        gridLines.push([[-0.5, -1.5], [11.5, -1.5]]);  // bottom of outside
+        // Vertical: number columns
         for (let c = -0.5; c <= 11.5; c += 1.0) {
-            const a = localToWorld(gridToLocal(c, -0.5).f, gridToLocal(c, -0.5).r);
-            const b = localToWorld(gridToLocal(c, 2.5).f, gridToLocal(c, 2.5).r);
+            gridLines.push([[c, -0.5], [c, 2.5]]);
+        }
+        // Vertical: 0/00 area
+        gridLines.push([[-1.5, -0.5], [-1.5, 2.5]]);  // left edge of 0/00
+        gridLines.push([[-0.5, 0.5], [-0.5, 1.5]]);   // we skip (already drawn) — 0/00 divider not needed if separate
+        // Vertical: 2:1 column area
+        gridLines.push([[12.5, -0.5], [12.5, 2.5]]);  // right edge of 2:1
+        // Vertical: dozen dividers (every 4 cols)
+        for (const c of [3.5, 7.5]) {
+            gridLines.push([[c, -0.5], [c, -1.0]]);
+        }
+        // Vertical: outside dividers (every 2 cols)
+        for (const c of [1.5, 3.5, 5.5, 7.5, 9.5]) {
+            gridLines.push([[c, -1.0], [c, -1.5]]);
+        }
+        // Vertical: full-height edges for dozen+outside area
+        gridLines.push([[-0.5, -0.5], [-0.5, -1.5]]);
+        gridLines.push([[11.5, -0.5], [11.5, -1.5]]);
+
+        for (const [from, to] of gridLines) {
+            const a = gridToWorld(from[0], from[1]);
+            const b = gridToWorld(to[0], to[1]);
             if (a && b) mp.game.graphics.drawLine(a.x, a.y, a.z, b.x, b.y, b.z, 255, 255, 0, 120);
         }
-        // Draw corner markers (bigger, colored) in editor mode
         if (gridEditorActive) {
-            const cornerGridPos = [
-                { c: 0, r: 0 },   // C_1
-                { c: 0, r: 2 },   // C_3
-                { c: 11, r: 0 },  // C_34
-                { c: 11, r: 2 },  // C_36
-            ];
-            for (let ci = 0; ci < 4; ci++) {
-                const ref = CORNER_REFS[ci];
-                const wp = localToWorld(ref.f, ref.r);
-                if (!wp) continue;
+            for (let ci = 0; ci < CORNER_KEYS.length; ci++) {
+                const lc = localCorners[CORNER_KEYS[ci]];
+                if (!lc) continue;
+                const wc = localToWorld(lc.f, lc.r, lc.u);
+                if (!wc) continue;
                 const clr = CORNER_COLORS[ci];
-                const isSelected = ci === gridEditorCorner;
-                const sz = isSelected ? 0.06 : 0.04;
-                const alpha = isSelected ? 255 : 150;
-                mp.game.graphics.drawMarker(28, wp.x, wp.y, wp.z + 0.01,
-                    0, 0, 0, 0, 0, 0, sz, sz, sz,
-                    clr[0], clr[1], clr[2], alpha, false, false, 2, false, null, null, false);
+                const isSel = ci === gridEditorCorner;
+                mp.game.graphics.drawMarker(28, wc.x, wc.y, wc.z + 0.01,
+                    0, 0, 0, 0, 0, 0, isSel ? 0.06 : 0.04, isSel ? 0.06 : 0.04, isSel ? 0.06 : 0.04,
+                    clr[0], clr[1], clr[2], isSel ? 255 : 150, false, false, 2, false, null, null, false);
             }
         }
     }
 
     // ── GRID EDITOR HUD ──
     if (gridEditorActive) {
-        const cc = CORNER_REFS[gridEditorCorner];
+        const key = CORNER_KEYS[gridEditorCorner];
+        const lc = localCorners[key];
         const cn = CORNER_NAMES[gridEditorCorner];
         const clr = CORNER_COLORS[gridEditorCorner];
         mp.game.graphics.drawText(
@@ -573,11 +650,13 @@ mp.events.add('render', () => {
             [0.5, 0.04],
             { font: 4, color: [clr[0], clr[1], clr[2], 255], scale: [0.45, 0.45], outline: true, centre: true }
         );
-        mp.game.graphics.drawText(
-            `~w~F: ~y~${cc.f.toFixed(4)}  ~w~R: ~y~${cc.r.toFixed(4)}`,
-            [0.5, 0.075],
-            { font: 4, color: [255, 255, 255, 230], scale: [0.35, 0.35], outline: true, centre: true }
-        );
+        if (lc) {
+            mp.game.graphics.drawText(
+                `~w~F: ~y~${lc.f.toFixed(4)}  ~w~R: ~y~${lc.r.toFixed(4)}  ~w~U: ~y~${lc.u.toFixed(4)}`,
+                [0.5, 0.075],
+                { font: 4, color: [255, 255, 255, 230], scale: [0.35, 0.35], outline: true, centre: true }
+            );
+        }
         mp.game.graphics.drawText(
             `~y~Tab~w~=schimba colt  ~y~Sageti~w~=muta(+Shift=rapid)  ~y~LMB~w~=pune la crosshair  ~y~H~w~=salveaza`,
             [0.5, 0.10],
@@ -586,8 +665,9 @@ mp.events.add('render', () => {
     }
 
     // ── DRAW HIT MARKER ──
-    if (rayHitPos) {
-        mp.game.graphics.drawMarker(28, rayHitPos.x, rayHitPos.y, rayHitPos.z + 0.01,
+    const displayPos = rayPlanePos || rayHitPos;
+    if (displayPos) {
+        mp.game.graphics.drawMarker(28, displayPos.x, displayPos.y, displayPos.z + 0.01,
             0, 0, 0, 0, 0, 0, 0.015, 0.015, 0.015,
             255, 215, 0, 200, false, false, 2, false, null, null, false);
 
@@ -600,16 +680,11 @@ mp.events.add('render', () => {
                 { font: 4, color: [r, g, b, 255], scale: [0.45, 0.45], outline: true, centre: true });
         }
 
-        // Debug: show local coords + nearest zone + distance
-        if (nativeTablePos) {
-            const hR2 = -nativeTableHeading * Math.PI / 180;
-            const ddx2 = rayHitPos.x - nativeTablePos.x;
-            const ddy2 = rayHitPos.y - nativeTablePos.y;
-            const lF = ddx2 * Math.sin(hR2) + ddy2 * Math.cos(hR2);
-            const lR = ddx2 * Math.cos(hR2) - ddy2 * Math.sin(hR2);
+        // Debug: show world coords + nearest zone + distance
+        {
             const dstr = Math.sqrt(nearestDist2).toFixed(3);
             const zLabel = rayHitBetZone ? rayHitBetZone.label : 'none';
-            mp.game.graphics.drawText(`~w~F:${lF.toFixed(3)} R:${lR.toFixed(3)}  Zone:${zLabel} Dist:${dstr}`, [0.5, 0.90],
+            mp.game.graphics.drawText(`~w~X:${displayPos.x.toFixed(3)} Y:${displayPos.y.toFixed(3)}  Zone:${zLabel} Dist:${dstr}`, [0.5, 0.90],
                 { font: 4, color: [200, 200, 200, 150], scale: [0.25, 0.25], outline: true, centre: true });
         }
     }
@@ -647,8 +722,9 @@ function spawnChipOnTable(x, y, z) {
     try {
         const hashes = ['vw_prop_chip_10dollar_x1','vw_prop_chip_50dollar_x1','vw_prop_chip_100dollar_x1','vw_prop_chip_500dollar_x1'];
         const idx = selectedChipAmount <= 25 ? 0 : selectedChipAmount <= 50 ? 1 : selectedChipAmount <= 100 ? 2 : 3;
+        // Place chip flat on table surface (z is already table surface from plane projection)
         const chip = mp.objects.new(mp.game.joaat(hashes[idx]),
-            new mp.Vector3(x, y, z + 0.02 + placedChipObjects.length * 0.005));
+            new mp.Vector3(x, y, z - 0.01 + placedChipObjects.length * 0.005));
         placedChipObjects.push(chip);
     } catch(e) {}
 }
@@ -671,9 +747,10 @@ mp.keys.bind(KEY_ESC, true, () => {
 // ──────────────────────────────────────────
 // OPEN / CLOSE
 // ──────────────────────────────────────────
-mp.events.add('openRouletteUI', (tableX, tableY, tableZ, tableHeading) => {
+mp.events.add('openRouletteUI', (tableX, tableY, tableZ, tableHeading, tableIndex) => {
     spawnNativeRoulette(tableX, tableY, tableZ, tableHeading);
     isAtRouletteTable = true;
+    currentTableIndex = tableIndex !== undefined ? tableIndex : -1;
     loadAnimDict(ANIM_LIB);
 
     if (rouletteBrowser === null) {
@@ -681,9 +758,31 @@ mp.events.add('openRouletteUI', (tableX, tableY, tableZ, tableHeading) => {
     }
 });
 
+// Server sends saved grid corners on join
+mp.events.add('rouletteLoadGridCorners', (cornersJson) => {
+    try {
+        const c = JSON.parse(cornersJson);
+        if (c.c1 && c.c3 && c.c34 && c.c36) {
+            const tableU = c.c1.u || 0;
+            localCorners.c1  = { f: c.c1.f, r: c.c1.r, u: tableU };
+            localCorners.c3  = { f: c.c3.f, r: c.c3.r, u: tableU };
+            localCorners.c34 = { f: c.c34.f, r: c.c34.r, u: tableU };
+            localCorners.c36 = { f: c.c36.f, r: c.c36.r, u: tableU };
+            if (c.c16) localCorners.c16 = { f: c.c16.f, r: c.c16.r, u: tableU };
+            if (c.c18) localCorners.c18 = { f: c.c18.f, r: c.c18.r, u: tableU };
+            if (c.cBotL) localCorners.cBotL = { f: c.cBotL.f, r: c.cBotL.r, u: tableU };
+            if (c.cBotR) localCorners.cBotR = { f: c.cBotR.f, r: c.cBotR.r, u: tableU };
+            mp.console.logInfo('[GRID] Local corners loaded (F/R/U format)');
+            try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[GRID] Grid incarcat (coordonate locale)'})); } catch(e) {}
+        }
+    } catch(e) { mp.console.logInfo('[GRID] Failed to parse: ' + e); }
+});
+
 function closeRouletteUI() {
     if (rouletteBrowser) { rouletteBrowser.destroy(); rouletteBrowser = null; }
     isAtRouletteTable = false;
+    currentTableIndex = -1;
+    gridEditorActive = false;
     destroyNativeRoulette();
     clearChipObjects();
 }
