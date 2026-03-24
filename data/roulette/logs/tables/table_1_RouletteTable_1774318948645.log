@@ -104,3 +104,49 @@
 [03/24/2026, 10:30:16] SPIN: Numărul câștigător = 3 (red) | Masa "RouletteTable_1774318948645"
 [03/24/2026, 10:30:16] ══ GAME #24 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
 [03/24/2026, 10:30:34] ══ GAME #24 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $0
+[03/24/2026, 10:30:52] SPIN: Numărul câștigător = 31 (black) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:30:52] ══ GAME #25 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:31:11] ══ GAME #25 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $0
+[03/24/2026, 10:31:29] BETS: Woolfye → straight(29)=$25, straight(17)=$25, straight(8)=$1000, column(3,6,9,12,15,18,21,24,27,30,33,36)=$1000 | Total: $2050
+[03/24/2026, 10:31:29] SPIN: Numărul câștigător = 29 (black) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:31:29] ══ GAME #26 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:31:47] WIN: Woolfye a câștigat $900 (pariu: $2050) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:31:47] ══ GAME #26 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $0
+[03/24/2026, 10:32:05] BETS: Woolfye → column(3,6,9,12,15,18,21,24,27,30,33,36)=$1000 | Total: $1000
+[03/24/2026, 10:32:05] SPIN: Numărul câștigător = 3 (red) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:32:05] ══ GAME #27 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:32:23] WIN: Woolfye a câștigat $3000 (pariu: $1000) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:32:23] ══ GAME #27 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $0
+[03/24/2026, 10:32:42] BETS: Woolfye → straight(00)=$1000, straight(9)=$1000, straight(12)=$1000, straight(14)=$1000, straight(16)=$1000, straight(19)=$1000 | Total: $6000
+[03/24/2026, 10:32:42] SPIN: Numărul câștigător = 1 (red) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:32:42] ══ GAME #28 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:33:00] LOSE: Woolfye a pierdut $6000 | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:33:00] ══ GAME #28 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $6000
+[03/24/2026, 10:33:05] LEAVE: Woolfye a părăsit masa #1 "RouletteTable_1774318948645" (result)
+[03/24/2026, 10:34:26] JOIN: Woolfye s-a alăturat mesei #1 "RouletteTable_1774318948645" (1/4)
+[03/24/2026, 10:34:36] BETS: Woolfye → straight(30)=$1000, straight(27)=$1000, straight(24)=$1000, straight(21)=$1000, straight(18)=$1000 | Total: $5000
+[03/24/2026, 10:34:36] SPIN: Numărul câștigător = 36 (red) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:34:36] ══ GAME #29 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:34:54] LOSE: Woolfye a pierdut $5000 | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:34:54] ══ GAME #29 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $5000
+[03/24/2026, 10:35:01] LEAVE: Woolfye a părăsit masa #1 "RouletteTable_1774318948645" (result)
+[03/24/2026, 10:41:32] JOIN: Woolfye s-a alăturat mesei #1 "RouletteTable_1774318948645" (1/4)
+[03/24/2026, 10:41:34] LEAVE: Woolfye a părăsit masa #1 "RouletteTable_1774318948645" (betting)
+[03/24/2026, 10:41:40] JOIN: Woolfye s-a alăturat mesei #1 "RouletteTable_1774318948645" (1/4)
+[03/24/2026, 10:41:50] SPIN: Numărul câștigător = 18 (red) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:41:50] ══ GAME #46 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:42:08] ══ GAME #46 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $0
+[03/24/2026, 10:42:26] SPIN: Numărul câștigător = 36 (red) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:42:26] ══ GAME #48 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:42:44] ══ GAME #48 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $0
+[03/24/2026, 10:43:03] BETS: Woolfye → straight(22)=$25, straight(23)=$25 | Total: $50
+[03/24/2026, 10:43:03] SPIN: Numărul câștigător = 34 (red) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:43:03] ══ GAME #50 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:43:21] LOSE: Woolfye a pierdut $50 | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:43:21] ══ GAME #50 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $50
+[03/24/2026, 10:43:39] BETS: Woolfye → red(1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36)=$500, column(1,4,7,10,13,16,19,22,25,28,31,34)=$500, straight(17)=$500, straight(15)=$500, straight(9)=$500, straight(24)=$500 | Total: $3000
+[03/24/2026, 10:43:39] SPIN: Numărul câștigător = 33 (black) | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:43:39] ══ GAME #52 START ══ Masa "RouletteTable_1774318948645" | Jucători: Woolfye
+[03/24/2026, 10:43:57] LOSE: Woolfye a pierdut $3000 | Masa "RouletteTable_1774318948645"
+[03/24/2026, 10:43:57] ══ GAME #52 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $3000
+[03/24/2026, 10:44:04] LEAVE: Woolfye a părăsit masa #1 "RouletteTable_1774318948645" (result)

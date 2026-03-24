@@ -342,6 +342,39 @@ function placeBet(player, betType, betValue, amount) {
 }
 
 // ──────────────────────────────────────────
+// REMOVE SINGLE BET (by type + value — removes last matching bet)
+// ──────────────────────────────────────────
+function removeBet(player, betType, betValue) {
+    const lobby = getLobbyByPlayer(player);
+    if (!lobby || lobby.state !== 'betting') {
+        player.outputChatBox('!{Red}Nu poți șterge pariuri acum!');
+        return;
+    }
+
+    const slot = getPlayerSlot(lobby, player);
+    if (!slot) return;
+
+    // Find the last bet matching this zone
+    let idx = -1;
+    for (let i = slot.bets.length - 1; i >= 0; i--) {
+        if (slot.bets[i].type === betType && String(slot.bets[i].value) === String(betValue)) {
+            idx = i;
+            break;
+        }
+    }
+
+    if (idx === -1) return;
+
+    const removed = slot.bets.splice(idx, 1)[0];
+    slot.chips += removed.amount;
+    slot.totalBet -= removed.amount;
+
+    player.outputChatBox(`!{Orange}[RULETĂ] !{White}Pariu scos: !{Yellow}${BET_TYPES[removed.type] ? BET_TYPES[removed.type].label : removed.type} !{White}— !{Red}-$${removed.amount} !{White}(Chips: $${slot.chips})`);
+    player.call('rouletteUpdateBets', [JSON.stringify(slot.bets), slot.chips, slot.totalBet]);
+    callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
+}
+
+// ──────────────────────────────────────────
 // CLEAR BETS
 // ──────────────────────────────────────────
 function clearBets(player) {
@@ -557,6 +590,10 @@ mp.events.add('Server_ReceiveRouletteBet', (player, betType, betValueJson, amoun
 
 mp.events.add('Server_ClearRouletteBets', (player) => {
     clearBets(player);
+});
+
+mp.events.add('Server_RemoveRouletteBet', (player, betType, betValue) => {
+    removeBet(player, betType, betValue);
 });
 
 mp.events.add('Server_JoinRouletteTable', (player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading) => {
@@ -791,6 +828,7 @@ module.exports = {
     leaveLobby,
     placeBet,
     clearBets,
+    removeBet,
     lobbies,
     getLobbyByPlayer,
     getPlayerSlot,

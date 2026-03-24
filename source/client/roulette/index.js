@@ -1044,6 +1044,7 @@ global.rouletteDebug = {
 // RENDER LOOP — raytrace from gameplay camera + LMB bet
 // ──────────────────────────────────────────
 let lmbWasPressed = false;
+let rmbWasPressed = false;
 
 mp.events.add('render', () => {
     if (!isAtRouletteTable) return;
@@ -1191,6 +1192,26 @@ mp.events.add('render', () => {
         }
     }
     lmbWasPressed = lmbNow;
+
+    // ── RMB REMOVE BET ──
+    const rmbNow = mp.game.controls.isDisabledControlPressed(0, 25);
+    if (rmbNow && !rmbWasPressed) {
+        if ((rayPlanePos || rayHitPos) && rayHitBetZone && !rouletteSpinning && rouletteBetting) {
+            const zoneKey = `${rayHitBetZone.type}_${rayHitBetZone.value}`;
+            if (placedChipsByZone[zoneKey] && placedChipsByZone[zoneKey].length > 0) {
+                // Remove last chip from this zone
+                const lastChip = placedChipsByZone[zoneKey].pop();
+                if (lastChip) {
+                    try { lastChip.obj.destroy(); } catch(e) {}
+                    const idx = placedChipObjects.indexOf(lastChip);
+                    if (idx !== -1) placedChipObjects.splice(idx, 1);
+                }
+                // Tell server to remove the bet
+                mp.events.callRemote('Server_RemoveRouletteBet', rayHitBetZone.type, String(rayHitBetZone.value));
+            }
+        }
+    }
+    rmbWasPressed = rmbNow;
 
     // ── RAYTRACE from active camera center (skip during spin — performance) ──
     if (rouletteSpinning) return;

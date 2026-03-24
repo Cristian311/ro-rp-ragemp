@@ -1,5 +1,71 @@
 {
+  "0": [
+    {
+      "number": 5,
+      "color": "red"
+    },
+    {
+      "number": 23,
+      "color": "red"
+    },
+    {
+      "number": 30,
+      "color": "red"
+    },
+    {
+      "number": 4,
+      "color": "black"
+    },
+    {
+      "number": 7,
+      "color": "red"
+    },
+    {
+      "number": 24,
+      "color": "black"
+    },
+    {
+      "number": 17,
+      "color": "black"
+    }
+  ],
   "1": [
+    {
+      "number": 33,
+      "color": "black"
+    },
+    {
+      "number": 34,
+      "color": "red"
+    },
+    {
+      "number": 36,
+      "color": "red"
+    },
+    {
+      "number": 18,
+      "color": "red"
+    },
+    {
+      "number": 36,
+      "color": "red"
+    },
+    {
+      "number": 1,
+      "color": "red"
+    },
+    {
+      "number": 3,
+      "color": "red"
+    },
+    {
+      "number": 29,
+      "color": "black"
+    },
+    {
+      "number": 31,
+      "color": "black"
+    },
     {
       "number": 3,
       "color": "red"
@@ -43,38 +109,84 @@
     {
       "number": 32,
       "color": "red"
-    },
+    }
+  ],
+  "2": [
     {
-      "number": 4,
+      "number": 13,
       "color": "black"
     },
     {
-      "number": 20,
-      "color": "black"
+      "number": 32,
+      "color": "red"
     },
     {
-      "number": 26,
-      "color": "black"
+      "number": 30,
+      "color": "red"
     },
     {
-      "number": 10,
-      "color": "black"
+      "number": "00",
+      "color": "green"
+    },
+    {
+      "number": 0,
+      "color": "green"
     },
     {
       "number": 13,
       "color": "black"
     },
     {
+      "number": 3,
+      "color": "red"
+    },
+    {
+      "number": 26,
+      "color": "black"
+    },
+    {
+      "number": 0,
+      "color": "green"
+    },
+    {
       "number": 6,
       "color": "black"
     },
     {
-      "number": 36,
+      "number": 23,
       "color": "red"
     },
     {
-      "number": 22,
+      "number": 17,
       "color": "black"
+    },
+    {
+      "number": 23,
+      "color": "red"
+    },
+    {
+      "number": 9,
+      "color": "red"
+    },
+    {
+      "number": 34,
+      "color": "red"
+    },
+    {
+      "number": 26,
+      "color": "black"
+    },
+    {
+      "number": 34,
+      "color": "red"
+    },
+    {
+      "number": 10,
+      "color": "black"
+    },
+    {
+      "number": 14,
+      "color": "red"
     },
     {
       "number": 9,

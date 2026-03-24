@@ -3,7 +3,7 @@
 let freecamActive = false;
 let freecamCamera = null;
 let freecamPos = { x: 0, y: 0, z: 0 };
-let freecamRot = { x: 0, y: 0 }; // pitch, yaw
+let freecamRot = { x: 0, y: 0, roll: 0 }; // pitch, yaw, roll
 let moveSpeed = 0.05;
 const SPEED_STEPS = [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0];
 let speedIndex = 0; // default 0.05
@@ -111,6 +111,7 @@ function startFreecam() {
     freecamPos.z = pos.z + 2.0;
     freecamRot.x = -20;
     freecamRot.y = heading;
+    freecamRot.roll = 0;
     playerStartPos.x = pos.x;
     playerStartPos.y = pos.y;
     playerStartPos.z = pos.z;
@@ -272,13 +273,13 @@ mp.events.add('render', () => {
     if (mp.game.controls.isDisabledControlPressed(0, 175)) { // Arrow RIGHT
         freecamRot.y -= ARROW_SPEED * dt;
     }
-    // Q = pitch up (look up)
+    // Q = roll left (tilt camera left)
     if (mp.game.controls.isDisabledControlPressed(0, 44)) { // Q
-        freecamRot.x += ARROW_SPEED * dt;
+        freecamRot.roll -= ARROW_SPEED * dt;
     }
-    // E = pitch down (look down)
+    // E = roll right (tilt camera right)
     if (mp.game.controls.isDisabledControlPressed(0, 38)) { // E
-        freecamRot.x -= ARROW_SPEED * dt;
+        freecamRot.roll += ARROW_SPEED * dt;
     }
     freecamRot.x = Math.max(-89, Math.min(89, freecamRot.x));
 
@@ -394,7 +395,7 @@ mp.events.add('render', () => {
 
     // Apply camera position and rotation
     freecamCamera.setCoord(freecamPos.x, freecamPos.y, freecamPos.z);
-    freecamCamera.setRot(freecamRot.x, 0, freecamRot.y, 2);
+    freecamCamera.setRot(freecamRot.x, freecamRot.roll, freecamRot.y, 2);
 });
 
 // ──────────────────────────────────────────
