@@ -10,6 +10,7 @@ mp.keys.bind(KEY_E, true, () => {
 });
 */
 mp.keys.bind(KEY_ESC, true, () => {
+    if (global.chatInputActive) return;
     if (slotsBrowser !== null) {
         closeSlotsUI();
         mp.events.callRemote('Server_LeaveSlotsMachine');

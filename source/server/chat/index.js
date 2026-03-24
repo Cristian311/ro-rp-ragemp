@@ -27,22 +27,12 @@ function sendToPlayer(player, type, authorName, text) {
     try { player.call('chat:receive', [payload]); } catch (_) {}
 }
 
-function patchOutputChatBox(player) {
-    if (!player || player.__chatPatched) return;
-    player.__chatPatched = true;
-    player.outputChatBox = (message) => {
-        const html = colorizeText(String(message || ''));
-        sendToPlayer(player, 'system', '', html);
-    };
-}
-
-mp.events.add('playerJoin', (player) => {
-    patchOutputChatBox(player);
-});
-
-mp.events.add('playerReady', (player) => {
-    patchOutputChatBox(player);
-});
+// Patch prototype o singura data — toate obiectele player primesc automat outputChatBox nou
+const _originalOutputChatBox = mp.Player.prototype.outputChatBox;
+mp.Player.prototype.outputChatBox = function(message) {
+    const html = colorizeText(String(message || ''));
+    sendToPlayer(this, 'system', '', html);
+};
 
 mp.events.add('playerChat', (player, message) => {
     if (!message || typeof message !== 'string') return;
@@ -58,7 +48,6 @@ mp.events.add('playerChat', (player, message) => {
     });
 
     mp.players.forEach((target) => {
-        patchOutputChatBox(target);
         target.call('chat:receive', [payload]);
     });
 });

@@ -6,15 +6,26 @@ mp.gui.chat.show(false);
 const chatBrowser = mp.browsers.new('package://chat/index.html');
 
 mp.keys.bind(0x54, true, () => {
+    global.chatInputActive = true;
     chatBrowser.execute('setChatInputStatus(true)');
 });
 
 mp.keys.bind(0x21, true, () => {
+    if (global.freecamActive) return;
     chatBrowser.execute('MESSAGE_LIST.scrollTop -= 150');
 });
 
 mp.keys.bind(0x22, true, () => {
+    if (global.freecamActive) return;
     chatBrowser.execute('MESSAGE_LIST.scrollTop += 150');
+});
+
+mp.events.add('chat:open', () => {
+    global.chatInputActive = true;
+});
+
+mp.events.add('chat:close', () => {
+    global.chatInputActive = false;
 });
 
 mp.events.add('chat:receive', (payloadStr) => {
@@ -45,4 +56,9 @@ mp.events.add('chat:receive', (payloadStr) => {
     }
 
     chatBrowser.execute(`chatAPI.push(${JSON.stringify(displayText)})`);
+});
+
+// Camera system: show/hide chat
+mp.events.add('camera:showChat', (visible) => {
+    chatBrowser.execute(`document.body.style.display = ${visible ? "'block'" : "'none'"}`);
 });

@@ -7,10 +7,12 @@ const KEY_ESC = 0x1B;
 const KEY_F3 = 0x72; 
 
 mp.keys.bind(KEY_E, true, () => {
+    if (global.chatInputActive) return;
     mp.events.callRemote('Server_PlayerAction', 'interact');
 });
 
 mp.keys.bind(KEY_ESC, true, () => {
+    if (global.chatInputActive) return;
     if (pokerBrowser !== null) {
         closePokerUI();
         mp.events.callRemote('Server_LeavePokerTable');
@@ -18,6 +20,7 @@ mp.keys.bind(KEY_ESC, true, () => {
 });
 
 mp.keys.bind(KEY_F3, true, () => {
+    if (global.chatInputActive) return;
     const cursorState = mp.gui.cursor.visible;
     mp.gui.cursor.show(!cursorState, !cursorState);
 });

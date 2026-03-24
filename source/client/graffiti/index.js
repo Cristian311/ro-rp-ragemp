@@ -428,6 +428,7 @@ mp.events.add('click', (x, y, upOrDown, leftOrRight) => {
 // DEL key — delete currently selected/highlighted graffiti in view mode
 const KEY_DELETE = 0x2E;
 mp.keys.bind(KEY_DELETE, true, () => {
+    if (global.chatInputActive) return;
     if (!isGraffitiViewMode) return;
     if (viewerPanelOpen) {
         // Panel open: trigger delete through the CEF panel
@@ -440,6 +441,7 @@ mp.keys.bind(KEY_DELETE, true, () => {
 
 // ESC cancels canvas, spray animation, placement, or view mode
 mp.keys.bind(KEY_ESC, true, () => {
+    if (global.chatInputActive) return;
     if (isCanvasOpen) {
         closeCanvas();
         return;

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color: white;
+        overflow: hidden;
+        user-select: none;
+    }
+    #hud {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 14px 18px;
+        min-width: 320px;
+        backdrop-filter: blur(4px);
+    }
+    .title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #00FF88;
+        margin-bottom: 10px;
+        letter-spacing: 1px;
+    }
+    .controls {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 4px 12px;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .key {
+        color: #FFD700;
+        font-weight: 600;
+        text-align: right;
+        white-space: nowrap;
+    }
+    .desc {
+        color: #CCCCCC;
+    }
+    .separator {
+        grid-column: 1 / -1;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 4px 0;
+    }
+    #info {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 12px;
+        font-family: 'Consolas', 'Courier New', monospace;
+        min-width: 260px;
+        backdrop-filter: blur(4px);
+    }
+    #info .label { color: #888; }
+    #info .value { color: #FFF; font-weight: 600; }
+    #speed-display { color: #00FF88; font-weight: 700; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="hud">
+    <div class="title">&#x1F3A5; FREECAM</div>
+    <div class="controls">
+        <span class="key">W A S D</span><span class="desc">Miscare</span>
+        <span class="key">&#x2191; &#x2193; &#x2190; &#x2192;</span><span class="desc">Rotire camera</span>
+        <span class="key">Space</span><span class="desc">Sus</span>
+        <span class="key">Ctrl</span><span class="desc">Jos</span>
+        <div class="separator"></div>
+        <span class="key">[ &nbsp; ]</span><span class="desc">Viteza -/+</span>
+        <span class="key">PgUp / PgDn</span><span class="desc">Efect vizual +/-</span>
+        <span class="key">Enter</span><span class="desc">Salveaza pozitie</span>
+        <span class="key">Click</span><span class="desc">Ascunde/Arata HUD</span>
+        <span class="key">/camera</span><span class="desc">Opreste freecam</span>
+    </div>
+</div>
+<div id="info">
+    <div><span class="label">X: </span><span class="value" id="px">0</span> &nbsp; <span class="label">Y: </span><span class="value" id="py">0</span> &nbsp; <span class="label">Z: </span><span class="value" id="pz">0</span></div>
+    <div><span class="label">Pitch: </span><span class="value" id="rx">0</span> &nbsp; <span class="label">Yaw: </span><span class="value" id="ry">0</span></div>
+    <div style="margin-top: 6px;"><span class="label">Viteza: </span><span id="speed-display">0.5</span></div>
+    <div><span class="label">Efect: </span><span class="value" id="effect-display" style="color:#FF88FF;">None</span></div>
+    <div><span class="label">Distanta: </span><span class="value" id="dist">0</span><span class="label"> / 50</span></div>
+    <div id="dist-bar" style="margin-top:4px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
+        <div id="dist-fill" style="height:100%; width:0%; background:#00FF88; border-radius:2px; transition: width 0.1s;"></div>
+    </div>
+</div>
+<script>
+    function updatePos(x, y, z, rx, ry, dist) {
+        document.getElementById('px').textContent = x;
+        document.getElementById('py').textContent = y;
+        document.getElementById('pz').textContent = z;
+        document.getElementById('rx').textContent = rx;
+        document.getElementById('ry').textContent = ry;
+        document.getElementById('dist').textContent = dist;
+        const pct = Math.min((dist / 50) * 100, 100);
+        const fill = document.getElementById('dist-fill');
+        fill.style.width = pct + '%';
+        fill.style.background = pct > 80 ? '#FF4444' : pct > 60 ? '#FFD700' : '#00FF88';
+    }
+    function updateSpeed(s) {
+        document.getElementById('speed-display').textContent = s;
+    }
+    function updateEffect(name) {
+        document.getElementById('effect-display').textContent = name;
+    }
+    function setVisible(v) {
+        document.getElementById('hud').style.display = v ? 'block' : 'none';
+        document.getElementById('info').style.display = v ? 'block' : 'none';
+    }
+</script>
+</body>
+</html>

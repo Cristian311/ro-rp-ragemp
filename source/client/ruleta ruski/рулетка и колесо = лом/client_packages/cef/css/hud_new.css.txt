@@ -1,0 +1,92 @@
+	
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap');
+
+.fortune {
+	position: absolute;
+	top: 300px;
+	right: 15px;
+	font-family: 'Oswald', sans-serif !important;
+}
+
+.fortune__title {
+	font-weight: bold;
+	font-size: 19px;
+	transform: rotate(2deg);
+}
+
+.fortune-box{
+	position: relative;
+	box-sizing: border-box;
+
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: cover;
+
+
+	text-align: center;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+}
+
+.fortune-box_long {
+	background-image: url(../images/fortune-bg.png);
+
+	width: 316px;
+	height: 64px;
+	padding-top: 10px;
+}
+
+.fortune-box_short{
+	background-image: url(../images/fortune-bg-short.png);
+
+	padding-top: 5px;
+	width: 35px;
+	height: 34px;
+}
+
+.fortune__time {
+	width: 88.87px;
+	height: 33.27px;
+
+	background-image: url(../images/fortune-time-bg.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: cover;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-wrap: nowrap;
+
+	transform: translateY(10px);
+
+}
+
+.fortune__time-text {
+	font-size: 12px;
+	font-weight: 400;
+	color: #E9CA05;
+	white-space: nowrap;
+}
+
+.fortune__arrow {
+	width: 22px;
+	height: 22px;
+
+	background-image: url(../images/fortune-arrow.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: cover;
+
+	position: absolute;
+	left: 0;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 10;
+}
+
+.fortune__arrow_open {
+	transform: translate(-80%, -50%) rotate(180deg);
+}

@@ -13,6 +13,7 @@ const KEY_2 = 50; // tasta '2'
 
 // Toggle raytrace cu tasta 2
 mp.keys.bind(KEY_2, true, () => {
+    if (global.chatInputActive) return;
     isRaytraceActive = !isRaytraceActive;
     hitPosition = null;
     mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[Raytrace] ${isRaytraceActive ? 'ON' : 'OFF'}`}));
@@ -21,6 +22,7 @@ mp.keys.bind(KEY_2, true, () => {
 // Copiere coord in clipboard cu tasta 3 + trimite la server
 const KEY_3 = 51;
 mp.keys.bind(KEY_3, true, () => {
+    if (global.chatInputActive) return;
     if (!isRaytraceActive || !hitPosition) return;
     const coordStr = `${hitPosition.x.toFixed(4)}, ${hitPosition.y.toFixed(4)}, ${hitPosition.z.toFixed(4)}`;
     mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[Raytrace] Coordonate: ${coordStr}`}));

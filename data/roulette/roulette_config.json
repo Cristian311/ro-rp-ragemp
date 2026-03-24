@@ -1,0 +1,76 @@
+{
+    "TABLE_SURFACE_U": 0.96,
+    "CHIP_HEIGHT_OFFSET": -0.02,
+    "CHIP_STACK_OFFSET": 0.003,
+    "camera": {
+        "offset_f": -0.9,
+        "offset_r": 0.35,
+        "offset_u": 1.8,
+        "lookat_f": -0.45,
+        "lookat_r": 0.35,
+        "lookat_u": 0.96,
+        "sensitivity": 3,
+        "pitch_min": -80,
+        "pitch_max": -20,
+        "yaw_range": 40
+    },
+    "spin_camera": {
+        "offset_f": -0.593,
+        "offset_r": -1.4177,
+        "offset_u": 1.7479,
+        "pitch": -27.5,
+        "yaw_offset": -58.5,
+        "fov": 60
+    },
+    "seats": [
+        {
+            "f": -1.0436,
+            "r": -0.2434,
+            "u": 0.5201,
+            "heading": 354,
+            "animDict": "amb@prop_human_seat_chair@male@generic@base",
+            "animName": "base",
+            "animFlags": 2
+        },
+        {
+            "f": -1.1104,
+            "r": 0.7752,
+            "u": 0.6101,
+            "heading": 379,
+            "animDict": "amb@prop_human_seat_chair@male@generic@base",
+            "animName": "base",
+            "animFlags": 2
+        },
+        {
+            "f": -0.0841,
+            "r": 1.5364,
+            "u": 0.5601,
+            "heading": 440,
+            "animDict": "amb@prop_human_seat_chair@male@generic@base",
+            "animName": "base",
+            "animFlags": 2
+        },
+        {
+            "f": 0.8431,
+            "r": 0.7731,
+            "u": 0.5601,
+            "heading": 174,
+            "animDict": "amb@prop_human_seat_chair@male@generic@base",
+            "animName": "base",
+            "animFlags": 2
+        }
+    ],
+    "chip_models": {
+        "10": "vw_prop_chip_10dollar_x1",
+        "25": "vw_prop_chip_10dollar_x1",
+        "50": "vw_prop_chip_50dollar_x1",
+        "100": "vw_prop_chip_100dollar_x1",
+        "500": "vw_prop_chip_500dollar_x1",
+        "1000": "vw_prop_chip_500dollar_x1"
+    },
+    "ball_offset": {
+        "x": -0.734742,
+        "y": -0.16617,
+        "z": 1.0715
+    }
+}

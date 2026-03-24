@@ -20,7 +20,7 @@ mp.events.add('render', () => {
 
 mp.keys.bind(0x09, false, () => { // Tab key
     try{
-        if (globalThis.__chatInputOpen) return;
+        if (global.chatInputActive) return;
         ensurePalette();
         mp.events.callRemote('RequestCommandList');
         setTimeout(()=>{ try{ paletteBrowser && paletteBrowser.execute('window.palette && window.palette.show()'); }catch(e){} }, 120);

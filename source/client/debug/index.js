@@ -28,6 +28,7 @@ function formatDebugText(rawText) {
 }
 
 mp.keys.bind(KEY_1, true, () => {
+    if (global.chatInputActive) return;
     isDebugVisible = !isDebugVisible;
     mp.gui.chat.push(`!{Grey}[Sistem] Debug HUD: ${isDebugVisible ? '!{Green}ON' : '!{Red}OFF'}`);
 });

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: transparent; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; user-select: none; }
+
+#animMenu {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 650px;
+    max-height: 75vh;
+    background: rgba(15, 15, 25, 0.95);
+    border: 1px solid rgba(255, 200, 50, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+    flex-direction: column;
+}
+#animMenu.visible { display: flex; }
+
+.menu-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid rgba(255, 200, 50, 0.15);
+}
+.menu-header h2 {
+    color: #FFD700;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+#searchBox {
+    width: 100%;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+}
+#searchBox::placeholder { color: rgba(255, 255, 255, 0.35); }
+#searchBox:focus { border-color: rgba(255, 200, 50, 0.5); }
+
+.menu-body {
+    overflow-y: auto;
+    padding: 8px 12px 12px;
+    flex: 1;
+}
+.menu-body::-webkit-scrollbar { width: 5px; }
+.menu-body::-webkit-scrollbar-track { background: transparent; }
+.menu-body::-webkit-scrollbar-thumb { background: rgba(255, 200, 50, 0.3); border-radius: 3px; }
+
+.category {
+    margin-bottom: 6px;
+}
+.cat-header {
+    padding: 8px 12px;
+    color: #FFD700;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.cat-header:hover { background: rgba(255, 200, 50, 0.08); }
+.cat-header .arrow { transition: transform 0.2s; font-size: 10px; }
+.cat-header .arrow.open { transform: rotate(90deg); }
+.cat-header .count {
+    margin-left: auto;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.cat-items {
+    display: none;
+    padding: 2px 0 4px 8px;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.cat-items.open { display: flex; }
+
+.anim-btn {
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    color: #ddd;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.anim-btn:hover {
+    background: rgba(255, 200, 50, 0.15);
+    border-color: rgba(255, 200, 50, 0.4);
+    color: #FFD700;
+}
+.anim-btn.active {
+    background: rgba(255, 200, 50, 0.2);
+    border-color: #FFD700;
+    color: #FFD700;
+}
+
+.menu-footer {
+    padding: 10px 16px;
+    border-top: 1px solid rgba(255, 200, 50, 0.15);
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 11px;
+    text-align: center;
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="animMenu">
+    <div class="menu-header">
+        <h2>🎭 Animatii</h2>
+        <input type="text" id="searchBox" placeholder="Cauta animatie...">
+    </div>
+    <div class="menu-body" id="menuBody"></div>
+    <div class="menu-footer">Click pe animatie pentru a o reda  •  ESC pentru a inchide</div>
+</div>
+
+<script>
+const ANIMS = {
+    "Sitting - Chair": [
+        { name: "sitchair1", dict: "amb@code_human_in_bus_passenger_idles@female@sit@base", anim: "base" },
+        { name: "sitchair2", dict: "amb@code_human_in_bus_passenger_idles@male@coffee@base", anim: "base" },
+        { name: "sitchair3", dict: "amb@code_human_in_bus_passenger_idles@male@sit@base", anim: "base" },
+        { name: "sitchair4", dict: "amb@prop_human_seat_chair@female@arms_folded@base", anim: "base" },
+        { name: "sitchair5", dict: "amb@prop_human_seat_chair@female@legs_crossed@base", anim: "base" },
+        { name: "sitchair6", dict: "amb@prop_human_seat_chair@female@proper@base", anim: "base" },
+        { name: "sitchair7", dict: "amb@prop_human_seat_chair@male@elbows_on_knees@base", anim: "base" },
+        { name: "sit1", dict: "amb@prop_human_seat_chair@male@generic@base", anim: "base" },
+        { name: "sitchair8", dict: "amb@prop_human_seat_chair@male@left_elbow_on_knee@base", anim: "base" },
+        { name: "sit2", dict: "amb@prop_human_seat_chair_mp@female@heels@base", anim: "base" },
+        { name: "sit3", dict: "amb@prop_human_seat_chair_mp@male@generic@base", anim: "base" },
+        { name: "sitarmscrossed", dict: "amb@prop_human_seat_chair_drink@female@generic@base", anim: "base" },
+        { name: "sitdrink", dict: "amb@prop_human_seat_chair_drink@male@generic@base", anim: "base" },
+        { name: "sitdrinking", dict: "amb@prop_human_seat_chair_drink@male@generic@idle_a", anim: "idle_a" },
+        { name: "sitadhd", dict: "amb@prop_human_seat_strip_watch@bit_thuggy@base", anim: "base" },
+        { name: "sit4", dict: "amb@prop_human_seat_strip_watch@bouncy_guy@base", anim: "base" }
+    ],
+    "Sitting - Ground": [
+        { name: "sitonground1", dict: "amb@code_human_in_car_idles@generic@rds@base", anim: "base" },
+        { name: "sitonground2", dict: "amb@incar@male@patrol@ps@base", anim: "base" },
+        { name: "sitonground3", dict: "amb@incar@male@patrol@torch@base", anim: "base" },
+        { name: "sitonground4", dict: "amb@incar@male@security@base", anim: "base" },
+        { name: "sitonground5", dict: "amb@incar@male@security@idle_a", anim: "idle_a" }
+    ],
+    "Sitting - Relaxed": [
+        { name: "sitrelaxed", dict: "amb@prop_human_seat_chair@male@recline_b@base_b", anim: "base_b" },
+        { name: "sitrelaxed2", dict: "amb@prop_human_seat_chair@male@right_foot_out@base", anim: "base" },
+        { name: "sitrelaxed3", dict: "amb@prop_human_seat_deckchair@female@base", anim: "base" },
+        { name: "sitrelaxed4", dict: "amb@prop_human_seat_deckchair@male@base", anim: "base" },
+        { name: "sitrelaxedrink", dict: "amb@prop_human_seat_deckchair_drink@female@base", anim: "base" },
+        { name: "sitrelaxeddrink2", dict: "amb@prop_human_seat_deckchair_drink@male@generic@base", anim: "base" }
+    ],
+    "Sitting - Bar": [
+        { name: "sitbar", dict: "ah_3a_ext-2", anim: "cs_lestercrest_dual-2" },
+        { name: "sitbar2", dict: "amb@prop_human_seat_bar@female@elbows_on_bar@idle_a", anim: "idle_a" }
+    ],
+    "Laying": [
+        { name: "laybed1", dict: "amb@prop_human_seat_sunlounger@female@base", anim: "base" },
+        { name: "laybed2", dict: "amb@prop_human_seat_sunlounger@male@base", anim: "base" },
+        { name: "layleft", dict: "amb@world_human_bum_slumped@male@laying_on_left_side@base", anim: "base" },
+        { name: "layright", dict: "amb@world_human_bum_slumped@male@laying_on_right_side@base", anim: "base" }
+    ],
+    "Standing - Idle": [
+        { name: "idle", dict: "amb@world_human_cop_idles@male@base", anim: "base" },
+        { name: "idle1", dict: "amb@code_human_cross_road@male@idle_a", anim: "idle_e" },
+        { name: "idle2", dict: "amb@code_human_cross_road@male@idle_enter", anim: "idle_enter" },
+        { name: "idle3", dict: "amb@code_human_police_investigate@base", anim: "base" },
+        { name: "idle4", dict: "amb@code_human_police_investigate@idle_a", anim: "idle_a" },
+        { name: "idle5", dict: "amb@code_human_wander_idles_cop@male@static", anim: "static" },
+        { name: "idlefemale1", dict: "amb@code_human_cross_road@female@base", anim: "base" },
+        { name: "idlemale1", dict: "amb@world_human_aa_smoke@male@base", anim: "base" },
+        { name: "idlemale2", dict: "amb@world_human_drug_dealer_hard@male@idle_b", anim: "idle_d" },
+        { name: "femaleidle1", dict: "amb@world_human_cop_idles@female@idle_a", anim: "idle_b" },
+        { name: "femaleidle2", dict: "amb@world_human_cop_idles@female@idle_b", anim: "idle_e" },
+        { name: "femaleidle3", dict: "amb@world_human_hang_out_street@female_arm_side@base", anim: "base" },
+        { name: "femaleidle4", dict: "amb@world_human_hang_out_street@male_c@base", anim: "base" },
+        { name: "lookaround", dict: "amb@code_human_cross_road@male@base", anim: "base" }
+    ],
+    "Standing - Bar": [
+        { name: "standbar", dict: "amb@prop_human_bum_shopping_cart@male@base", anim: "base" },
+        { name: "standbar2", dict: "amb@prop_human_bum_shopping_cart@male@idle_a", anim: "idle_a" },
+        { name: "standbar3", dict: "amb@prop_human_seat_bar@male@elbows_on_bar@base", anim: "base" },
+        { name: "standbar4", dict: "amb@prop_human_seat_bar@male@elbows_on_bar@idle_b", anim: "idle_d" }
+    ],
+    "Leaning": [
+        { name: "lean7", dict: "amb@world_human_leaning@female@coffee@base", anim: "base" },
+        { name: "leansmoke1", dict: "amb@world_human_leaning@female@smoke@idle_a", anim: "idle_a" },
+        { name: "leanbottle1", dict: "amb@world_human_leaning@male@coffee@base", anim: "base" },
+        { name: "leanfoot1", dict: "amb@world_human_leaning@male@wall@back@foot_up@base", anim: "base" },
+        { name: "reallean", dict: "amb@world_human_leaning@male@wall@back@hands_together@base", anim: "base" },
+        { name: "lean9", dict: "amb@world_human_leaning@male@wall@back@legs_crossed@base", anim: "base" },
+        { name: "femalelean1", dict: "amb@code_human_wander_smoking@female@base", anim: "static" }
+    ],
+    "Emotions": [
+        { name: "panic", dict: "amb@code_human_cower@female@idle_a", anim: "idle_c" },
+        { name: "panic2", dict: "amb@code_human_cower@female@react_cowering", anim: "base_back_left" },
+        { name: "panic3", dict: "amb@code_human_cower@male@base", anim: "base" },
+        { name: "panic4", dict: "amb@code_human_in_car_mp_actions@drink_bottle@bodhi@rds@base", anim: "enter" },
+        { name: "crouchscared", dict: "amb@code_human_cower_stand@female@base", anim: "base" },
+        { name: "depressed", dict: "amb@world_human_bum_standing@depressed@base", anim: "base" },
+        { name: "drunk", dict: "amb@world_human_bum_standing@drunk@base", anim: "base" },
+        { name: "paranoia", dict: "amb@world_human_drug_dealer_hard@male@base", anim: "base" },
+        { name: "broken", dict: "amb@code_human_wander_rain@male_b@base", anim: "static" },
+        { name: "femaleshy", dict: "amb@code_human_wander_rain@female@base", anim: "static" }
+    ],
+    "Gestures": [
+        { name: "fuckyou", dict: "amb@code_human_in_car_mp_actions@finger@std@ps@base", anim: "idle_a" },
+        { name: "gangsign1", dict: "amb@code_human_in_car_mp_actions@gang_sign_a@bodhi@rds@base", anim: "idle_a" },
+        { name: "gangsign2", dict: "amb@code_human_in_car_mp_actions@gang_sign_a@low@ps@base", anim: "idle_a" },
+        { name: "scratchballs", dict: "amb@code_human_in_car_mp_actions@grab_crotch@std@ds@base", anim: "idle_a" },
+        { name: "peace", dict: "amb@code_human_in_car_mp_actions@v_sign@bodhi@rps@base", anim: "idle_a" },
+        { name: "cheering", dict: "amb@world_human_cheering@female_a", anim: "base" },
+        { name: "claphands", dict: "amb@world_human_cheering@female_d", anim: "base" },
+        { name: "cheeringmale", dict: "amb@world_human_cheering@male_a", anim: "base" },
+        { name: "cheeringmale2", dict: "amb@world_human_cheering@male_b", anim: "base" },
+        { name: "arguing", dict: "ah_2_ext_alt-5", anim: "cs_lestercrest_dual-5" },
+        { name: "explainsmthhandontable", dict: "abigail_mcs_1_concat-2", anim: "player_zero_dual-2" }
+    ],
+    "Actions": [
+        { name: "texting", dict: "amb@code_human_wander_texting@female@base", anim: "static" },
+        { name: "texting2", dict: "amb@code_human_wander_texting@male@base", anim: "static" },
+        { name: "clipboard", dict: "amb@code_human_wander_clipboard@male@base", anim: "static" },
+        { name: "holdcup", dict: "amb@code_human_wander_drinking@beer@female@base", anim: "static" },
+        { name: "holdcup2", dict: "amb@code_human_wander_drinking@male@base", anim: "static" },
+        { name: "writing", dict: "amb@medic@standing@timeofdeath@base", anim: "base" },
+        { name: "hammer", dict: "amb@world_human_hammering@male@base", anim: "base" },
+        { name: "workonground", dict: "amb@world_human_gardener_plant@female@base", anim: "base_female" },
+        { name: "binoculars", dict: "amb@world_human_binoculars@female@base", anim: "base" },
+        { name: "binoculars2", dict: "amb@world_human_binoculars@male@base", anim: "base" },
+        { name: "checkbody", dict: "amb@medic@standing@kneel@base", anim: "base" },
+        { name: "checkbody2", dict: "amb@medic@standing@tendtodead@base", anim: "base" },
+        { name: "checkbody3", dict: "amb@medic@standing@tendtodead@idle_a", anim: "idle_a" },
+        { name: "checkbody4", dict: "amb@world_human_bum_wash@male@low@idle_a", anim: "idle_a" },
+        { name: "femalearmscrossed1", dict: "amb@world_human_hang_out_street@female_arms_crossed@base", anim: "base" },
+        { name: "femalearmscrossed2", dict: "amb@world_human_hang_out_street@female_hold_arm@base", anim: "base" },
+        { name: "femaleholdarm", dict: "amb@world_human_hang_out_street@female_hold_arm@idle_a", anim: "idle_a" }
+    ],
+    "Exercise": [
+        { name: "jogging1", dict: "amb@world_human_jog@female@base", anim: "base" },
+        { name: "jogging2", dict: "amb@world_human_jog@male@base", anim: "base" },
+        { name: "warmup", dict: "amb@world_human_jog_standing@male@base", anim: "base" },
+        { name: "chinups", dict: "amb@prop_human_muscle_chin_ups@male@base", anim: "base" },
+        { name: "pushbar", dict: "amb@prop_human_seat_muscle_bench_press@base", anim: "base" },
+        { name: "pushingbar", dict: "amb@prop_human_seat_muscle_bench_press@idle_a", anim: "idle_a" }
+    ]
+};
+
+let currentActive = null;
+
+function buildMenu() {
+    const body = document.getElementById('menuBody');
+    body.innerHTML = '';
+
+    for (const [catName, anims] of Object.entries(ANIMS)) {
+        const cat = document.createElement('div');
+        cat.className = 'category';
+        cat.dataset.category = catName;
+
+        const header = document.createElement('div');
+        header.className = 'cat-header';
+        header.innerHTML = `<span class="arrow">▶</span> ${catName} <span class="count">${anims.length}</span>`;
+        header.onclick = () => {
+            const items = cat.querySelector('.cat-items');
+            const arrow = header.querySelector('.arrow');
+            items.classList.toggle('open');
+            arrow.classList.toggle('open');
+        };
+
+        const items = document.createElement('div');
+        items.className = 'cat-items';
+
+        anims.forEach(a => {
+            const btn = document.createElement('div');
+            btn.className = 'anim-btn';
+            btn.textContent = a.name;
+            btn.dataset.dict = a.dict;
+            btn.dataset.anim = a.anim;
+            btn.dataset.name = a.name;
+            btn.onclick = () => {
+                if (currentActive) currentActive.classList.remove('active');
+                btn.classList.add('active');
+                currentActive = btn;
+                mp.trigger('animations:playFromMenu', a.dict, a.anim, a.name);
+            };
+            items.appendChild(btn);
+        });
+
+        cat.appendChild(header);
+        cat.appendChild(items);
+        body.appendChild(cat);
+    }
+}
+
+function filterAnims(query) {
+    query = query.toLowerCase().trim();
+    const cats = document.querySelectorAll('.category');
+
+    cats.forEach(cat => {
+        const btns = cat.querySelectorAll('.anim-btn');
+        let visibleCount = 0;
+
+        btns.forEach(btn => {
+            const match = btn.dataset.name.toLowerCase().includes(query) ||
+                          btn.dataset.dict.toLowerCase().includes(query);
+            btn.classList.toggle('hidden', !match);
+            if (match) visibleCount++;
+        });
+
+        cat.classList.toggle('hidden', visibleCount === 0);
+
+        // Auto-open categories when searching
+        if (query.length > 0 && visibleCount > 0) {
+            cat.querySelector('.cat-items').classList.add('open');
+            cat.querySelector('.arrow').classList.add('open');
+        } else if (query.length === 0) {
+            cat.querySelector('.cat-items').classList.remove('open');
+            cat.querySelector('.arrow').classList.remove('open');
+        }
+
+        // Update count
+        cat.querySelector('.count').textContent = visibleCount;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    buildMenu();
+    document.getElementById('searchBox').addEventListener('input', (e) => {
+        filterAnims(e.target.value);
+    });
+});
+
+function openMenu() {
+    document.getElementById('animMenu').classList.add('visible');
+    document.getElementById('searchBox').value = '';
+    filterAnims('');
+    document.getElementById('searchBox').focus();
+}
+
+function closeMenu() {
+    document.getElementById('animMenu').classList.remove('visible');
+}
+</script>
+</body>
+</html>

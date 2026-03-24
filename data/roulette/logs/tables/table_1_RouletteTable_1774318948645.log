@@ -1,0 +1,27 @@
+[2026-03-24 09:25:36] JOIN: Lition s-a alăturat mesei #1 "RouletteTable_1774318948645" (1/4)
+[2026-03-24 09:25:43] JOIN: Laura_Stoica_1 s-a alăturat mesei #1 "RouletteTable_1774318948645" (2/4)
+[2026-03-24 09:25:46] BETS: Lition → straight(12)=$25 | Total: $25
+[2026-03-24 09:25:46] SPIN: Numărul câștigător = 36 (red) | Masa "RouletteTable_1774318948645"
+[2026-03-24 09:25:46] ══ GAME #1 START ══ Masa "RouletteTable_1774318948645" | Jucători: Lition, Laura_Stoica_1
+[2026-03-24 09:26:04] LOSE: Lition a pierdut $25 | Masa "RouletteTable_1774318948645"
+[2026-03-24 09:26:04] ══ GAME #1 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $25
+[2026-03-24 09:26:10] LEAVE: Lition a părăsit masa #1 "RouletteTable_1774318948645" (result)
+[2026-03-24 09:26:19] JOIN: Lition s-a alăturat mesei #1 "RouletteTable_1774318948645" (2/4)
+[2026-03-24 09:26:22] BETS: Laura_Stoica_1 → high(19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36)=$1030 | Total: $1030
+[2026-03-24 09:26:22] SPIN: Numărul câștigător = 13 (black) | Masa "RouletteTable_1774318948645"
+[2026-03-24 09:26:22] ══ GAME #2 START ══ Masa "RouletteTable_1774318948645" | Jucători: Laura_Stoica_1, Lition
+[2026-03-24 09:26:23] LEAVE: Lition a părăsit masa #1 "RouletteTable_1774318948645" (spinning)
+[2026-03-24 09:26:30] JOIN: Lition s-a alăturat mesei #1 "RouletteTable_1774318948645" (2/4)
+[2026-03-24 09:26:31] LEAVE: Lition a părăsit masa #1 "RouletteTable_1774318948645" (spinning)
+[2026-03-24 09:26:40] LOSE: Laura_Stoica_1 a pierdut $1030 | Masa "RouletteTable_1774318948645"
+[2026-03-24 09:26:40] ══ GAME #2 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $1030
+[2026-03-24 09:26:58] BETS: Laura_Stoica_1 → dozen(25,26,27,28,29,30,31,32,33,34,35,36)=$746 | Total: $746
+[2026-03-24 09:26:58] SPIN: Numărul câștigător = 18 (red) | Masa "RouletteTable_1774318948645"
+[2026-03-24 09:26:58] ══ GAME #3 START ══ Masa "RouletteTable_1774318948645" | Jucători: Laura_Stoica_1
+[2026-03-24 09:27:16] LOSE: Laura_Stoica_1 a pierdut $746 | Masa "RouletteTable_1774318948645"
+[2026-03-24 09:27:16] ══ GAME #3 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $746
+[2026-03-24 09:27:34] BETS: Laura_Stoica_1 → red(1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36)=$666, column(1,4,7,10,13,16,19,22,25,28,31,34)=$597 | Total: $1263
+[2026-03-24 09:27:34] SPIN: Numărul câștigător = 9 (red) | Masa "RouletteTable_1774318948645"
+[2026-03-24 09:27:34] ══ GAME #4 START ══ Masa "RouletteTable_1774318948645" | Jucători: Laura_Stoica_1
+[2026-03-24 09:27:52] WIN: Laura_Stoica_1 a câștigat $1332 (pariu: $1263) | Masa "RouletteTable_1774318948645"
+[2026-03-24 09:27:52] ══ GAME #4 END ══ Masa "RouletteTable_1774318948645" | Profit casă: $0

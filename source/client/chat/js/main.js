@@ -64,6 +64,11 @@ const setChatInputStatus = (status) => {
 
     mp.invoke("focus", status);
     mp.invoke("setTypingInChatState", status);
+    if (status) {
+        mp.trigger('chat:open');
+    } else {
+        mp.trigger('chat:close');
+    }
 
     if(status) {
         chatInputStatus = true;

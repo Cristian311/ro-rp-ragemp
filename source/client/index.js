@@ -1,10 +1,13 @@
+global.chatInputActive = false;
+
+require('chat');
 require('poker/index.js');
 require('blackjack/index.js');
 require('roulette/index.js');
 require('slots/index.js');
-require('casino_roulette_gta/index.js');
 require('graffiti/index.js');
 require('raytrace/index.js');
 require('roulette/test.js');
 require('mp-commands');
-require('chat');
+require('camera/index.js');
+require('animations/index.js');

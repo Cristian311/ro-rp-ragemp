@@ -9,6 +9,7 @@ ball.attachTo(table.handle, 0, 0, 0, 0, 0, 0, 0, true, true, false, false, 0, fa
 
 let lib = 'anim_casino_b@amb@casino@games@roulette@table';
 const routtle = () => {
+    if (global.chatInputActive) return;
     ball.position = new mp.Vector3(pos.x-0.734742, pos.y-0.16617, pos.z+1.0715);
     ball.rotation = new mp.Vector3(0, 0, 32.6);
 

@@ -119,6 +119,7 @@ mp.events.add('Blackjack_LeaveTable', () => {
 });
 
 mp.keys.bind(KEY_ESC, false, () => {
+    if (global.chatInputActive) return;
     if (bjBrowser !== null) {
         mp.events.callRemote('Server_LeaveBlackjackTable');
     }
