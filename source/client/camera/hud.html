@@ -74,13 +74,14 @@
     <div class="title">&#x1F3A5; FREECAM</div>
     <div class="controls">
         <span class="key">W A S D</span><span class="desc">Miscare</span>
+        <span class="key">Q / E</span><span class="desc">Rotire sus/jos</span>
         <span class="key">&#x2191; &#x2193; &#x2190; &#x2192;</span><span class="desc">Rotire camera</span>
         <span class="key">Space</span><span class="desc">Sus</span>
         <span class="key">Ctrl</span><span class="desc">Jos</span>
         <div class="separator"></div>
         <span class="key">[ &nbsp; ]</span><span class="desc">Viteza -/+</span>
         <span class="key">PgUp / PgDn</span><span class="desc">Efect vizual +/-</span>
-        <span class="key">Enter</span><span class="desc">Salveaza pozitie</span>
+        <span class="key">Enter</span><span class="desc">Salveaza pozitie (Admin)</span>
         <span class="key">Click</span><span class="desc">Ascunde/Arata HUD</span>
         <span class="key">/camera</span><span class="desc">Opreste freecam</span>
     </div>
@@ -90,7 +91,7 @@
     <div><span class="label">Pitch: </span><span class="value" id="rx">0</span> &nbsp; <span class="label">Yaw: </span><span class="value" id="ry">0</span></div>
     <div style="margin-top: 6px;"><span class="label">Viteza: </span><span id="speed-display">0.5</span></div>
     <div><span class="label">Efect: </span><span class="value" id="effect-display" style="color:#FF88FF;">None</span></div>
-    <div><span class="label">Distanta: </span><span class="value" id="dist">0</span><span class="label"> / 50</span></div>
+    <div><span class="label">Distanta: </span><span class="value" id="dist">0</span><span class="label"> / 20</span></div>
     <div id="dist-bar" style="margin-top:4px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; overflow:hidden;">
         <div id="dist-fill" style="height:100%; width:0%; background:#00FF88; border-radius:2px; transition: width 0.1s;"></div>
     </div>
@@ -103,7 +104,7 @@
         document.getElementById('rx').textContent = rx;
         document.getElementById('ry').textContent = ry;
         document.getElementById('dist').textContent = dist;
-        const pct = Math.min((dist / 50) * 100, 100);
+        const pct = Math.min((dist / 20) * 100, 100);
         const fill = document.getElementById('dist-fill');
         fill.style.width = pct + '%';
         fill.style.background = pct > 80 ? '#FF4444' : pct > 60 ? '#FFD700' : '#00FF88';

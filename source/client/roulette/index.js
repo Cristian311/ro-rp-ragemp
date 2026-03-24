@@ -737,6 +737,19 @@ let OFFSET_21 = { f: 0.005, r: 0.02 };   // 2:1 cells offset
 let OFFSET_0  = { f: -0.01, r: -0.02 };   // 0 cell offset
 let OFFSET_00 = { f: 0.035, r: -0.025 };   // 00 cell offset
 
+// Expose shared roulette state for debug tools (debug_tools.js)
+global.rouletteShared = {
+    get isAtRouletteTable() { return isAtRouletteTable; },
+    localCorners,
+    CORNER_KEYS,
+    CORNER_NAMES,
+    CORNER_COLORS,
+    get TABLE_SURFACE_U() { return TABLE_SURFACE_U; },
+    OFFSET_21,
+    OFFSET_0,
+    OFFSET_00,
+};
+
 // Get world position for a bet zone.
 // For 2:1 and 0/00, interpolate directly along the edge corners
 // instead of bilinear (which compresses positions).
@@ -993,160 +1006,10 @@ function gridToLocal0(f, r) {
 
 let nearestDist2 = 0;
 let showDebugGrid = false;
-
-// ──────────────────────────────────────────
-// GRID EDITOR MODE (press H)
-// ──────────────────────────────────────────
 let gridEditorActive = false;
 let gridEditorCorner = 0;
-let gridEditorBackup = null; // backup for revert
-
-function gridEditorNudge(dx, dy) {
-    const key = CORNER_KEYS[gridEditorCorner];
-    if (!localCorners[key]) return;
-    localCorners[key].f += dy; // forward
-    localCorners[key].r += dx; // right
-}
-
-mp.keys.bind(KEY_H, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable) return;
-    gridEditorActive = !gridEditorActive;
-    if (gridEditorActive) {
-        // Save backup for revert
-        gridEditorBackup = JSON.parse(JSON.stringify(localCorners));
-        showDebugGrid = true;
-        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[EDITOR] Grid editor ON — Tab: colt, Sageti: muta, LMB: pune la crosshair, R: revert, H: salveaza'})); } catch(e) {}
-    } else {
-        if (localCorners.c1) {
-            mp.console.logInfo('=== GRID EDITOR SAVED (LOCAL) ===');
-            for (const k of CORNER_KEYS) {
-                const c = localCorners[k];
-                if (c) mp.console.logInfo(`  ${k}: F:${c.f.toFixed(4)} R:${c.r.toFixed(4)} U:${c.u.toFixed(4)}`);
-            }
-            mp.console.logInfo('=================================');
-            try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[EDITOR] Grid salvat!'})); } catch(e) {}
-            mp.events.callRemote('Roulette:SaveGridCorners', 'global', JSON.stringify(localCorners));
-        }
-    }
-});
-
-mp.keys.bind(KEY_TAB, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !gridEditorActive) return;
-    gridEditorCorner = (gridEditorCorner + 1) % CORNER_KEYS.length;
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[EDITOR] Colt: ${CORNER_NAMES[gridEditorCorner]}`})); } catch(e) {}
-});
-
-// R key = revert grid to backup
-mp.keys.bind(0x52, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !gridEditorActive) return;
-    if (gridEditorBackup) {
-        for (const k of CORNER_KEYS) {
-            if (gridEditorBackup[k]) localCorners[k] = { ...gridEditorBackup[k] };
-            else localCorners[k] = null;
-        }
-        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[EDITOR] Grid reverted la starea anterioara!'})); } catch(e) {}
-    }
-});
-
-mp.keys.bind(KEY_UP, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !gridEditorActive) return;
-    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    gridEditorNudge(0, s);
-});
-mp.keys.bind(KEY_DN, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !gridEditorActive) return;
-    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    gridEditorNudge(0, -s);
-});
-mp.keys.bind(KEY_RT, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !gridEditorActive) return;
-    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    gridEditorNudge(s, 0);
-});
-mp.keys.bind(KEY_LT, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !gridEditorActive) return;
-    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    gridEditorNudge(-s, 0);
-});
-
-// ──────────────────────────────────────────
-// OFFSET EDITOR MODE (press J to toggle)
-// Tab = cycle zone (2:1 / 0 / 00)
-// Arrow keys = nudge F/R, Shift = bigger step
-// ──────────────────────────────────────────
+let gridEditorBackup = null;
 let offsetEditorActive = false;
-let offsetEditorZone = 0; // 0=2:1, 1=0, 2=00
-const OFFSET_ZONE_NAMES = ['2:1', '0', '00'];
-const OFFSET_ZONE_REFS = [() => OFFSET_21, () => OFFSET_0, () => OFFSET_00];
-
-// J = toggle offset editor
-mp.keys.bind(0x4A, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable) return;
-    offsetEditorActive = !offsetEditorActive;
-    if (offsetEditorActive) {
-        offsetEditorZone = 0;
-        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[OFFSET] Editor ON — Tab=cycle zone, Arrows=nudge, Shift=big step, J=off'})); } catch(e) {}
-        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[OFFSET] Editing: ${OFFSET_ZONE_NAMES[offsetEditorZone]}`})); } catch(e) {}
-    } else {
-        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[OFFSET] Editor OFF'})); } catch(e) {}
-        try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[OFFSET] Final values — OFFSET_21: f=${OFFSET_21.f.toFixed(4)} r=${OFFSET_21.r.toFixed(4)} | OFFSET_0: f=${OFFSET_0.f.toFixed(4)} r=${OFFSET_0.r.toFixed(4)} | OFFSET_00: f=${OFFSET_00.f.toFixed(4)} r=${OFFSET_00.r.toFixed(4)}`})); } catch(e) {}
-    }
-});
-
-// Tab = cycle zone
-mp.keys.bind(0x09, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !offsetEditorActive) return;
-    offsetEditorZone = (offsetEditorZone + 1) % 3;
-    const off = OFFSET_ZONE_REFS[offsetEditorZone]();
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[OFFSET] Editing: ${OFFSET_ZONE_NAMES[offsetEditorZone]} (f=${off.f.toFixed(4)} r=${off.r.toFixed(4)})`})); } catch(e) {}
-});
-
-// Arrow keys for offset nudging (only when offset editor is active and grid editor is NOT)
-mp.keys.bind(KEY_UP, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !offsetEditorActive || gridEditorActive) return;
-    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    const off = OFFSET_ZONE_REFS[offsetEditorZone]();
-    off.f += s;
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[OFFSET] ${OFFSET_ZONE_NAMES[offsetEditorZone]} f=${off.f.toFixed(4)} r=${off.r.toFixed(4)}`})); } catch(e) {}
-});
-mp.keys.bind(KEY_DN, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !offsetEditorActive || gridEditorActive) return;
-    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    const off = OFFSET_ZONE_REFS[offsetEditorZone]();
-    off.f -= s;
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[OFFSET] ${OFFSET_ZONE_NAMES[offsetEditorZone]} f=${off.f.toFixed(4)} r=${off.r.toFixed(4)}`})); } catch(e) {}
-});
-mp.keys.bind(KEY_RT, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !offsetEditorActive || gridEditorActive) return;
-    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    const off = OFFSET_ZONE_REFS[offsetEditorZone]();
-    off.r += s;
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[OFFSET] ${OFFSET_ZONE_NAMES[offsetEditorZone]} f=${off.f.toFixed(4)} r=${off.r.toFixed(4)}`})); } catch(e) {}
-});
-mp.keys.bind(KEY_LT, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable || !offsetEditorActive || gridEditorActive) return;
-    const s = mp.keys.isDown(0x10) ? 0.02 : 0.005;
-    const off = OFFSET_ZONE_REFS[offsetEditorZone]();
-    off.r -= s;
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[OFFSET] ${OFFSET_ZONE_NAMES[offsetEditorZone]} f=${off.f.toFixed(4)} r=${off.r.toFixed(4)}`})); } catch(e) {}
-});
-
-// ──────────────────────────────────────────
-// CALIBRATION MODE (press F — 14 clicks)
-// ──────────────────────────────────────────
 let calibrationActive = false;
 let calibrationStep = 0;
 let calibrationMessages = [];
@@ -1154,76 +1017,28 @@ let calibrationMsgTime = 0;
 const CALIBRATION_SEQUENCE = CORNER_KEYS;
 const CALIBRATION_LABELS = CORNER_NAMES;
 
-function calLog(msg) {
-    mp.console.logInfo('[CAL] ' + msg);
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: '[CAL] ' + msg})); } catch(e) {}
-    calibrationMessages.push(msg);
-    if (calibrationMessages.length > 10) calibrationMessages.shift();
-    calibrationMsgTime = Date.now();
-}
-
-function startCalibration() {
-    calibrationActive = true;
-    calibrationStep = 0;
-    calibrationMessages = [];
-    calLog(`Calibrare: ${CALIBRATION_SEQUENCE.length} clickuri`);
-    calLog(`>> Click pe CENTRUL: ${CALIBRATION_LABELS[0]} (1/${CALIBRATION_SEQUENCE.length})`);
-}
-
-function recordCalibrationPoint(loc) {
-    const label = CALIBRATION_LABELS[calibrationStep];
-    const key = CORNER_KEYS[calibrationStep];
-    // Always use TABLE_SURFACE_U — raycast Z hits the glass dome, not the felt
-    localCorners[key] = { f: loc.f, r: loc.r, u: TABLE_SURFACE_U };
-    calLog(`${label} -> F:${loc.f.toFixed(4)} R:${loc.r.toFixed(4)}`);
-    calibrationStep++;
-    if (calibrationStep < CALIBRATION_SEQUENCE.length) {
-        calLog(`>> Click pe CENTRUL: ${CALIBRATION_LABELS[calibrationStep]} (${calibrationStep+1}/${CALIBRATION_SEQUENCE.length})`);
-    } else {
-        finishCalibration();
-    }
-}
-
-function finishCalibration() {
-    calibrationActive = false;
-    calLog('=== CALIBRARE COMPLETA ===');
-    const required = ['c1', 'c3', 'c34', 'c36'];
-    if (required.every(k => localCorners[k])) {
-        for (const k of CORNER_KEYS) {
-            if (localCorners[k]) localCorners[k].u = TABLE_SURFACE_U;
-        }
-        calLog('Grid salvat in coordonate locale (relativ la masa)!');
-        calLog('Functioneaza pe ORICE masa cu aceeasi orientare.');
-        for (const k of CORNER_KEYS) {
-            const c = localCorners[k];
-            if (c) calLog(`${k}: F:${c.f.toFixed(4)} R:${c.r.toFixed(4)}`);
-        }
-        // Save with key 'global' so it applies to all tables
-        mp.events.callRemote('Roulette:SaveGridCorners', 'global', JSON.stringify(localCorners));
-    } else {
-        calLog('EROARE: Nu toate colturile obligatorii au fost calibrate!');
-    }
-}
-
-mp.keys.bind(KEY_F, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable) return;
-    if (calibrationActive) {
-        calibrationActive = false;
-        calibrationStep = 0;
-        calibrationMessages = ['Calibrare anulata.'];
-        calibrationMsgTime = Date.now();
-    } else {
-        startCalibration();
-    }
-});
-
-mp.keys.bind(KEY_G, true, () => {
-    if (global.chatInputActive) return;
-    if (!isAtRouletteTable) return;
-    showDebugGrid = !showDebugGrid;
-    try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[DEBUG] Grid overlay: ${showDebugGrid ? 'ON' : 'OFF'}`})); } catch(e) {}
-});
+// Expose debug state for debug_tools.js (getter/setter bridge)
+global.rouletteDebug = {
+    get showDebugGrid() { return showDebugGrid; },
+    set showDebugGrid(v) { showDebugGrid = v; },
+    get gridEditorActive() { return gridEditorActive; },
+    set gridEditorActive(v) { gridEditorActive = v; },
+    get gridEditorCorner() { return gridEditorCorner; },
+    set gridEditorCorner(v) { gridEditorCorner = v; },
+    get gridEditorBackup() { return gridEditorBackup; },
+    set gridEditorBackup(v) { gridEditorBackup = v; },
+    get offsetEditorActive() { return offsetEditorActive; },
+    set offsetEditorActive(v) { offsetEditorActive = v; },
+    get calibrationActive() { return calibrationActive; },
+    set calibrationActive(v) { calibrationActive = v; },
+    get calibrationStep() { return calibrationStep; },
+    set calibrationStep(v) { calibrationStep = v; },
+    get calibrationMessages() { return calibrationMessages; },
+    set calibrationMessages(v) { calibrationMessages = v; },
+    get calibrationMsgTime() { return calibrationMsgTime; },
+    set calibrationMsgTime(v) { calibrationMsgTime = v; },
+    recordCalibrationPoint: () => {},
+};
 
 // ──────────────────────────────────────────
 // RENDER LOOP — raytrace from gameplay camera + LMB bet
@@ -1355,20 +1170,24 @@ mp.events.add('render', () => {
             const pos = rayPlanePos || rayHitPos;
             if (pos) {
                 const loc = worldToLocal(pos.x, pos.y, pos.z);
-                if (loc) recordCalibrationPoint(loc);
+                if (loc) global.rouletteDebug.recordCalibrationPoint(loc);
             }
         } else if ((rayPlanePos || rayHitPos) && rayHitBetZone && !rouletteSpinning && rouletteBetting) {
-            const chipPos = rayPlanePos || rayHitPos;
-            const chipZ = nativeTablePos ? nativeTablePos.z + TABLE_SURFACE_U : chipPos.z;
-            const zoneKey = `${rayHitBetZone.type}_${rayHitBetZone.value}`;
-            // If same zone already has chips, stack at same X,Y (zone center)
-            let cx = chipPos.x, cy = chipPos.y;
-            if (placedChipsByZone[zoneKey] && placedChipsByZone[zoneKey].length > 0) {
-                cx = placedChipsByZone[zoneKey][0].x;
-                cy = placedChipsByZone[zoneKey][0].y;
+            if (selectedChipAmount > myChips) {
+                mp.game.graphics.notify('~r~Nu ai suficienți bani!');
+            } else {
+                const chipPos = rayPlanePos || rayHitPos;
+                const chipZ = nativeTablePos ? nativeTablePos.z + TABLE_SURFACE_U : chipPos.z;
+                const zoneKey = `${rayHitBetZone.type}_${rayHitBetZone.value}`;
+                // If same zone already has chips, stack at same X,Y (zone center)
+                let cx = chipPos.x, cy = chipPos.y;
+                if (placedChipsByZone[zoneKey] && placedChipsByZone[zoneKey].length > 0) {
+                    cx = placedChipsByZone[zoneKey][0].x;
+                    cy = placedChipsByZone[zoneKey][0].y;
+                }
+                mp.events.callRemote('Server_ReceiveRouletteBet', rayHitBetZone.type, String(rayHitBetZone.value), selectedChipAmount, cx, cy, chipZ);
+                spawnChipOnTable(cx, cy, chipZ, selectedChipAmount, zoneKey);
             }
-            mp.events.callRemote('Server_ReceiveRouletteBet', rayHitBetZone.type, String(rayHitBetZone.value), selectedChipAmount, cx, cy, chipZ);
-            spawnChipOnTable(cx, cy, chipZ, selectedChipAmount, zoneKey);
         }
     }
     lmbWasPressed = lmbNow;

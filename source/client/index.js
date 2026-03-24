@@ -4,6 +4,7 @@ require('chat');
 require('poker/index.js');
 require('blackjack/index.js');
 require('roulette/index.js');
+require('roulette/debug_tools.js');
 require('slots/index.js');
 require('graffiti/index.js');
 require('raytrace/index.js');

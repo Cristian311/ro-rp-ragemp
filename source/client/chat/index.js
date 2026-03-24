@@ -5,6 +5,28 @@ mp.gui.chat.show(false);
 
 const chatBrowser = mp.browsers.new('package://chat/index.html');
 
+// Color map for named colors in !{ColorName} syntax
+const _colorMap = {
+    Red: '#FF0000', Green: '#00FF00', Blue: '#0000FF',
+    White: '#FFFFFF', Yellow: '#FFFF00', Cyan: '#00FFFF',
+    Orange: '#FF8C00', Pink: '#FF69B4', Purple: '#800080',
+    Grey: '#808080', Gray: '#808080', Gold: '#FFD700'
+};
+
+function _clientColorize(text) {
+    return text.replace(/!\{([0-9A-Fa-f]{6}|[A-Za-z]+)\}/g, (_, code) => {
+        const hex = _colorMap[code] || ('#' + code);
+        return `</span><span style="color:${hex}">`;
+    });
+}
+
+// Global function for other client scripts to push colored messages to chat
+// Usage: global.pushChatMessage('!{00FF00}[TAG] !{FFFFFF}Message text');
+global.pushChatMessage = function(text) {
+    const html = '<span>' + _clientColorize(String(text)) + '</span>';
+    chatBrowser.execute(`chatAPI.push(${JSON.stringify(html)})`);
+};
+
 mp.keys.bind(0x54, true, () => {
     global.chatInputActive = true;
     chatBrowser.execute('setChatInputStatus(true)');

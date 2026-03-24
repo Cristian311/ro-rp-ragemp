@@ -4,47 +4,48 @@ let freecamActive = false;
 let freecamCamera = null;
 let freecamPos = { x: 0, y: 0, z: 0 };
 let freecamRot = { x: 0, y: 0 }; // pitch, yaw
-let moveSpeed = 0.5;
+let moveSpeed = 0.05;
 const SPEED_STEPS = [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0];
-let speedIndex = 3; // default 0.5
+let speedIndex = 0; // default 0.05
 let savedPositions = [];
 let hudVisible = true;
 let camBrowser = null;
 let playerStartPos = { x: 0, y: 0, z: 0 };
-const MAX_DISTANCE = 50.0; // max distance from player
+const MAX_DISTANCE = 20.0; // max distance from player
 const COLLISION_OFFSET = 0.3; // offset from wall
+let lastFrameTime = Date.now(); // for delta time
 
-// Screen effects
+// Screen effects — { display: UI name, effect: GTA internal name }
 const SCREEN_EFFECTS = [
-    'None',
-    'FocusIn',
-    'CamPushInNeutral',
-    'PPFilter',
-    'PPGreen',
-    'PPOrange',
-    'PPPink',
-    'PPPurple',
-    'InchOrange',
-    'InchPurple',
-    'InchPickup',
-    'BikerFilter',
-    'ChopVision',
-    'SniperOverlay',
-    'CrossLine',
-    'DeadlineNeon',
-    'DMT_flight',
-    'DrugsDrivingIn',
-    'HeistCelebPass',
-    'HeistCelebPassBW',
-    'LostTimeDay',
-    'LostTimeNight',
-    'MP_OrbitalCannon',
-    'PeyoteIn',
-    'Rampage',
-    'RaceTurbo',
-    'pennedIn',
-    'MinigameTransitionIn',
-    'SwitchHUDIn',
+    { display: 'Fara Efect',            effect: 'None' },
+    { display: 'Focus Cinematic',       effect: 'FocusIn' },
+    { display: 'Zoom Lent',             effect: 'CamPushInNeutral' },
+    { display: 'Film Clasic',           effect: 'PPFilter' },
+    { display: 'Night Vision',          effect: 'PPGreen' },
+    { display: 'Apus de Soare',         effect: 'PPOrange' },
+    { display: 'Roz Neon',              effect: 'PPPink' },
+    { display: 'Violet Dream',          effect: 'PPPurple' },
+    { display: 'Caldura Desertului',    effect: 'InchOrange' },
+    { display: 'Ultraviolet',           effect: 'InchPurple' },
+    { display: 'Flash Luminos',         effect: 'InchPickup' },
+    { display: 'Grunge Retro',          effect: 'BikerFilter' },
+    { display: 'Viziune Termica',       effect: 'ChopVision' },
+    { display: 'Luneta Sniper',         effect: 'SniperOverlay' },
+    { display: 'Reticul Tactic',        effect: 'CrossLine' },
+    { display: 'Neon Cyberpunk',        effect: 'DeadlineNeon' },
+    { display: 'Halucinatie',           effect: 'DMT_flight' },
+    { display: 'Viziune Distorsionata', effect: 'DrugsDrivingIn' },
+    { display: 'Victorie Aurie',        effect: 'HeistCelebPass' },
+    { display: 'Film Noir',             effect: 'HeistCelebPassBW' },
+    { display: 'Dimineata Cetoasa',     effect: 'LostTimeDay' },
+    { display: 'Miezul Noptii',         effect: 'LostTimeNight' },
+    { display: 'Viziune Satelit',       effect: 'MP_OrbitalCannon' },
+    { display: 'Psihedelic',            effect: 'PeyoteIn' },
+    { display: 'Furie Rosie',           effect: 'Rampage' },
+    { display: 'Turbo Boost',           effect: 'RaceTurbo' },
+    { display: 'Claustrofobic',         effect: 'pennedIn' },
+    { display: 'Tranzitie Blur',        effect: 'MinigameTransitionIn' },
+    { display: 'Schimbare Scena',       effect: 'SwitchHUDIn' },
 ];
 let currentEffectIndex = 0;
 let activeEffect = null;
@@ -66,13 +67,13 @@ function applyScreenEffect(index) {
         mp.game.graphics.stopScreenEffect(activeEffect);
     }
     currentEffectIndex = index;
-    const name = SCREEN_EFFECTS[currentEffectIndex];
-    activeEffect = name;
-    if (name !== 'None') {
-        mp.game.graphics.startScreenEffect(name, 0, true);
+    const entry = SCREEN_EFFECTS[currentEffectIndex];
+    activeEffect = entry.effect;
+    if (entry.effect !== 'None') {
+        mp.game.graphics.startScreenEffect(entry.effect, 0, true);
     }
     if (camBrowser) {
-        camBrowser.execute(`updateEffect('${name}')`);
+        camBrowser.execute(`updateEffect('${entry.display}')`);
     }
 }
 
@@ -128,7 +129,7 @@ function startFreecam() {
     mp.players.local.freezePosition(true);
 
     createHudBrowser();
-    mp.gui.chat.push('§{00FF00}[CAMERA] §{FFFFFF}Freecam activata! Click = ascunde/arata HUD');
+    global.pushChatMessage('!{00FF00}[CAMERA] !{FFFFFF}Freecam activata! Click = ascunde/arata HUD');
 }
 
 function stopFreecam() {
@@ -157,7 +158,7 @@ function stopFreecam() {
         mp.events.call('camera:showChat', true);
     }
 
-    mp.gui.chat.push('§{00FF00}[CAMERA] §{FFFFFF}Freecam dezactivata.');
+    global.pushChatMessage('!{00FF00}[CAMERA] !{FFFFFF}Freecam dezactivata.');
 }
 
 function toggleHud() {
@@ -232,14 +233,14 @@ function saveCurrentPosition() {
     // Send to server to save to file
     mp.events.callRemote('camera:savePosition', JSON.stringify(entry));
 
-    mp.gui.chat.push(`§{00FF00}[CAMERA] §{FFFFFF}Pozitie #${entry.index} salvata!`);
-    mp.gui.chat.push(`§{AAAAAA}  Pos: ${camPos.x}, ${camPos.y}, ${camPos.z}`);
-    mp.gui.chat.push(`§{AAAAAA}  Rot: pitch=${camPos.rotX}, yaw=${camPos.rotY}`);
+    global.pushChatMessage(`!{00FF00}[CAMERA] !{FFFFFF}Pozitie #${entry.index} salvata!`);
+    global.pushChatMessage(`!{AAAAAA}  Pos: ${camPos.x}, ${camPos.y}, ${camPos.z}`);
+    global.pushChatMessage(`!{AAAAAA}  Rot: pitch=${camPos.rotX}, yaw=${camPos.rotY}`);
 
     if (rouletteInfo) {
-        mp.gui.chat.push(`§{FFD700}  [RULETA] Masa la: ${rouletteInfo.tablePosition.x}, ${rouletteInfo.tablePosition.y}, ${rouletteInfo.tablePosition.z} heading=${rouletteInfo.tableHeading}`);
-        mp.gui.chat.push(`§{FFD700}  [RULETA] Camera relativa: F=${rouletteInfo.cameraRelativeToTable.localForward}, R=${rouletteInfo.cameraRelativeToTable.localRight}, U=${rouletteInfo.cameraRelativeToTable.localUp}`);
-        mp.gui.chat.push(`§{FFD700}  [RULETA] Rot relativa: pitch=${rouletteInfo.cameraRotRelativeToTable.pitch}, yawOffset=${rouletteInfo.cameraRotRelativeToTable.yawOffset}`);
+        global.pushChatMessage(`!{FFD700}  [RULETA] Masa la: ${rouletteInfo.tablePosition.x}, ${rouletteInfo.tablePosition.y}, ${rouletteInfo.tablePosition.z} heading=${rouletteInfo.tableHeading}`);
+        global.pushChatMessage(`!{FFD700}  [RULETA] Camera relativa: F=${rouletteInfo.cameraRelativeToTable.localForward}, R=${rouletteInfo.cameraRelativeToTable.localRight}, U=${rouletteInfo.cameraRelativeToTable.localUp}`);
+        global.pushChatMessage(`!{FFD700}  [RULETA] Rot relativa: pitch=${rouletteInfo.cameraRotRelativeToTable.pitch}, yawOffset=${rouletteInfo.cameraRotRelativeToTable.yawOffset}`);
     }
 }
 
@@ -249,22 +250,35 @@ function saveCurrentPosition() {
 mp.events.add('render', () => {
     if (!freecamActive || !freecamCamera) return;
 
+    // Delta time for FPS-independent movement
+    const now = Date.now();
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.1); // cap at 100ms
+    lastFrameTime = now;
+
     // Disable all controls so player doesn't move/shoot
     mp.game.controls.disableAllControlActions(0);
 
     // Arrow keys look (LEFT/RIGHT swapped to feel natural)
-    const ARROW_SPEED = 1.5;
+    const ARROW_SPEED = 90; // degrees per second
     if (mp.game.controls.isDisabledControlPressed(0, 172)) { // Arrow UP
-        freecamRot.x += ARROW_SPEED;
+        freecamRot.x += ARROW_SPEED * dt;
     }
     if (mp.game.controls.isDisabledControlPressed(0, 173)) { // Arrow DOWN
-        freecamRot.x -= ARROW_SPEED;
+        freecamRot.x -= ARROW_SPEED * dt;
     }
     if (mp.game.controls.isDisabledControlPressed(0, 174)) { // Arrow LEFT
-        freecamRot.y += ARROW_SPEED;
+        freecamRot.y += ARROW_SPEED * dt;
     }
     if (mp.game.controls.isDisabledControlPressed(0, 175)) { // Arrow RIGHT
-        freecamRot.y -= ARROW_SPEED;
+        freecamRot.y -= ARROW_SPEED * dt;
+    }
+    // Q = pitch up (look up)
+    if (mp.game.controls.isDisabledControlPressed(0, 44)) { // Q
+        freecamRot.x += ARROW_SPEED * dt;
+    }
+    // E = pitch down (look down)
+    if (mp.game.controls.isDisabledControlPressed(0, 38)) { // E
+        freecamRot.x -= ARROW_SPEED * dt;
     }
     freecamRot.x = Math.max(-89, Math.min(89, freecamRot.x));
 
@@ -280,7 +294,7 @@ mp.events.add('render', () => {
     // Movement direction based on yaw
     const yawRad = freecamRot.y * Math.PI / 180;
     const pitchRad = freecamRot.x * Math.PI / 180;
-    const speed = moveSpeed;
+    const speed = moveSpeed * dt * 60; // normalize to 60fps baseline
 
     // Forward vector (based on yaw + pitch)
     const fwdX = -Math.sin(yawRad) * Math.cos(pitchRad);
@@ -361,9 +375,9 @@ mp.events.add('render', () => {
         }
     }
 
-    // Enter = save position
+    // Enter = save position (admin only, checked server-side)
     if (mp.game.controls.isDisabledControlJustPressed(0, 18)) {
-        saveCurrentPosition();
+        mp.events.callRemote('camera:requestSave');
     }
 
     // Calculate distance for HUD
@@ -405,29 +419,35 @@ mp.events.addCommand('camera', () => {
 
 mp.events.addCommand('camsave', () => {
     if (!freecamActive) {
-        mp.gui.chat.push('§{FF0000}[CAMERA] §{FFFFFF}Trebuie sa fii in freecam! Foloseste /camera');
+        global.pushChatMessage('!{FF0000}[CAMERA] !{FFFFFF}Trebuie sa fii in freecam! Foloseste /camera');
         return;
     }
+    mp.events.callRemote('camera:requestSave');
+});
+
+// Server confirms admin — proceed with save
+mp.events.add('camera:doSave', () => {
+    if (!freecamActive) return;
     saveCurrentPosition();
 });
 
 mp.events.addCommand('camlist', () => {
     if (savedPositions.length === 0) {
-        mp.gui.chat.push('§{FFFF00}[CAMERA] §{FFFFFF}Nu ai salvat nicio pozitie inca.');
+        global.pushChatMessage('!{FFFF00}[CAMERA] !{FFFFFF}Nu ai salvat nicio pozitie inca.');
         return;
     }
-    mp.gui.chat.push(`§{00FF00}[CAMERA] §{FFFFFF}Pozitii salvate (${savedPositions.length}):`);
+    global.pushChatMessage(`!{00FF00}[CAMERA] !{FFFFFF}Pozitii salvate (${savedPositions.length}):`);
     savedPositions.forEach(p => {
         const c = p.camera;
-        const rouletteTag = p.roulette ? ' §{FFD700}[RULETA]' : '';
-        mp.gui.chat.push(`§{AAAAAA}  #${p.index}: ${c.x}, ${c.y}, ${c.z} (pitch=${c.rotX}, yaw=${c.rotY})${rouletteTag}`);
+        const rouletteTag = p.roulette ? ' !{FFD700}[RULETA]' : '';
+        global.pushChatMessage(`!{AAAAAA}  #${p.index}: ${c.x}, ${c.y}, ${c.z} (pitch=${c.rotX}, yaw=${c.rotY})${rouletteTag}`);
     });
 });
 
 mp.events.addCommand('camgoto', (idx) => {
     const index = parseInt(idx);
     if (isNaN(index) || index < 0 || index >= savedPositions.length) {
-        mp.gui.chat.push('§{FF0000}[CAMERA] §{FFFFFF}Index invalid. Foloseste /camlist pentru lista.');
+        global.pushChatMessage('!{FF0000}[CAMERA] !{FFFFFF}Index invalid. Foloseste /camlist pentru lista.');
         return;
     }
     if (!freecamActive) {
@@ -439,7 +459,7 @@ mp.events.addCommand('camgoto', (idx) => {
     freecamPos.z = p.z;
     freecamRot.x = p.rotX;
     freecamRot.y = p.rotY;
-    mp.gui.chat.push(`§{00FF00}[CAMERA] §{FFFFFF}Teleportat la pozitia #${index}`);
+    global.pushChatMessage(`!{00FF00}[CAMERA] !{FFFFFF}Teleportat la pozitia #${index}`);
 });
 
 // ──────────────────────────────────────────
@@ -450,7 +470,7 @@ mp.keys.bind(0xDB, true, () => { // [ key
     speedIndex = Math.max(speedIndex - 1, 0);
     moveSpeed = SPEED_STEPS[speedIndex];
     updateHudSpeed();
-    mp.gui.chat.push(`§{00FF00}[CAMERA] §{FFFFFF}Viteza: ${moveSpeed}`);
+    global.pushChatMessage(`!{00FF00}[CAMERA] !{FFFFFF}Viteza: ${moveSpeed}`);
 });
 
 mp.keys.bind(0xDD, true, () => { // ] key
@@ -458,7 +478,7 @@ mp.keys.bind(0xDD, true, () => { // ] key
     speedIndex = Math.min(speedIndex + 1, SPEED_STEPS.length - 1);
     moveSpeed = SPEED_STEPS[speedIndex];
     updateHudSpeed();
-    mp.gui.chat.push(`§{00FF00}[CAMERA] §{FFFFFF}Viteza: ${moveSpeed}`);
+    global.pushChatMessage(`!{00FF00}[CAMERA] !{FFFFFF}Viteza: ${moveSpeed}`);
 });
 
 // Effect cycling: PageUp = next effect, PageDown = previous effect
@@ -466,12 +486,12 @@ mp.keys.bind(0x21, true, () => { // PageUp
     if (!freecamActive) return;
     const next = (currentEffectIndex + 1) % SCREEN_EFFECTS.length;
     applyScreenEffect(next);
-    mp.gui.chat.push(`§{00FF00}[CAMERA] §{FFFFFF}Efect: §{FFD700}${SCREEN_EFFECTS[currentEffectIndex]}`);
+    global.pushChatMessage(`!{00FF00}[CAMERA] !{FFFFFF}Efect: !{FFD700}${SCREEN_EFFECTS[currentEffectIndex].display}`);
 });
 
 mp.keys.bind(0x22, true, () => { // PageDown
     if (!freecamActive) return;
     const prev = (currentEffectIndex - 1 + SCREEN_EFFECTS.length) % SCREEN_EFFECTS.length;
     applyScreenEffect(prev);
-    mp.gui.chat.push(`§{00FF00}[CAMERA] §{FFFFFF}Efect: §{FFD700}${SCREEN_EFFECTS[currentEffectIndex]}`);
+    global.pushChatMessage(`!{00FF00}[CAMERA] !{FFFFFF}Efect: !{FFD700}${SCREEN_EFFECTS[currentEffectIndex].display}`);
 });

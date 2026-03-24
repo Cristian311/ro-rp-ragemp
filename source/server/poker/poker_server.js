@@ -547,7 +547,7 @@ function processAction(player, action, raiseAmount = 0) {
                 // All-in call (nu avea destule chipuri)
                 slot.lastAction = 'allin';
                 broadcastToLobby(lobby, 
-                    `!{Orange}[POKER] !{Cyan}${player.name} !{White}a dat !{Pink}ALL-IN!{White} cu !{#90EE90}$${actualCall}!{White}.`
+                    `!{Orange}[POKER] !{Cyan}${player.name} !{White}a dat !{Pink}ALL-IN!{White} cu !{90EE90}$${actualCall}!{White}.`
                 );
             } else {
                 slot.lastAction = 'call';

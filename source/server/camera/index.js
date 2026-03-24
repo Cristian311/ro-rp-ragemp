@@ -14,13 +14,38 @@ if (fs.existsSync(savePath)) {
     }
 }
 
+function getAdminLevel(player) {
+    try {
+        const lvl = player.getVariable('adminLevel');
+        const n = Number(lvl);
+        return Number.isFinite(n) ? Math.floor(n) : 0;
+    } catch (_) { return 0; }
+}
+
+// Admin check before allowing save — client calls this via Enter or /camsave
+mp.events.add('camera:requestSave', (player) => {
+    const lvl = getAdminLevel(player);
+    if (lvl < 1) {
+        player.outputChatBox('!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot salva pozitii!');
+        return;
+    }
+    // Tell client to proceed with save
+    player.call('camera:doSave');
+});
+
 // Receive saved position from client
 mp.events.add('camera:savePosition', (player, jsonData) => {
+    const lvl = getAdminLevel(player);
+    if (lvl < 1) {
+        player.outputChatBox('!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot salva pozitii!');
+        return;
+    }
+
     let entry;
     try {
         entry = JSON.parse(jsonData);
     } catch (e) {
-        player.outputChatBox('§{FF0000}[CAMERA] Eroare la salvare pozitie.');
+        player.outputChatBox('!{FF0000}[CAMERA] Eroare la salvare pozitie.');
         return;
     }
 
@@ -38,11 +63,16 @@ mp.events.add('camera:savePosition', (player, jsonData) => {
     }
 });
 
-// /camclear — clear all saved positions
+// /camclear — clear all saved positions (admin only)
 mp.events.addCommand('camclear', (player) => {
+    const lvl = getAdminLevel(player);
+    if (lvl < 1) {
+        player.outputChatBox('!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot sterge pozitii!');
+        return;
+    }
     allPositions = [];
     fs.writeFileSync(savePath, '[]', 'utf8');
-    player.outputChatBox('§{00FF00}[CAMERA] §{FFFFFF}Toate pozitiile salvate au fost sterse.');
+    player.outputChatBox('!{00FF00}[CAMERA] !{FFFFFF}Toate pozitiile salvate au fost sterse.');
     console.log(`[CAMERA] Pozitii sterse de ${player.name}`);
 });
 

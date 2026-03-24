@@ -25,9 +25,9 @@
         {
             "label": "Start RAGE:MP Server",
             "type": "process",
-            "command": "C:\\Users\\sarof\\Desktop\\RAGE MP SERVERS\\GMRP\\ragemp_supervisor.exe",
+            "command": "C:\\Users\\40727\\Desktop\\RAGE SERVER\\GMRP\\ragemp_supervisor.exe",
             "options": {
-                "cwd": "C:\\Users\\sarof\\Desktop\\RAGE MP SERVERS\\GMRP"
+                "cwd": "C:\\Users\\40727\\Desktop\\RAGE SERVER\\GMRP"
             },
             "group": "none",
             "presentation": {
