@@ -1750,7 +1750,7 @@ mp.events.add('openRouletteUI', (tableX, tableY, tableZ, tableHeading, tableInde
     }
 
     if (rouletteBrowser === null) {
-        rouletteBrowser = mp.browsers.new('package://roulette/index.html');
+        rouletteBrowser = mp.browsers.new('package://casino/roulette/index.html');
     }
 });
 

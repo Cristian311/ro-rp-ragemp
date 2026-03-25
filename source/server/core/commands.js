@@ -31,6 +31,7 @@ mp.events.addCommand('addmoney', (player, amount) => {
 });
 
 mp.events.addCommand('veh', (player, name) => {
+    if (!name) return global.chatSend(player, '!{FF6B6B}Foloseste: /veh [model]');
     let pos = player.position;
     let heading = player.heading;
     let vehicle = mp.vehicles.new(mp.joaat(name), new mp.Vector3(pos.x + 3, pos.y, pos.z), {
@@ -38,7 +39,8 @@ mp.events.addCommand('veh', (player, name) => {
         color: [[0, 0, 0], [0, 0, 0]],
         dimension: player.dimension
     });
-    global.chatSend(player, 'O masina neagra a aparut langa tine!');
+    try { player.putIntoVehicle(vehicle, 0); } catch (_) {}
+    global.chatSend(player, '!{6dffb0}Vehicul spawnat! Te-ai urcat automat.');
 });
 
 // ──────────────────────────────────────────

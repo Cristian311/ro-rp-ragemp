@@ -27,7 +27,7 @@ mp.keys.bind(KEY_F3, true, () => {
 
 mp.events.add('openPokerUI', () => {
     if (pokerBrowser === null) {
-        pokerBrowser = mp.browsers.new('package://poker/index.html');
+        pokerBrowser = mp.browsers.new('package://casino/poker/index.html');
         mp.gui.cursor.show(true, true);
     }
 });

@@ -19,7 +19,7 @@ mp.keys.bind(KEY_ESC, true, () => {
 
 mp.events.add('openSlotsUI', () => {
     if (slotsBrowser === null) {
-        slotsBrowser = mp.browsers.new('package://slots/index.html');
+        slotsBrowser = mp.browsers.new('package://casino/slots/index.html');
         mp.gui.cursor.show(true, true);
     }
 });

@@ -13,7 +13,7 @@ const KEY_F3  = 0x72;
 
 mp.events.add('openBlackjackUI', () => {
     if (bjBrowser === null) {
-        bjBrowser = mp.browsers.new('package://blackjack/index.html');
+        bjBrowser = mp.browsers.new('package://casino/blackjack/index.html');
         mp.gui.cursor.show(true, true);
         isAtTable = true;
     }
