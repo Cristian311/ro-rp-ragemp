@@ -22,5 +22,21 @@
         "z": 70.19,
         "heading": 44.46,
         "casinoId": null
+    },
+    {
+        "name": "RouletteTable_1774405973156",
+        "x": -0.02,
+        "y": 20.45,
+        "z": 70.05,
+        "heading": -111.17,
+        "casinoId": null
+    },
+    {
+        "name": "RouletteTable_1774406013969",
+        "x": -0.26,
+        "y": 24.88,
+        "z": 70,
+        "heading": -10.79,
+        "casinoId": null
     }
 ]

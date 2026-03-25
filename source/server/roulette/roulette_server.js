@@ -1,4 +1,5 @@
 const rouletteLog = require('./roulette_logger');
+const crypto = require('crypto');
 
 // ──────────────────────────────────────────
 // CONFIG
@@ -12,7 +13,9 @@ const ROULETTE_CONFIG = {
     MIN_BET: 10,
     MAX_BET: 50000,
     MAX_BETS_PER_PLAYER: 20,
+    MAX_TOTAL_BET_PER_ROUND: 100000, // limita totală pe rundă per jucător
     HOUSE_CUT_PERCENT: 0,   // La ruletă casa câștigă din 0 (edge), nu rake
+    MIN_ADMIN_LEVEL: 3,     // nivel admin minim pentru comenzi admin
 };
 
 // ──────────────────────────────────────────
@@ -130,7 +133,7 @@ function getPlayerSlot(lobby, player) {
 
 function broadcastToLobby(lobby, message) {
     lobby.players.forEach(slot => {
-        slot.player.outputChatBox(message);
+        global.chatSend(slot.player, message);
     });
 }
 
@@ -145,7 +148,7 @@ function callToLobby(lobby, eventName, ...args) {
 // ──────────────────────────────────────────
 function joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading) {
     if (getLobbyByPlayer(player)) {
-        player.outputChatBox('!{Red}Ești deja la o masă de ruletă!');
+        global.chatSend(player, '!{Red}Ești deja la o masă de ruletă!');
         return;
     }
 
@@ -156,7 +159,7 @@ function joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tabl
     const lobby = lobbies[tableIndex];
 
     if (lobby.players.length >= ROULETTE_CONFIG.MAX_PLAYERS) {
-        player.outputChatBox('!{Red}Masa este plină!');
+        global.chatSend(player, '!{Red}Masa este plină!');
         return;
     }
 
@@ -164,16 +167,22 @@ function joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tabl
     let seat = 0;
     while (usedSeats.has(seat)) seat++;
 
+    const playerChips = typeof player.money === 'number' && player.money > 0 ? player.money : 0;
+    if (playerChips <= 0 && !player._isBot) {
+        global.chatSend(player, '!{Red}Nu ai bani pentru a juca la ruletă!');
+        return;
+    }
+
     lobby.players.push({
         player,
         seat,
-        chips: player.money || 10000,
+        chips: playerChips,
         bets: [],
         totalBet: 0,
         lastWin: 0,
     });
 
-    player.outputChatBox(`!{Orange}[RULETĂ] Te-ai așezat la masă pe locul ${seat + 1}.`);
+    global.chatSend(player, `!{Orange}[RULETĂ] Te-ai așezat la masă pe locul ${seat + 1}.`);
     broadcastToLobby(lobby, `!{Orange}[RULETĂ] !{Cyan}${player.name} !{White}s-a alăturat (${lobby.players.length}/${ROULETTE_CONFIG.MAX_PLAYERS})`);
     rouletteLog.onPlayerJoin(tableIndex, tableName, player.name, lobby.players.length, ROULETTE_CONFIG.MAX_PLAYERS);
 
@@ -213,7 +222,7 @@ function leaveLobby(player) {
     // Returnează pariurile neevaluate dacă suntem în faza de betting
     if (lobby.state === 'betting' && slot.totalBet > 0) {
         slot.chips += slot.totalBet;
-        player.outputChatBox(`!{Orange}[RULETĂ] !{White}Pariurile tale ($${slot.totalBet}) au fost returnate.`);
+        global.chatSend(player, `!{Orange}[RULETĂ] !{White}Pariurile tale ($${slot.totalBet}) au fost returnate.`);
     }
 
     if (!player._isBot) {
@@ -221,7 +230,7 @@ function leaveLobby(player) {
     }
 
     player.call('closeRouletteUI');
-    player.outputChatBox('!{Orange}[RULETĂ] !{White}Ai părăsit masa.');
+    global.chatSend(player, '!{Orange}[RULETĂ] !{White}Ai părăsit masa.');
 
     lobby.players.splice(leavingIndex, 1);
     lobby.players.forEach((p, i) => { p.seat = i; });
@@ -251,6 +260,7 @@ function leaveLobby(player) {
 function startBettingPhase(lobby) {
     lobby.state = 'betting';
     lobby.betTimeLeft = ROULETTE_CONFIG.BET_TIME;
+    lobby.bettingDeadline = Date.now() + (ROULETTE_CONFIG.BET_TIME * 1000) + 500; // 500ms grace
 
     // Reset pariuri
     lobby.players.forEach(slot => {
@@ -285,41 +295,61 @@ function startBettingPhase(lobby) {
 function placeBet(player, betType, betValue, amount) {
     const lobby = getLobbyByPlayer(player);
     if (!lobby || lobby.state !== 'betting') {
-        player.outputChatBox('!{Red}Nu poți paria acum!');
+        global.chatSend(player, '!{Red}Nu poți paria acum!');
+        return;
+    }
+
+    // Reject late bets (race condition protection)
+    if (lobby.bettingDeadline && Date.now() > lobby.bettingDeadline) {
+        global.chatSend(player, '!{Red}Timpul de pariere a expirat!');
         return;
     }
 
     const slot = getPlayerSlot(lobby, player);
     if (!slot) return;
 
-    if (!BET_TYPES[betType]) {
-        player.outputChatBox('!{Red}Tip de pariu invalid!');
+    // Input validation: betType must be a known string
+    if (typeof betType !== 'string' || !BET_TYPES[betType]) {
+        global.chatSend(player, '!{Red}Tip de pariu invalid!');
+        return;
+    }
+
+    // Input validation: amount must be a positive integer
+    amount = parseInt(amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        global.chatSend(player, '!{Red}Sumă invalidă!');
         return;
     }
 
     if (amount < ROULETTE_CONFIG.MIN_BET) {
-        player.outputChatBox(`!{Red}Pariul minim este $${ROULETTE_CONFIG.MIN_BET}!`);
+        global.chatSend(player, `!{Red}Pariul minim este $${ROULETTE_CONFIG.MIN_BET}!`);
         return;
     }
 
     if (amount > ROULETTE_CONFIG.MAX_BET) {
-        player.outputChatBox(`!{Red}Pariul maxim este $${ROULETTE_CONFIG.MAX_BET}!`);
+        global.chatSend(player, `!{Red}Pariul maxim este $${ROULETTE_CONFIG.MAX_BET}!`);
         return;
     }
 
     if (slot.bets.length >= ROULETTE_CONFIG.MAX_BETS_PER_PLAYER) {
-        player.outputChatBox(`!{Red}Ai atins numărul maxim de pariuri (${ROULETTE_CONFIG.MAX_BETS_PER_PLAYER})!`);
+        global.chatSend(player, `!{Red}Ai atins numărul maxim de pariuri (${ROULETTE_CONFIG.MAX_BETS_PER_PLAYER})!`);
+        return;
+    }
+
+    // Per-round total bet limit
+    if (slot.totalBet + amount > ROULETTE_CONFIG.MAX_TOTAL_BET_PER_ROUND) {
+        global.chatSend(player, `!{Red}Ai depășit limita totală pe rundă ($${ROULETTE_CONFIG.MAX_TOTAL_BET_PER_ROUND})!`);
         return;
     }
 
     if (amount > slot.chips) {
-        player.outputChatBox('!{Red}Nu ai suficienți bani!');
+        global.chatSend(player, '!{Red}Nu ai suficienți bani!');
         return;
     }
 
     const numbers = getBetNumbers(betType, betValue);
     if (numbers.length === 0) {
-        player.outputChatBox('!{Red}Pariu invalid!');
+        global.chatSend(player, '!{Red}Pariu invalid!');
         return;
     }
 
@@ -334,7 +364,7 @@ function placeBet(player, betType, betValue, amount) {
     });
 
     const label = BET_TYPES[betType].label;
-    player.outputChatBox(`!{Orange}[RULETĂ] !{White}Pariu plasat: !{Yellow}${label} !{White}— !{Green}$${amount} !{White}(Chips: $${slot.chips})`);
+    global.chatSend(player, `!{Orange}[RULETĂ] !{White}Pariu plasat: !{Yellow}${label} !{White}— !{Green}$${amount} !{White}(Chips: $${slot.chips})`);
 
     // Update UI
     player.call('rouletteUpdateBets', [JSON.stringify(slot.bets), slot.chips, slot.totalBet]);
@@ -347,7 +377,7 @@ function placeBet(player, betType, betValue, amount) {
 function removeBet(player, betType, betValue) {
     const lobby = getLobbyByPlayer(player);
     if (!lobby || lobby.state !== 'betting') {
-        player.outputChatBox('!{Red}Nu poți șterge pariuri acum!');
+        global.chatSend(player, '!{Red}Nu poți șterge pariuri acum!');
         return;
     }
 
@@ -369,7 +399,7 @@ function removeBet(player, betType, betValue) {
     slot.chips += removed.amount;
     slot.totalBet -= removed.amount;
 
-    player.outputChatBox(`!{Orange}[RULETĂ] !{White}Pariu scos: !{Yellow}${BET_TYPES[removed.type] ? BET_TYPES[removed.type].label : removed.type} !{White}— !{Red}-$${removed.amount} !{White}(Chips: $${slot.chips})`);
+    global.chatSend(player, `!{Orange}[RULETĂ] !{White}Pariu scos: !{Yellow}${BET_TYPES[removed.type] ? BET_TYPES[removed.type].label : removed.type} !{White}— !{Red}-$${removed.amount} !{White}(Chips: $${slot.chips})`);
     player.call('rouletteUpdateBets', [JSON.stringify(slot.bets), slot.chips, slot.totalBet]);
     callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
 }
@@ -380,7 +410,7 @@ function removeBet(player, betType, betValue) {
 function clearBets(player) {
     const lobby = getLobbyByPlayer(player);
     if (!lobby || lobby.state !== 'betting') {
-        player.outputChatBox('!{Red}Nu poți șterge pariurile acum!');
+        global.chatSend(player, '!{Red}Nu poți șterge pariurile acum!');
         return;
     }
 
@@ -391,7 +421,7 @@ function clearBets(player) {
         slot.chips += slot.totalBet;
         slot.bets = [];
         slot.totalBet = 0;
-        player.outputChatBox('!{Orange}[RULETĂ] !{White}Pariurile au fost șterse. Chips: $' + slot.chips);
+        global.chatSend(player, '!{Orange}[RULETĂ] !{White}Pariurile au fost șterse. Chips: $' + slot.chips);
         player.call('rouletteUpdateBets', [JSON.stringify(slot.bets), slot.chips, slot.totalBet]);
         callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
     }
@@ -406,7 +436,7 @@ function startSpin(lobby) {
     rouletteLog.onBetsPlaced(lobby);
 
     // Generează numărul câștigător (American: 0, 00, 1-36 = 38 outcomes)
-    const rng = Math.floor(Math.random() * 38);
+    const rng = crypto.randomInt(38);
     const winningNumber = rng === 37 ? '00' : rng; // 0-36 normal, 37 = "00"
     const winningColor = getNumberColor(winningNumber);
 
@@ -476,7 +506,7 @@ function evaluateResults(lobby) {
         } else if (slot.totalBet > 0) {
             slot.lastWin = 0;
             totalHouseProfit += slot.totalBet;
-            slot.player.outputChatBox(`!{Orange}[RULETĂ] !{Red}Ai pierdut $${slot.totalBet}.`);
+            global.chatSend(slot.player, `!{Orange}[RULETĂ] !{Red}Ai pierdut $${slot.totalBet}.`);
             rouletteLog.onPlayerLose(lobby, slot.player.name, slot.totalBet);
             console.log(`[RULETĂ] LOSE: ${slot.player.name} → -$${slot.totalBet}`);
         }
@@ -496,7 +526,7 @@ function evaluateResults(lobby) {
     setTimeout(() => {
         const eliminated = lobby.players.filter(p => p.chips <= 0);
         eliminated.forEach(slot => {
-            slot.player.outputChatBox('!{Red}[RULETĂ] Nu mai ai chips! Ai fost eliminat.');
+            global.chatSend(slot.player, '!{Red}[RULETĂ] Nu mai ai chips! Ai fost eliminat.');
             slot.player.call('closeRouletteUI');
             broadcastToLobby(lobby, `!{Red}[RULETĂ] ${slot.player.name} a fost eliminat (0 chips).`);
         });
@@ -561,6 +591,19 @@ mp.events.add('roulette:updatePlayerMoney', (player, newAmount) => {
 });
 
 mp.events.add('Server_ReceiveRouletteBet', (player, betType, betValueJson, amount, chipX, chipY, chipZ) => {
+    // Input validation: betType must be a string
+    if (typeof betType !== 'string' || !BET_TYPES[betType]) {
+        global.chatSend(player, '!{Red}Tip de pariu invalid!');
+        return;
+    }
+
+    // Input validation: amount must be a valid number
+    const parsedAmount = parseInt(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        global.chatSend(player, '!{Red}Sumă invalidă!');
+        return;
+    }
+
     let betValue;
     if (betValueJson === '00') {
         betValue = '00';
@@ -569,19 +612,23 @@ mp.events.add('Server_ReceiveRouletteBet', (player, betType, betValueJson, amoun
             betValue = JSON.parse(betValueJson);
         } catch (e) {
             betValue = parseInt(betValueJson);
-            if (isNaN(betValue)) betValue = betValueJson;
+            if (isNaN(betValue)) {
+                global.chatSend(player, '!{Red}Valoare pariu invalidă!');
+                return;
+            }
         }
     }
-    console.log(`[RULETĂ] BET: ${player.name} → ${betType} [${JSON.stringify(betValue)}] $${amount}`);
-    placeBet(player, betType, betValue, parseInt(amount) || 0);
+    console.log(`[RULETĂ] BET: ${player.name} → ${betType} [${JSON.stringify(betValue)}] $${parsedAmount}`);
+    placeBet(player, betType, betValue, parsedAmount);
 
     // Broadcast chip position to other players at the table
-    if (chipX !== undefined && chipY !== undefined && chipZ !== undefined) {
+    const cx = parseFloat(chipX), cy = parseFloat(chipY), cz = parseFloat(chipZ);
+    if (Number.isFinite(cx) && Number.isFinite(cy) && Number.isFinite(cz)) {
         const lobby = getLobbyByPlayer(player);
         if (lobby) {
             lobby.players.forEach(slot => {
                 if (slot.player !== player) {
-                    slot.player.call('rouletteOtherPlayerChip', [chipX, chipY, chipZ, parseInt(amount) || 10]);
+                    slot.player.call('rouletteOtherPlayerChip', [cx, cy, cz, parsedAmount]);
                 }
             });
         }
@@ -597,7 +644,7 @@ mp.events.add('Server_RemoveRouletteBet', (player, betType, betValue) => {
 });
 
 mp.events.add('Server_JoinRouletteTable', (player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading) => {
-    player.outputChatBox(`!{Green}[RULETĂ] Încerci să te alături mesei "${tableName}"...`);
+    global.chatSend(player, `!{Green}[RULETĂ] Încerci să te alături mesei "${tableName}"...`);
     joinLobby(player, tableIndex, tableName, casinoId, tableX, tableY, tableZ, tableHeading);
 });
 
@@ -641,10 +688,10 @@ mp.events.add('Server_SaveRouletteSettings', (player, settingsJson) => {
             }
         };
         fs.writeFileSync(settingsDumpPath, JSON.stringify(data, null, 4));
-        player.outputChatBox('!{Green}[RULETĂ] Pozițiile au fost salvate în data/roulette/hud_positions.json!');
+        global.chatSend(player, '!{Green}[RULETĂ] Pozițiile au fost salvate în data/roulette/hud_positions.json!');
         console.log(`[RULETĂ] HUD positions dumped by ${player.name}: ${settingsDumpPath}`);
     } catch (e) {
-        player.outputChatBox('!{Red}[RULETĂ] Eroare la salvare!');
+        global.chatSend(player, '!{Red}[RULETĂ] Eroare la salvare!');
         console.log(`[RULETĂ] Error saving positions: ${e.message}`);
     }
 });
@@ -653,20 +700,24 @@ mp.events.add('Server_SaveRouletteSettings', (player, settingsJson) => {
 // PAUSE / RESUME TABLE
 // ──────────────────────────────────────────
 mp.events.addCommand('pauseroulette', (player, _, idStr) => {
+    if ((player.getVariable('adminLevel') || 0) < ROULETTE_CONFIG.MIN_ADMIN_LEVEL) {
+        global.chatSend(player, '!{Red}[RULETĂ] Nu ai permisiunea necesară!');
+        return;
+    }
     const index = parseInt(idStr);
     if (isNaN(index)) {
-        player.outputChatBox('!{Red}[RULETĂ] Folosire: /pauseroulette <id>');
+        global.chatSend(player, '!{Red}[RULETĂ] Folosire: /pauseroulette <id>');
         return;
     }
 
     const lobby = lobbies[index];
     if (!lobby) {
-        player.outputChatBox(`!{Red}[RULETĂ] Nu există lobby activ pentru masa #${index}.`);
+        global.chatSend(player, `!{Red}[RULETĂ] Nu există lobby activ pentru masa #${index}.`);
         return;
     }
 
     if (lobby.paused) {
-        player.outputChatBox(`!{Yellow}[RULETĂ] Masa #${index} este deja pe pauză.`);
+        global.chatSend(player, `!{Yellow}[RULETĂ] Masa #${index} este deja pe pauză.`);
         return;
     }
 
@@ -694,25 +745,29 @@ mp.events.addCommand('pauseroulette', (player, _, idStr) => {
     broadcastToLobby(lobby, '!{Red}[RULETĂ] ⏸ Masa a fost pusă pe pauză de un admin.');
     callToLobby(lobby, 'rouletteUpdateState', [getLobbyStateForUI(lobby)]);
     updateLobbyUI(lobby);
-    player.outputChatBox(`!{Green}[RULETĂ] Masa #${index} "${lobby.name}" a fost pusă pe pauză.`);
+    global.chatSend(player, `!{Green}[RULETĂ] Masa #${index} "${lobby.name}" a fost pusă pe pauză.`);
     console.log(`[RULETĂ] PAUSE: Masa #${index} "${lobby.name}" paused by ${player.name}`);
 });
 
 mp.events.addCommand('resumeroulette', (player, _, idStr) => {
+    if ((player.getVariable('adminLevel') || 0) < ROULETTE_CONFIG.MIN_ADMIN_LEVEL) {
+        global.chatSend(player, '!{Red}[RULETĂ] Nu ai permisiunea necesară!');
+        return;
+    }
     const index = parseInt(idStr);
     if (isNaN(index)) {
-        player.outputChatBox('!{Red}[RULETĂ] Folosire: /resumeroulette <id>');
+        global.chatSend(player, '!{Red}[RULETĂ] Folosire: /resumeroulette <id>');
         return;
     }
 
     const lobby = lobbies[index];
     if (!lobby) {
-        player.outputChatBox(`!{Red}[RULETĂ] Nu există lobby activ pentru masa #${index}.`);
+        global.chatSend(player, `!{Red}[RULETĂ] Nu există lobby activ pentru masa #${index}.`);
         return;
     }
 
     if (!lobby.paused) {
-        player.outputChatBox(`!{Yellow}[RULETĂ] Masa #${index} nu este pe pauză.`);
+        global.chatSend(player, `!{Yellow}[RULETĂ] Masa #${index} nu este pe pauză.`);
         return;
     }
 
@@ -725,7 +780,7 @@ mp.events.addCommand('resumeroulette', (player, _, idStr) => {
     }
 
     updateLobbyUI(lobby);
-    player.outputChatBox(`!{Green}[RULETĂ] Masa #${index} "${lobby.name}" a fost repornită.`);
+    global.chatSend(player, `!{Green}[RULETĂ] Masa #${index} "${lobby.name}" a fost repornită.`);
     console.log(`[RULETĂ] RESUME: Masa #${index} "${lobby.name}" resumed by ${player.name}`);
 });
 
@@ -749,20 +804,28 @@ function loadRouletteConfig() {
 
 // Save roulette config
 mp.events.add('Roulette:SaveConfig', (player, configJson) => {
+    if ((player.getVariable('adminLevel') || 0) < ROULETTE_CONFIG.MIN_ADMIN_LEVEL) {
+        global.chatSend(player, '!{Red}[RULETĂ] Nu ai permisiunea necesară!');
+        return;
+    }
     try {
         const newConfig = JSON.parse(configJson);
         let existing = loadRouletteConfig() || {};
         Object.assign(existing, newConfig);
         fs.writeFileSync(rouletteConfigPath, JSON.stringify(existing, null, 4));
-        player.outputChatBox('!{Green}[RULETĂ] Config salvat!');
+        global.chatSend(player, '!{Green}[RULETĂ] Config salvat!');
         console.log(`[RULETĂ] Config saved by ${player.name}`);
     } catch (e) {
-        player.outputChatBox('!{Red}[RULETĂ] Eroare la salvare config!');
+        global.chatSend(player, '!{Red}[RULETĂ] Eroare la salvare config!');
         console.log(`[RULETĂ] Error saving config: ${e.message}`);
     }
 });
 
 mp.events.add('Roulette:SaveGridCorners', (player, key, cornersJson) => {
+    if ((player.getVariable('adminLevel') || 0) < ROULETTE_CONFIG.MIN_ADMIN_LEVEL) {
+        global.chatSend(player, '!{Red}[RULETĂ] Nu ai permisiunea necesară!');
+        return;
+    }
     try {
         const corners = JSON.parse(cornersJson);
         let allCorners = {};
@@ -771,10 +834,10 @@ mp.events.add('Roulette:SaveGridCorners', (player, key, cornersJson) => {
         }
         allCorners[key] = corners;
         fs.writeFileSync(gridCornersPath, JSON.stringify(allCorners, null, 4));
-        player.outputChatBox('!{Green}[RULETĂ] Grid corners salvate!');
+        global.chatSend(player, '!{Green}[RULETĂ] Grid corners salvate!');
         console.log(`[RULETĂ] Grid corners saved by ${player.name} (key: ${key})`);
     } catch (e) {
-        player.outputChatBox('!{Red}[RULETĂ] Eroare la salvare grid corners!');
+        global.chatSend(player, '!{Red}[RULETĂ] Eroare la salvare grid corners!');
         console.log(`[RULETĂ] Error saving grid corners: ${e.message}`);
     }
 });

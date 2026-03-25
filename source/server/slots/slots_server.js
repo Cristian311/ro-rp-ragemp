@@ -132,7 +132,7 @@ function getSessionByPlayer(player) {
 }
 
 function broadcastToSession(session, message) {
-    if (session.player) session.player.outputChatBox(message);
+    if (session.player) global.chatSend(session.player, message);
 }
 
 // ──────────────────────────────────────────
@@ -140,7 +140,7 @@ function broadcastToSession(session, message) {
 // ──────────────────────────────────────────
 function joinMachine(player, machineIndex, machineName) {
     if (getSessionByPlayer(player)) {
-        player.outputChatBox('!{Red}Ești deja la un aparat!');
+        global.chatSend(player, '!{Red}Ești deja la un aparat!');
         return;
     }
 
@@ -151,7 +151,7 @@ function joinMachine(player, machineIndex, machineName) {
     const session = sessions[machineIndex];
 
     if (session.player !== null) {
-        player.outputChatBox('!{Red}Aparatul este ocupat!');
+        global.chatSend(player, '!{Red}Aparatul este ocupat!');
         return;
     }
 
@@ -165,7 +165,7 @@ function joinMachine(player, machineIndex, machineName) {
     session.freeSpinsLeft = 0;
     session.freeSpinsTotalWin = 0;
 
-    player.outputChatBox(`!{Orange}[SLOTS] !{White}Te-ai așezat la aparatul "${machineName}".`);
+    global.chatSend(player, `!{Orange}[SLOTS] !{White}Te-ai așezat la aparatul "${machineName}".`);
     slotsLog.onPlayerJoin(machineIndex, machineName, player.name);
 
     player.call('openSlotsUI');
@@ -190,7 +190,7 @@ function leaveMachine(player) {
     }
 
     player.call('closeSlotsUI');
-    player.outputChatBox('!{Orange}[SLOTS] !{White}Ai părăsit aparatul.');
+    global.chatSend(player, '!{Orange}[SLOTS] !{White}Ai părăsit aparatul.');
 
     session.player = null;
     session.state = 'idle';
@@ -221,14 +221,14 @@ function spin(player) {
     const isFree = session.state === 'freespin' || session.freeSpinsLeft > 0;
 
     if (!isFree && session.state !== 'idle') {
-        player.outputChatBox('!{Red}Nu poți da spin acum!');
+        global.chatSend(player, '!{Red}Nu poți da spin acum!');
         return;
     }
 
     const totalBet = isFree ? 0 : session.betPerLine * SLOTS_CONFIG.LINES;
 
     if (!isFree && totalBet > session.chips) {
-        player.outputChatBox('!{Red}Nu ai suficienți bani!');
+        global.chatSend(player, '!{Red}Nu ai suficienți bani!');
         return;
     }
 
@@ -313,10 +313,10 @@ function spin(player) {
 
     // Log in chat
     if (totalWin > 0) {
-        player.outputChatBox(`!{Orange}[SLOTS] !{Green}Câștig: $${totalWin}!`);
+        global.chatSend(player, `!{Orange}[SLOTS] !{Green}Câștig: $${totalWin}!`);
     }
     if (freeSpinsWon > 0) {
-        player.outputChatBox(`!{Orange}[SLOTS] !{Yellow}🎉 ${freeSpinsWon} ROTIRI GRATUITE!`);
+        global.chatSend(player, `!{Orange}[SLOTS] !{Yellow}🎉 ${freeSpinsWon} ROTIRI GRATUITE!`);
     }
 
     // După animație, setăm starea corectă
@@ -468,11 +468,11 @@ function startGamble(player) {
     const session = getSessionByPlayer(player);
     if (!session || session.state !== 'idle') return;
     if (session.totalWin <= 0) {
-        player.outputChatBox('!{Red}Nu ai nimic de dublat!');
+        global.chatSend(player, '!{Red}Nu ai nimic de dublat!');
         return;
     }
     if (session.totalWin > SLOTS_CONFIG.GAMBLE_MAX_AMOUNT) {
-        player.outputChatBox('!{Red}Suma este prea mare pentru gamble!');
+        global.chatSend(player, '!{Red}Suma este prea mare pentru gamble!');
         return;
     }
 
@@ -497,11 +497,11 @@ function gambleChoice(player, choice) {
         session.gambleAmount *= 2;
         session.chips += session.gambleAmount;
         session.totalWin = session.gambleAmount;
-        player.outputChatBox(`!{Orange}[SLOTS] !{Green}GAMBLE CÂȘTIG! $${session.gambleAmount}!`);
+        global.chatSend(player, `!{Orange}[SLOTS] !{Green}GAMBLE CÂȘTIG! $${session.gambleAmount}!`);
     } else {
         session.totalWin = 0;
         session.gambleAmount = 0;
-        player.outputChatBox(`!{Orange}[SLOTS] !{Red}GAMBLE PIERDUT!`);
+        global.chatSend(player, `!{Orange}[SLOTS] !{Red}GAMBLE PIERDUT!`);
     }
 
     slotsLog.onGamble(session.id, session.name, player.name, session.gambleAmount, won, session.chips);
@@ -530,7 +530,7 @@ function collectGamble(player) {
     if (!session || session.state !== 'gamble') return;
 
     session.chips += session.gambleAmount;
-    player.outputChatBox(`!{Orange}[SLOTS] !{White}Ai colectat $${session.gambleAmount}.`);
+    global.chatSend(player, `!{Orange}[SLOTS] !{White}Ai colectat $${session.gambleAmount}.`);
     session.totalWin = 0;
     session.gambleAmount = 0;
     session.state = 'idle';
@@ -615,7 +615,7 @@ mp.events.add('Server_SlotsSkipAnimation', (player) => {
 });
 
 mp.events.add('Server_JoinSlotsMachine', (player, machineIndex, machineName) => {
-    player.outputChatBox(`!{Green}[SLOTS] Te așezi la aparatul "${machineName}"...`);
+    global.chatSend(player, `!{Green}[SLOTS] Te așezi la aparatul "${machineName}"...`);
     joinMachine(player, machineIndex, machineName);
 });
 

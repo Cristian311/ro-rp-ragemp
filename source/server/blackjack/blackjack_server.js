@@ -150,7 +150,7 @@ function safeName(slot) {
 function broadcastToLobby(lobby, message) {
     lobby.players.forEach(slot => {
         if (!slot._hasLeft && isPlayerValid(slot.player)) {
-            try { slot.player.outputChatBox(message); } catch (e) {}
+            try { global.chatSend(slot.player, message); } catch (e) {}
         }
     });
 }
@@ -168,7 +168,7 @@ function callToLobby(lobby, eventName, ...args) {
 // ──────────────────────────────────────────
 function joinLobby(player, tableIndex, tableName, casinoId) {
     if (getLobbyByPlayer(player)) {
-        player.outputChatBox('!{Red}Ești deja la o masă de blackjack!');
+        global.chatSend(player, '!{Red}Ești deja la o masă de blackjack!');
         return;
     }
 
@@ -179,12 +179,12 @@ function joinLobby(player, tableIndex, tableName, casinoId) {
     const lobby = lobbies[tableIndex];
 
     if (lobby.state !== 'waiting' && lobby.state !== 'betting') {
-        player.outputChatBox('!{Red}Partida e în desfășurare. Așteaptă runda următoare!');
+        global.chatSend(player, '!{Red}Partida e în desfășurare. Așteaptă runda următoare!');
         return;
     }
 
     if (lobby.players.length >= LOBBY_CONFIG.MAX_PLAYERS) {
-        player.outputChatBox('!{Red}Masa este plină!');
+        global.chatSend(player, '!{Red}Masa este plină!');
         return;
     }
 
@@ -205,7 +205,7 @@ function joinLobby(player, tableIndex, tableName, casinoId) {
         _hasLeft: false,
     });
 
-    player.outputChatBox(`!{Orange}[BLACKJACK] Te-ai așezat la masă pe locul ${seat + 1}.`);
+    global.chatSend(player, `!{Orange}[BLACKJACK] Te-ai așezat la masă pe locul ${seat + 1}.`);
     broadcastToLobby(lobby, `!{Orange}[BLACKJACK] !{Cyan}${safeName({ name: player.name })} !{White}s-a alăturat (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS})`);
     console.log(`[BLACKJACK] JOIN: ${safeName({ name: player.name })} la "${tableName}" (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS}), seat ${seat}`);
     bjLog.onPlayerJoin(tableIndex, tableName, safeName({ name: player.name }), lobby.players.length, LOBBY_CONFIG.MAX_PLAYERS);
@@ -244,7 +244,7 @@ function leaveLobby(player) {
     if (isPlayerValid(player)) {
         try {
             player.call('closeBlackjackUI');
-            player.outputChatBox('!{Orange}[BLACKJACK] !{White}Ai părăsit masa.');
+            global.chatSend(player, '!{Orange}[BLACKJACK] !{White}Ai părăsit masa.');
         } catch (e) {}
     }
 
@@ -291,7 +291,7 @@ function leaveLobby(player) {
                     mp.events.call('blackjack:updatePlayerMoney', slot.player, slot.chips);
                 }
                 slot.player.call('closeBlackjackUI');
-                slot.player.outputChatBox('!{Orange}[BLACKJACK] !{White}Ai fost scos de la masă.');
+                global.chatSend(slot.player, '!{Orange}[BLACKJACK] !{White}Ai fost scos de la masă.');
             } catch (e) {}
         });
         lobby.players = [];
@@ -335,7 +335,7 @@ function startBettingPhase(lobby) {
                     slot.bet = autoBet;
                     slot.chips -= autoBet;
                     if (isPlayerValid(slot.player)) {
-                        try { slot.player.outputChatBox(`!{Yellow}[BLACKJACK] Pariu automat: $${autoBet}`); } catch (e) {}
+                        try { global.chatSend(slot.player, `!{Yellow}[BLACKJACK] Pariu automat: $${autoBet}`); } catch (e) {}
                     }
                 }
             });
@@ -348,7 +348,7 @@ function startBettingPhase(lobby) {
 function placeBet(player, amount) {
     const lobby = getLobbyByPlayer(player);
     if (!lobby || lobby.state !== 'betting') {
-        player.outputChatBox('!{Red}Nu poți paria acum!');
+        global.chatSend(player, '!{Red}Nu poți paria acum!');
         return;
     }
 
@@ -356,18 +356,18 @@ function placeBet(player, amount) {
     if (!slot) return;
 
     if (slot.bet > 0) {
-        player.outputChatBox('!{Red}Ai pariat deja!');
+        global.chatSend(player, '!{Red}Ai pariat deja!');
         return;
     }
 
     const parsed = parseInt(amount);
     if (isNaN(parsed) || parsed <= 0) {
-        player.outputChatBox('!{Red}Sumă invalidă!');
+        global.chatSend(player, '!{Red}Sumă invalidă!');
         return;
     }
     const betAmount = Math.max(LOBBY_CONFIG.MIN_BET, Math.min(parsed, LOBBY_CONFIG.MAX_BET, slot.chips));
     if (betAmount > slot.chips) {
-        player.outputChatBox('!{Red}Nu ai suficienți chips!');
+        global.chatSend(player, '!{Red}Nu ai suficienți chips!');
         return;
     }
 
@@ -375,7 +375,7 @@ function placeBet(player, amount) {
     slot.chips -= betAmount;
     slot.status = 'playing';
 
-    player.outputChatBox(`!{Green}[BLACKJACK] Ai pariat $${betAmount}.`);
+    global.chatSend(player, `!{Green}[BLACKJACK] Ai pariat $${betAmount}.`);
     broadcastToLobby(lobby, `!{Orange}[BLACKJACK] !{Cyan}${player.name} !{White}a pariat !{Green}$${betAmount}`);
 
     bjLog.onPlayerBet(lobby, player.name, betAmount);
@@ -501,19 +501,19 @@ function checkAllPlayersDone(lobby) {
 function processAction(player, action) {
     const lobby = getLobbyByPlayer(player);
     if (!lobby || lobby.state !== 'playing') {
-        player.outputChatBox('!{Red}Nu ești într-un joc activ.');
+        global.chatSend(player, '!{Red}Nu ești într-un joc activ.');
         return;
     }
 
     const validActions = ['hit', 'stand', 'doubledown'];
     if (typeof action !== 'string' || !validActions.includes(action)) {
-        player.outputChatBox('!{Red}Acțiune invalidă!');
+        global.chatSend(player, '!{Red}Acțiune invalidă!');
         return;
     }
 
     const slot = getPlayerSlot(lobby, player);
     if (!slot || slot.status !== 'playing') {
-        player.outputChatBox('!{Red}Nu poți acționa acum!');
+        global.chatSend(player, '!{Red}Nu poți acționa acum!');
         return;
     }
     console.log(`[BLACKJACK] ACTION: ${player.name} → ${action} | cards: ${slot.cards.join(' ')} = ${calculateHandValue(slot.cards)} | chips: $${slot.chips}`);
@@ -557,11 +557,11 @@ function processAction(player, action) {
 
         case 'doubledown': {
             if (slot.cards.length !== 2) {
-                player.outputChatBox('!{Red}Nu poți da Double Down acum!');
+                global.chatSend(player, '!{Red}Nu poți da Double Down acum!');
                 return;
             }
             if (slot.chips < slot.bet) {
-                player.outputChatBox('!{Red}Nu ai suficienți chips pentru Double Down!');
+                global.chatSend(player, '!{Red}Nu ai suficienți chips pentru Double Down!');
                 return;
             }
 
@@ -590,7 +590,7 @@ function processAction(player, action) {
         }
 
         default:
-            player.outputChatBox('!{Red}Acțiune invalidă!');
+            global.chatSend(player, '!{Red}Acțiune invalidă!');
             return;
     }
 
@@ -774,7 +774,7 @@ function endRound(lobby) {
     eliminated.forEach(slot => {
         if (isPlayerValid(slot.player)) {
             try {
-                slot.player.outputChatBox('!{Red}[BLACKJACK] Nu mai ai chips! Ai fost eliminat.');
+                global.chatSend(slot.player, '!{Red}[BLACKJACK] Nu mai ai chips! Ai fost eliminat.');
                 slot.player.call('closeBlackjackUI');
             } catch (e) {}
         }
@@ -854,7 +854,7 @@ mp.events.add('Server_BlackjackPlaceBet', (player, amount) => {
 });
 
 mp.events.add('Server_JoinBlackjackTable', (player, tableIndex, tableName, casinoId) => {
-    player.outputChatBox(`!{Green}[BLACKJACK] Încerci să te alături mesei "${tableName}"...`);
+    global.chatSend(player, `!{Green}[BLACKJACK] Încerci să te alături mesei "${tableName}"...`);
     joinLobby(player, tableIndex, tableName, casinoId);
 });
 

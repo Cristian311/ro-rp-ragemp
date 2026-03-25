@@ -1,5 +1,5 @@
 mp.events.addCommand('ping', (player) => {
-    player.outputChatBox('pong!');
+    global.chatSend(player, 'pong!');
 }, {
     description: 'Server latency test.'
 });

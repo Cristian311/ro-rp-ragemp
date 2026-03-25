@@ -182,13 +182,13 @@ mp.events.addCommand('rbot', (player, fullText, ...args) => {
             if (myLobby) {
                 tableIndex = myLobby.id;
             } else {
-                player.outputChatBox('!{Red}[RBOT] Nu esti la o masa! Foloseste: /rbot add [count] [tableIndex]');
+                global.chatSend(player, '!{Red}[RBOT] Nu esti la o masa! Foloseste: /rbot add [count] [tableIndex]');
                 return;
             }
         }
 
         if (tableIndex < 0 || tableIndex >= tables.length) {
-            player.outputChatBox(`!{Red}[RBOT] Index masa invalid: ${tableIndex}`);
+            global.chatSend(player, `!{Red}[RBOT] Index masa invalid: ${tableIndex}`);
             return;
         }
 
@@ -208,7 +208,7 @@ mp.events.addCommand('rbot', (player, fullText, ...args) => {
             }
         }
 
-        player.outputChatBox(`!{Green}[RBOT] !{White}${added} bot(i) adaugat(i) la masa #${tableIndex}.`);
+        global.chatSend(player, `!{Green}[RBOT] !{White}${added} bot(i) adaugat(i) la masa #${tableIndex}.`);
     }
 
     else if (sub === 'remove') {
@@ -217,13 +217,13 @@ mp.events.addCommand('rbot', (player, fullText, ...args) => {
         let tableIndex = args[2] !== undefined ? parseInt(args[2]) : (myLobby ? myLobby.id : -1);
 
         if (tableIndex === -1) {
-            player.outputChatBox('!{Red}[RBOT] Nu esti la o masa! Foloseste: /rbot remove [count] [tableIndex]');
+            global.chatSend(player, '!{Red}[RBOT] Nu esti la o masa! Foloseste: /rbot remove [count] [tableIndex]');
             return;
         }
 
         const lobby = lobbies[tableIndex];
         if (!lobby) {
-            player.outputChatBox('!{Red}[RBOT] Masa nu exista sau nu are lobby.');
+            global.chatSend(player, '!{Red}[RBOT] Masa nu exista sau nu are lobby.');
             return;
         }
 
@@ -239,22 +239,22 @@ mp.events.addCommand('rbot', (player, fullText, ...args) => {
             removed++;
         }
 
-        player.outputChatBox(`!{Green}[RBOT] !{White}${removed} bot(i) eliminat(i) de la masa #${tableIndex}.`);
+        global.chatSend(player, `!{Green}[RBOT] !{White}${removed} bot(i) eliminat(i) de la masa #${tableIndex}.`);
     }
 
     else if (sub === 'list') {
         if (allBots.size === 0) {
-            player.outputChatBox('!{Yellow}[RBOT] Niciun bot activ.');
+            global.chatSend(player, '!{Yellow}[RBOT] Niciun bot activ.');
             return;
         }
 
-        player.outputChatBox(`!{Green}[RBOT] !{White}Boti activi: ${allBots.size}`);
+        global.chatSend(player, `!{Green}[RBOT] !{White}Boti activi: ${allBots.size}`);
         allBots.forEach((bot, name) => {
             const lobby = getLobbyByPlayer(bot);
             const tableName = lobby ? `masa "${lobby.name}" (#${lobby.id})` : 'fara masa';
             const slot = lobby ? getPlayerSlot(lobby, bot) : null;
             const chips = slot ? `$${slot.chips}` : '-';
-            player.outputChatBox(`  !{Cyan}${name} !{White}— ${tableName} — Chips: ${chips}`);
+            global.chatSend(player, `  !{Cyan}${name} !{White}— ${tableName} — Chips: ${chips}`);
         });
     }
 
@@ -267,10 +267,10 @@ mp.events.addCommand('rbot', (player, fullText, ...args) => {
             removed++;
         });
         allBots.clear();
-        player.outputChatBox(`!{Green}[RBOT] !{White}Toti ${removed} boti au fost eliminati.`);
+        global.chatSend(player, `!{Green}[RBOT] !{White}Toti ${removed} boti au fost eliminati.`);
     }
 
     else {
-        player.outputChatBox('!{Orange}[RBOT] Comenzi: /rbot add [count] [table] | /rbot remove [count] [table] | /rbot list | /rbot stop');
+        global.chatSend(player, '!{Orange}[RBOT] Comenzi: /rbot add [count] [table] | /rbot remove [count] [table] | /rbot list | /rbot stop');
     }
 });

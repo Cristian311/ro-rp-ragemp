@@ -114,17 +114,17 @@ mp.events.add('_poker_afterTurn', (lobby) => {
 mp.events.addCommand('addbot', (player, _, countStr) => {
     const lobby = getLobbyByPlayer(player);
     if (!lobby) {
-        player.outputChatBox('!{Red}[BOT] Nu ești la nicio masă de poker!');
+        global.chatSend(player, '!{Red}[BOT] Nu ești la nicio masă de poker!');
         return;
     }
     if (lobby.state === 'playing') {
-        player.outputChatBox('!{Red}[BOT] Nu poți adăuga boți în timpul jocului!');
+        global.chatSend(player, '!{Red}[BOT] Nu poți adăuga boți în timpul jocului!');
         return;
     }
 
     const count = Math.min(parseInt(countStr) || 1, LOBBY_CONFIG_MAX - lobby.players.length);
     if (count <= 0) {
-        player.outputChatBox('!{Red}[BOT] Masa este plină sau număr invalid!');
+        global.chatSend(player, '!{Red}[BOT] Masa este plină sau număr invalid!');
         return;
     }
 
@@ -142,8 +142,8 @@ mp.events.addCommand('addbot', (player, _, countStr) => {
         added.push(botName);
     }
 
-    player.outputChatBox(`!{Green}[BOT] Adăugat: ${added.join(', ')}`);
-    player.outputChatBox(`!{Yellow}[BOT] Folosește /botstatus să vezi scaunele. Controlezi tu acțiunile cu /botcall, /botfold etc.`);
+    global.chatSend(player, `!{Green}[BOT] Adăugat: ${added.join(', ')}`);
+    global.chatSend(player, `!{Yellow}[BOT] Folosește /botstatus să vezi scaunele. Controlezi tu acțiunile cu /botcall, /botfold etc.`);
 });
 
 const LOBBY_CONFIG_MAX = 10; // trebuie să coincidă cu LOBBY_CONFIG.MAX_PLAYERS
@@ -154,7 +154,7 @@ const LOBBY_CONFIG_MAX = 10; // trebuie să coincidă cu LOBBY_CONFIG.MAX_PLAYER
 mp.events.addCommand('removebot', (player, _, countStr) => {
     const bots  = getPlayerBots(player);
     if (!bots.length) {
-        player.outputChatBox('!{Red}[BOT] Nu ai niciun bot activ!');
+        global.chatSend(player, '!{Red}[BOT] Nu ai niciun bot activ!');
         return;
     }
 
@@ -164,7 +164,7 @@ mp.events.addCommand('removebot', (player, _, countStr) => {
     removed.forEach(bot => {
         leaveLobby(bot);
         botOwner.delete(bot);
-        player.outputChatBox(`!{Yellow}[BOT] ${bot.name} a părăsit masa.`);
+        global.chatSend(player, `!{Yellow}[BOT] ${bot.name} a părăsit masa.`);
     });
 });
 
@@ -173,28 +173,28 @@ mp.events.addCommand('removebot', (player, _, countStr) => {
 // ──────────────────────────────────────────
 mp.events.addCommand('botstatus', (player) => {
     const lobby = getLobbyByPlayer(player);
-    if (!lobby) { player.outputChatBox('!{Red}Nu ești la o masă!'); return; }
+    if (!lobby) { global.chatSend(player, '!{Red}Nu ești la o masă!'); return; }
 
     const bots = getPlayerBots(player);
     if (!bots.length) {
-        player.outputChatBox('!{Yellow}[BOT] Nu ai boți la masă.');
+        global.chatSend(player, '!{Yellow}[BOT] Nu ai boți la masă.');
         return;
     }
 
-    player.outputChatBox('!{Cyan}══ BOȚI ══');
+    global.chatSend(player, '!{Cyan}══ BOȚI ══');
     bots.forEach(bot => {
         const slot = lobby.players.find(p => p.player === bot);
         if (!slot) return;
         const isTurn = lobby.players[lobby.currentPlayerIndex]?.player === bot;
         const turnMark = isTurn ? ' !{Green}◄ RÂNDUL LUI' : '';
-        player.outputChatBox(
+        global.chatSend(player, 
             `!{White}Scaun ${slot.seat + 1} | ${bot.name} | Chips: $${slot.chips} | Bet: $${slot.currentBet} | Fold: ${slot.hasFolded}${turnMark}`
         );
     });
 
     if (lobby.state === 'playing') {
         const curSlot = lobby.players[lobby.currentPlayerIndex];
-        player.outputChatBox(`!{Yellow}Rândul curent: ${curSlot?.player?.name || '?'} | Bet: $${lobby.currentBet} | Pot: $${lobby.pot}`);
+        global.chatSend(player, `!{Yellow}Rândul curent: ${curSlot?.player?.name || '?'} | Bet: $${lobby.currentBet} | Pot: $${lobby.pot}`);
     }
 });
 
@@ -204,27 +204,27 @@ mp.events.addCommand('botstatus', (player) => {
 function doBotAction(player, seatStr, action, raiseAmount = 0) {
     const lobby = getLobbyByPlayer(player);
     if (!lobby || lobby.state !== 'playing') {
-        player.outputChatBox('!{Red}[BOT] Nu există un joc activ!');
+        global.chatSend(player, '!{Red}[BOT] Nu există un joc activ!');
         return;
     }
 
     const seat     = parseInt(seatStr) - 1;   // user dă 1-based
     const slot     = getBotBySeat(lobby, seat);
     if (!slot) {
-        player.outputChatBox(`!{Red}[BOT] Nu există niciun jucător pe scaunul ${seatStr}!`);
+        global.chatSend(player, `!{Red}[BOT] Nu există niciun jucător pe scaunul ${seatStr}!`);
         return;
     }
 
     // Verifică că botul îți aparține
     if (botOwner.get(slot.player) !== player) {
-        player.outputChatBox('!{Red}[BOT] Acel bot nu îți aparține!');
+        global.chatSend(player, '!{Red}[BOT] Acel bot nu îți aparține!');
         return;
     }
 
     // Verifică că e rândul lui
     const currentSlot = lobby.players[lobby.currentPlayerIndex];
     if (!currentSlot || currentSlot !== slot) {
-        player.outputChatBox(`!{Red}[BOT] Nu este rândul lui ${slot.player.name}! Rândul curent: ${currentSlot?.player?.name}`);
+        global.chatSend(player, `!{Red}[BOT] Nu este rândul lui ${slot.player.name}! Rândul curent: ${currentSlot?.player?.name}`);
         return;
     }
 
@@ -267,10 +267,10 @@ mp.events.addCommand('botaction', (player, _, seat, action, amount) => {
 mp.events.addCommand('autobots', (player) => {
     if (autoMode.has(player.name)) {
         autoMode.delete(player.name);
-        player.outputChatBox('!{Red}[BOT] Auto-play OPRIT. Controlezi tu boții manual.');
+        global.chatSend(player, '!{Red}[BOT] Auto-play OPRIT. Controlezi tu boții manual.');
     } else {
         autoMode.add(player.name);
-        player.outputChatBox('!{Green}[BOT] Auto-play PORNIT. Boții joacă singuri (random).');
+        global.chatSend(player, '!{Green}[BOT] Auto-play PORNIT. Boții joacă singuri (random).');
 
         // Dacă e deja rândul unui bot, pornește imediat
         const lobby = getLobbyByPlayer(player);
@@ -284,18 +284,18 @@ mp.events.addCommand('autobots', (player) => {
 mp.events.addCommand('a', (player) => {
     const lobby = getLobbyByPlayer(player);
     if (!lobby) {
-        player.outputChatBox('!{Red}[BOT] Nu ești la nicio masă de poker!');
+        global.chatSend(player, '!{Red}[BOT] Nu ești la nicio masă de poker!');
         return;
     }
     if (lobby.state === 'playing') {
-        player.outputChatBox('!{Red}[BOT] Nu poți adăuga boți în timpul jocului!');
+        global.chatSend(player, '!{Red}[BOT] Nu poți adăuga boți în timpul jocului!');
         return;
     }
 
     // Adaugă 2 boți
     const count = Math.min(2, LOBBY_CONFIG_MAX - lobby.players.length);
     if (count <= 0) {
-        player.outputChatBox('!{Red}[BOT] Masa este plină!');
+        global.chatSend(player, '!{Red}[BOT] Masa este plină!');
         return;
     }
     const added = [];
@@ -308,12 +308,12 @@ mp.events.addCommand('a', (player) => {
         joinLobby(fakePlayer, lobby.id, lobby.name);
         added.push(botName);
     }
-    player.outputChatBox(`!{Green}[BOT] Adăugat: ${added.join(', ')}`);
+    global.chatSend(player, `!{Green}[BOT] Adăugat: ${added.join(', ')}`);
 
     // Pornește auto-play dacă nu e deja activ
     if (!autoMode.has(player.name)) {
         autoMode.add(player.name);
-        player.outputChatBox('!{Green}[BOT] Auto-play PORNIT automat.');
+        global.chatSend(player, '!{Green}[BOT] Auto-play PORNIT automat.');
         const updatedLobby = getLobbyByPlayer(player);
         if (updatedLobby) autoBotAction(updatedLobby);
     }

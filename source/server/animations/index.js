@@ -6,7 +6,7 @@ mp.events.add('animations:savePosition', (player, dataStr) => {
     try {
         data = JSON.parse(dataStr);
     } catch (e) {
-        player.outputChatBox('Error saving position.');
+        global.chatSend(player, 'Error saving position.');
         return;
     }
 

@@ -121,16 +121,16 @@ mp.events.addCommand('createblackjack', (player, fullText) => {
 
     if (spawnTable) {
         spawnTableObject(newTable, newIndex);
-        player.outputChatBox(`!{Green}[BLACKJACK] Masa "${newTable.name}" salvată cu obiect fizic la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
+        global.chatSend(player, `!{Green}[BLACKJACK] Masa "${newTable.name}" salvată cu obiect fizic la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
     } else {
-        player.outputChatBox(`!{Green}[BLACKJACK] Masa "${newTable.name}" salvată FĂRĂ obiect fizic la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
+        global.chatSend(player, `!{Green}[BLACKJACK] Masa "${newTable.name}" salvată FĂRĂ obiect fizic la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
     }
 });
 
 mp.events.addCommand('deleteblackjack', (player, _, idStr) => {
     const index = parseInt(idStr);
     if (isNaN(index)) {
-        player.outputChatBox('!{Red}[BLACKJACK] Folosire: /deleteblackjack <id>');
+        global.chatSend(player, '!{Red}[BLACKJACK] Folosire: /deleteblackjack <id>');
         return;
     }
 
@@ -143,15 +143,15 @@ mp.events.addCommand('deleteblackjack', (player, _, idStr) => {
     if (fs.existsSync(savePath)) {
         const tables = JSON.parse(fs.readFileSync(savePath, 'utf8'));
         if (index < 0 || index >= tables.length) {
-            player.outputChatBox(`!{Red}[BLACKJACK] Nu există masa cu ID-ul ${index}.`);
+            global.chatSend(player, `!{Red}[BLACKJACK] Nu există masa cu ID-ul ${index}.`);
             return;
         }
         const removed = tables.splice(index, 1)[0];
         fs.writeFileSync(savePath, JSON.stringify(tables, null, 4));
-        player.outputChatBox(`!{Green}[BLACKJACK] Masa #${index} "${removed.name}" a fost ștearsă.`);
-        mp.players.forEach(p => p.outputChatBox(`!{Red}[BLACKJACK] Masa #${index} "${removed.name}" a fost eliminată de un admin.`));
+        global.chatSend(player, `!{Green}[BLACKJACK] Masa #${index} "${removed.name}" a fost ștearsă.`);
+        global.chatBroadcast(`!{Red}[BLACKJACK] Masa #${index} "${removed.name}" a fost eliminată de un admin.`);
     } else {
-        player.outputChatBox('!{Red}[BLACKJACK] Nu există tabele salvate.');
+        global.chatSend(player, '!{Red}[BLACKJACK] Nu există tabele salvate.');
     }
 });
 
@@ -160,7 +160,7 @@ mp.events.addCommand('deleteblackjack', (player, _, idStr) => {
 // ──────────────────────────────────────────
 mp.events.add('playerEnterColshape', (player, colshape) => {
     if (colshape.getVariable('isBlackjackTable')) {
-        player.outputChatBox('!{Orange}[BLACKJACK]!{White} Ai intrat în zona mesei. Apasă !{Green}E!{White} pentru a juca.');
+        global.chatSend(player, '!{Orange}[BLACKJACK]!{White} Ai intrat în zona mesei. Apasă !{Green}E!{White} pentru a juca.');
         player.currentBlackjackTable = colshape;
     }
 });
@@ -175,7 +175,7 @@ mp.events.add('playerExitColshape', (player, colshape) => {
         const lobby = getLobbyByPlayer(player);
 
         if (lobby && lobby.id === colshape.getVariable('bjTableIndex')) {
-            player.outputChatBox('!{Orange}[BLACKJACK] !{Red}Te-ai îndepărtat prea mult de masă — ai fost scos automat.');
+            global.chatSend(player, '!{Orange}[BLACKJACK] !{Red}Te-ai îndepărtat prea mult de masă — ai fost scos automat.');
             leaveLobby(player);
         }
     }

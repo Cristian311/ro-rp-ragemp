@@ -15,7 +15,12 @@ let adminDb = {};
 function loadAdminDb() {
     try {
         if (fs.existsSync(adminDbPath)) {
-            adminDb = JSON.parse(fs.readFileSync(adminDbPath, 'utf8'));
+            const raw = JSON.parse(fs.readFileSync(adminDbPath, 'utf8').replace(/^\uFEFF/, ''));
+            // Normalize all keys to lowercase for consistent lookups
+            adminDb = {};
+            for (const k of Object.keys(raw)) {
+                adminDb[k.toLowerCase()] = raw[k];
+            }
             console.log(`[ADMIN DB] Loaded ${Object.keys(adminDb).length} admins from database.`);
         } else {
             // First run — seed with default super admins
@@ -81,19 +86,26 @@ mp.events.add("playerJoin", (player) => {
         if (err) console.error("Log error:", err);
     });
 
+    // Initialize money
+    player.money = 0;
+
     // Assign admin level from database
     const adminLevel = getAdminLevelFromDb(player.name);
     player.setVariable('adminLevel', adminLevel);
+    player.setVariable('adminDuty', false);
 
     if (adminLevel > 0) {
         console.log(`[ADMIN] ${player.name} a primit admin level ${adminLevel} (din baza de date)`);
+    }
+});
 
-        // Announce to all players
-        mp.players.forEach(p => {
-            if (p && p.id !== undefined) {
-                p.outputChatBox(`!{FF4444}[ADMIN] !{FFD700}${player.name} !{FFFFFF}s-a conectat! !{AAAAAA}(Admin Level ${adminLevel})`);
-            }
-        });
+// playerReady fires after client-side scripts + CEF are fully loaded
+mp.events.add("playerReady", (player) => {
+    const adminLevel = player.getVariable('adminLevel') || 0;
+    if (adminLevel > 0) {
+        if (global.chatBroadcast) {
+            global.chatBroadcast(`!{FF4444}[ADMIN] !{FFD700}${player.name} !{FFFFFF}s-a conectat! !{AAAAAA}(Admin Level ${adminLevel})`);
+        }
     }
 });
 

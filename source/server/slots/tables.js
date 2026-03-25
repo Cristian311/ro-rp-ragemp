@@ -115,13 +115,13 @@ mp.events.addCommand('createslots', (player, _, fullText) => {
     createProp(newMachine, newIndex);
 
     const propInfo = propModel > 0 ? ` (Prop: ${SLOT_PROPS[propModel]})` : ' (Fara prop)';
-    player.outputChatBox(`!{Green}[SLOTS] Aparatul "${newMachine.name}" salvat la: ${newMachine.x}, ${newMachine.y}, ${newMachine.z}${propInfo}`);
+    global.chatSend(player, `!{Green}[SLOTS] Aparatul "${newMachine.name}" salvat la: ${newMachine.x}, ${newMachine.y}, ${newMachine.z}${propInfo}`);
 });
 
 mp.events.addCommand('deleteslots', (player, _, idStr) => {
     const index = parseInt(idStr);
     if (isNaN(index)) {
-        player.outputChatBox('!{Red}[SLOTS] Folosire: /deleteslots <id>');
+        global.chatSend(player, '!{Red}[SLOTS] Folosire: /deleteslots <id>');
         return;
     }
 
@@ -134,22 +134,22 @@ mp.events.addCommand('deleteslots', (player, _, idStr) => {
     if (fs.existsSync(savePath)) {
         const machines = JSON.parse(fs.readFileSync(savePath, 'utf8'));
         if (index < 0 || index >= machines.length) {
-            player.outputChatBox(`!{Red}[SLOTS] Nu există aparatul cu ID-ul ${index}.`);
+            global.chatSend(player, `!{Red}[SLOTS] Nu există aparatul cu ID-ul ${index}.`);
             return;
         }
         const removed = machines.splice(index, 1)[0];
         fs.writeFileSync(savePath, JSON.stringify(machines, null, 4));
-        player.outputChatBox(`!{Green}[SLOTS] Aparatul #${index} "${removed.name}" a fost șters.`);
-        mp.players.forEach(p => p.outputChatBox(`!{Red}[SLOTS] Aparatul #${index} "${removed.name}" a fost eliminat de un admin.`));
+        global.chatSend(player, `!{Green}[SLOTS] Aparatul #${index} "${removed.name}" a fost șters.`);
+        global.chatBroadcast(`!{Red}[SLOTS] Aparatul #${index} "${removed.name}" a fost eliminat de un admin.`);
     } else {
-        player.outputChatBox('!{Red}[SLOTS] Nu există aparate salvate.');
+        global.chatSend(player, '!{Red}[SLOTS] Nu există aparate salvate.');
     }
 });
 
 // Events
 mp.events.add('playerEnterColshape', (player, colshape) => {
     if (colshape.getVariable('isSlotsMachine')) {
-        player.outputChatBox('!{Orange}[SLOTS]!{White} Ai ajuns la aparat. Apasă !{Green}E!{White} pentru a juca.');
+        global.chatSend(player, '!{Orange}[SLOTS]!{White} Ai ajuns la aparat. Apasă !{Green}E!{White} pentru a juca.');
         player.currentSlotsMachine = colshape;
     }
 });
@@ -164,7 +164,7 @@ mp.events.add('playerExitColshape', (player, colshape) => {
         const session = getSessionByPlayer(player);
 
         if (session && session.id === colshape.getVariable('machineIndex')) {
-            player.outputChatBox('!{Orange}[SLOTS] !{Red}Te-ai îndepărtat prea mult — ai fost scos automat.');
+            global.chatSend(player, '!{Orange}[SLOTS] !{Red}Te-ai îndepărtat prea mult — ai fost scos automat.');
             leaveMachine(player);
         }
     }

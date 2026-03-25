@@ -26,7 +26,7 @@ function getAdminLevel(player) {
 mp.events.add('camera:requestSave', (player) => {
     const lvl = getAdminLevel(player);
     if (lvl < 1) {
-        player.outputChatBox('!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot salva pozitii!');
+        global.chatSend(player, '!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot salva pozitii!');
         return;
     }
     // Tell client to proceed with save
@@ -37,7 +37,7 @@ mp.events.add('camera:requestSave', (player) => {
 mp.events.add('camera:savePosition', (player, jsonData) => {
     const lvl = getAdminLevel(player);
     if (lvl < 1) {
-        player.outputChatBox('!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot salva pozitii!');
+        global.chatSend(player, '!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot salva pozitii!');
         return;
     }
 
@@ -45,7 +45,7 @@ mp.events.add('camera:savePosition', (player, jsonData) => {
     try {
         entry = JSON.parse(jsonData);
     } catch (e) {
-        player.outputChatBox('!{FF0000}[CAMERA] Eroare la salvare pozitie.');
+        global.chatSend(player, '!{FF0000}[CAMERA] Eroare la salvare pozitie.');
         return;
     }
 
@@ -67,12 +67,12 @@ mp.events.add('camera:savePosition', (player, jsonData) => {
 mp.events.addCommand('camclear', (player) => {
     const lvl = getAdminLevel(player);
     if (lvl < 1) {
-        player.outputChatBox('!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot sterge pozitii!');
+        global.chatSend(player, '!{FF0000}[CAMERA] !{FFFFFF}Doar adminii pot sterge pozitii!');
         return;
     }
     allPositions = [];
     fs.writeFileSync(savePath, '[]', 'utf8');
-    player.outputChatBox('!{00FF00}[CAMERA] !{FFFFFF}Toate pozitiile salvate au fost sterse.');
+    global.chatSend(player, '!{00FF00}[CAMERA] !{FFFFFF}Toate pozitiile salvate au fost sterse.');
     console.log(`[CAMERA] Pozitii sterse de ${player.name}`);
 });
 

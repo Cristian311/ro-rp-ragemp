@@ -12,3 +12,4 @@ require('roulette/test.js');
 require('mp-commands');
 require('camera/index.js');
 require('animations/index.js');
+require('commands/fly.js');

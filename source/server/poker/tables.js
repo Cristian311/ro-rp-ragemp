@@ -90,12 +90,12 @@ mp.events.addCommand('createpoker', (player, _, name) => {
     createLeaveColshape(newTable, newIndex);
     createBlip(newTable, newIndex);
 
-    player.outputChatBox(`!{Green}[POKER] Masa "${newTable.name}" salvată la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
+    global.chatSend(player, `!{Green}[POKER] Masa "${newTable.name}" salvată la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
 });
 mp.events.addCommand('deletepoker', (player, _, idStr) => {
     const index = parseInt(idStr);
     if (isNaN(index)) {
-        player.outputChatBox('!{Red}[POKER] Folosire: /deletepoker <id>');
+        global.chatSend(player, '!{Red}[POKER] Folosire: /deletepoker <id>');
         return;
     }
 
@@ -110,29 +110,29 @@ mp.events.addCommand('deletepoker', (player, _, idStr) => {
     if (fs.existsSync(savePath)) {
         const tables = JSON.parse(fs.readFileSync(savePath, 'utf8'));
         if (index < 0 || index >= tables.length) {
-            player.outputChatBox(`!{Red}[POKER] Nu există masa cu ID-ul ${index}.`);
+            global.chatSend(player, `!{Red}[POKER] Nu există masa cu ID-ul ${index}.`);
             return;
         }
         const removed = tables.splice(index, 1)[0];
         fs.writeFileSync(savePath, JSON.stringify(tables, null, 4));
-        player.outputChatBox(`!{Green}[POKER] Masa #${index} "${removed.name}" a fost ștearsă.`);
-        mp.players.forEach(p => p.outputChatBox(`!{Red}[POKER] Masa #${index} "${removed.name}" a fost eliminată de un admin.`));
+        global.chatSend(player, `!{Green}[POKER] Masa #${index} "${removed.name}" a fost ștearsă.`);
+        global.chatBroadcast(`!{Red}[POKER] Masa #${index} "${removed.name}" a fost eliminată de un admin.`);
     } else {
-        player.outputChatBox('!{Red}[POKER] Nu există tabele salvate.');
+        global.chatSend(player, '!{Red}[POKER] Nu există tabele salvate.');
     }
 });
 
 //Events
 mp.events.add('playerEnterColshape', (player, colshape) => {
     if (colshape.getVariable('isPokerTable')) {
-        player.outputChatBox('!{Orange}[POKER]!{White} Ai intrat în zona mesei. Apasă !{Green}E!{White} pentru a juca.');
+        global.chatSend(player, '!{Orange}[POKER]!{White} Ai intrat în zona mesei. Apasă !{Green}E!{White} pentru a juca.');
         player.currentTable = colshape;
     }
 });
 
 mp.events.add('playerExitColshape', (player, colshape) => {
     if (colshape.getVariable('isPokerTable')) {
-        //player.outputChatBox('!{Yellow}[POKER]!{White} Ai părăsit zona mesei.');
+        //global.chatSend(player, '!{Yellow}[POKER]!{White} Ai părăsit zona mesei.');
         player.currentTable = null;
     }
 
@@ -142,7 +142,7 @@ mp.events.add('playerExitColshape', (player, colshape) => {
         const lobby = getLobbyByPlayer(player);
 
         if (lobby && lobby.id === colshape.getVariable('tableIndex')) {
-            player.outputChatBox('!{Orange}[POKER] !{Red}Te-ai îndepărtat prea mult de masă — ai fost scos automat.');
+            global.chatSend(player, '!{Orange}[POKER] !{Red}Te-ai îndepărtat prea mult de masă — ai fost scos automat.');
             leaveLobby(player);
         }
     }
@@ -159,7 +159,7 @@ mp.events.add('Server_PlayerAction', (player, actionName) => {
 
             mp.events.call('Server_JoinPokerTable', player, tableIndex, tableName, casinoId);
         } else {
-            player.outputChatBox('!{Red}Nu ești lângă nicio masă de poker.');
+            global.chatSend(player, '!{Red}Nu ești lângă nicio masă de poker.');
         }
     }
 });

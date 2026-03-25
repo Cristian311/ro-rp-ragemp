@@ -48,7 +48,7 @@ function getPlayerSlot(lobby, player) {
 
 function broadcastToLobby(lobby, message) {
     lobby.players.forEach(slot => {
-        if (!slot._hasLeft) slot.player.outputChatBox(message);
+        if (!slot._hasLeft) global.chatSend(slot.player, message);
     });
 }
 
@@ -60,7 +60,7 @@ function callToLobby(lobby, eventName, ...args) {
 
 function joinLobby(player, tableIndex, tableName, casinoId) {
     if (getLobbyByPlayer(player)) {
-        player.outputChatBox('!{Red}Ești deja la o masă de poker!');
+        global.chatSend(player, '!{Red}Ești deja la o masă de poker!');
         return;
     }
 
@@ -71,12 +71,12 @@ function joinLobby(player, tableIndex, tableName, casinoId) {
     const lobby = lobbies[tableIndex];
 
     if (lobby.state === 'playing') {
-        player.outputChatBox('!{Red}Partida e în desfășurare. Așteaptă runda următoare!');
+        global.chatSend(player, '!{Red}Partida e în desfășurare. Așteaptă runda următoare!');
         return;
     }
 
     if (lobby.players.length >= LOBBY_CONFIG.MAX_PLAYERS) {
-        player.outputChatBox('!{Red}Masa este plină!');
+        global.chatSend(player, '!{Red}Masa este plină!');
         return;
     }
 
@@ -96,7 +96,7 @@ function joinLobby(player, tableIndex, tableName, casinoId) {
         totalContributed: 0,
     });
 
-    player.outputChatBox(`!{Orange}[POKER] Te-ai așezat la masa pe locul ${seat + 1}.`);
+    global.chatSend(player, `!{Orange}[POKER] Te-ai așezat la masa pe locul ${seat + 1}.`);
     broadcastToLobby(lobby, `!{Orange}[POKER] !{Cyan}${player.name} !{White}s-a alăturat (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS})`);
     //(`[POKER] JOIN: ${player.name} s-a alăturat lobby "${tableName}" (${lobby.players.length}/${LOBBY_CONFIG.MAX_PLAYERS}), seat ${seat}`);
     pokerLog.onPlayerJoin(tableIndex, tableName, player.name, lobby.players.length, LOBBY_CONFIG.MAX_PLAYERS);
@@ -123,7 +123,7 @@ function leaveLobby(player) {
     pokerLog.onPlayerLeave(lobby.id, lobby.name, player.name, wasPlaying ? 'mid-hand' : 'manual');
 
     player.call('closePokerUI');
-    player.outputChatBox('!{Orange}[POKER] !{White}Ai părăsit masa.');
+    global.chatSend(player, '!{Orange}[POKER] !{White}Ai părăsit masa.');
 
     if (wasPlaying) {
         // Mid-hand: NU scoatem din array — păstrăm pentru calculul corect al side pots
@@ -175,7 +175,7 @@ function leaveLobby(player) {
                 console.log(`[POKER] MONEY_UPDATE (disband): ${slot.player.name} → $${slot.chips}`);
             }
             slot.player.call('closePokerUI');
-            slot.player.outputChatBox('!{Orange}[POKER] !{White}Ai fost scos de la masă — nu sunt suficienți jucători.');
+            global.chatSend(slot.player, '!{Orange}[POKER] !{White}Ai fost scos de la masă — nu sunt suficienți jucători.');
         });
         lobby.players = [];
     }
@@ -487,13 +487,13 @@ function processAction(player, action, raiseAmount = 0) {
     const lobby = getLobbyByPlayer(player);
 
     if (!lobby || lobby.state !== 'playing') {
-        player.outputChatBox('!{Red}Nu ești într-un joc activ.');
+        global.chatSend(player, '!{Red}Nu ești într-un joc activ.');
         return;
     }
 
     const currentSlot = lobby.players[lobby.currentPlayerIndex];
     if (!currentSlot || currentSlot.player !== player) {
-        player.outputChatBox('!{Red}Nu este rândul tău!');
+        global.chatSend(player, '!{Red}Nu este rândul tău!');
         return;
     }
 
@@ -513,7 +513,7 @@ function processAction(player, action, raiseAmount = 0) {
 
         case 'check':
             if (lobby.currentBet > slot.currentBet) {
-                player.outputChatBox('!{Red}Nu poți da Check — există un bet activ!');
+                global.chatSend(player, '!{Red}Nu poți da Check — există un bet activ!');
                 return;
             }
             slot.hasActed   = true;
@@ -524,7 +524,7 @@ function processAction(player, action, raiseAmount = 0) {
         case 'call': {
             const toCall = lobby.currentBet - slot.currentBet;
             if (toCall < 0) {
-                player.outputChatBox('!{Red}Nu ai ce să call-uiești.');
+                global.chatSend(player, '!{Red}Nu ai ce să call-uiești.');
                 return;
             }
             if(toCall == 0)
@@ -624,7 +624,7 @@ function processAction(player, action, raiseAmount = 0) {
         }
 
         default:
-            player.outputChatBox('!{Red}Acțiune invalidă.');
+            global.chatSend(player, '!{Red}Acțiune invalidă.');
             return;
     }
     // Log acțiunea în fișier
@@ -947,7 +947,7 @@ function endRound(lobby, winnerSlot, chipsAlreadyAdded = false) {
     const eliminated = lobby.players.filter(p => p.chips <= 0 && !p._hasLeft);
     if (eliminated.length > 0) console.log(`[POKER] ELIMINATI: ${eliminated.map(p => p.player.name).join(', ')}`);
     eliminated.forEach(slot => {
-        slot.player.outputChatBox('!{Red}[POKER] Nu mai ai chips! Ai fost eliminat.');
+        global.chatSend(slot.player, '!{Red}[POKER] Nu mai ai chips! Ai fost eliminat.');
         slot.player.call('closePokerUI');
         broadcastToLobby(lobby, `!{Red}[POKER] ${slot.player.name} a fost eliminat (0 chips).`);
     });
@@ -1020,7 +1020,7 @@ mp.events.add('Server_ReceivePokerAction', (player, actionName, raiseAmount) => 
 });
 
 mp.events.add('Server_JoinPokerTable', (player, tableIndex, tableName, casinoId) => {
-    player.outputChatBox(`!{Green}[POKER] Încerci să te alături mesei "${tableName}"...`);
+    global.chatSend(player, `!{Green}[POKER] Încerci să te alături mesei "${tableName}"...`);
     joinLobby(player, tableIndex, tableName, casinoId);
 });
 

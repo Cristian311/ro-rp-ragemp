@@ -45,14 +45,17 @@ function loadRouletteTables() {
     console.log(`[RULETĂ] S-au găsit ${tables.length} mese salvate:`);
 
     tables.forEach((table, index) => {
+        if (!table) return; // skip deleted tables (null entries)
         createColshape(table, index, table.name, table.casinoId);
         createLeaveColshape(table, index);
         createMarker(table, index);
         const pos = new mp.Vector3(table.x, table.y, table.z);
         createBlip(pos, index);
-        createProp(pos, table.heading);
+        if (!table.skipProp) {
+            createProp(pos, table.heading);
+        }
         createDealer(table, index);
-        console.log(`  Masa #${index}. ${table.name}: X:${table.x}, Y:${table.y}, Z:${table.z}`);
+        console.log(`  Masa #${index}. ${table.name}: X:${table.x}, Y:${table.y}, Z:${table.z}${table.skipProp ? ' (prop existent)' : ''}`);
     });
 }
 
@@ -60,8 +63,22 @@ loadRouletteTables();
 
 // Commands
 mp.events.addCommand('createroulette', (player, _, name) => {
+    if ((player.getVariable('adminLevel') || 0) < server.ROULETTE_CONFIG.MIN_ADMIN_LEVEL) {
+        global.chatSend(player, '!{Red}[RULETĂ] Nu ai permisiunea necesară!');
+        return;
+    }
     const pos = player.position;
     const rot = player.heading;
+
+    // Check if a roulette prop already exists at this position (IPL or manually placed)
+    const existingProp = mp.objects.toArray().find(obj => {
+        try {
+            if (obj.model !== mp.joaat('vw_prop_casino_roulette_01')) return false;
+            const op = obj.position;
+            const dx = op.x - pos.x, dy = op.y - pos.y, dz = op.z - (pos.z - 1.0);
+            return (dx*dx + dy*dy + dz*dz) < 25; // within 5 units
+        } catch(e) { return false; }
+    });
 
     const newTable = {
         name:     name || `RouletteTable_${Date.now()}`,
@@ -69,10 +86,22 @@ mp.events.addCommand('createroulette', (player, _, name) => {
         y:        parseFloat(pos.y.toFixed(2)),
         z:        parseFloat((pos.z - 1.0).toFixed(2)),
         heading:  parseFloat(rot.toFixed(2)),
-        casinoId: null
+        casinoId: null,
+        skipProp: !!existingProp // don't spawn a prop if one already exists
     };
 
-    createProp(new mp.Vector3(newTable.x, newTable.y, newTable.z), rot);
+    if (!existingProp) {
+        createProp(new mp.Vector3(newTable.x, newTable.y, newTable.z), rot);
+    } else {
+        // Use the existing prop's exact position/heading for accuracy
+        const ep = existingProp.position;
+        newTable.x = parseFloat(ep.x.toFixed(2));
+        newTable.y = parseFloat(ep.y.toFixed(2));
+        newTable.z = parseFloat(ep.z.toFixed(2));
+        const er = existingProp.rotation;
+        newTable.heading = parseFloat((er ? er.z : rot).toFixed(2));
+        player.outputChatBox('!{Yellow}[RULETĂ] Prop existent detectat — se folosește poziția lui.');
+    }
 
     let tables = [];
     if (fs.existsSync(savePath)) {
@@ -88,13 +117,17 @@ mp.events.addCommand('createroulette', (player, _, name) => {
     createLeaveColshape(newTable, newIndex);
     createDealer(newTable, newIndex);
 
-    player.outputChatBox(`!{Green}[RULETĂ] Masa "${newTable.name}" salvată la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
+    global.chatSend(player, `!{Green}[RULETĂ] Masa "${newTable.name}" salvată la: ${newTable.x}, ${newTable.y}, ${newTable.z}`);
 });
 
 mp.events.addCommand('deleteroulette', (player, _, idStr) => {
+    if ((player.getVariable('adminLevel') || 0) < server.ROULETTE_CONFIG.MIN_ADMIN_LEVEL) {
+        global.chatSend(player, '!{Red}[RULETĂ] Nu ai permisiunea necesară!');
+        return;
+    }
     const index = parseInt(idStr);
     if (isNaN(index)) {
-        player.outputChatBox('!{Red}[RULETĂ] Folosire: /deleteroulette <id>');
+        global.chatSend(player, '!{Red}[RULETĂ] Folosire: /deleteroulette <id>');
         return;
     }
 
@@ -106,23 +139,24 @@ mp.events.addCommand('deleteroulette', (player, _, idStr) => {
 
     if (fs.existsSync(savePath)) {
         const tables = JSON.parse(fs.readFileSync(savePath, 'utf8'));
-        if (index < 0 || index >= tables.length) {
-            player.outputChatBox(`!{Red}[RULETĂ] Nu există masa cu ID-ul ${index}.`);
+        if (index < 0 || index >= tables.length || !tables[index]) {
+            global.chatSend(player, `!{Red}[RULETĂ] Nu există masa cu ID-ul ${index}.`);
             return;
         }
-        const removed = tables.splice(index, 1)[0];
+        const removed = tables[index];
+        tables[index] = null; // null out instead of splice to preserve indices
         fs.writeFileSync(savePath, JSON.stringify(tables, null, 4));
-        player.outputChatBox(`!{Green}[RULETĂ] Masa #${index} "${removed.name}" a fost ștearsă.`);
-        mp.players.forEach(p => p.outputChatBox(`!{Red}[RULETĂ] Masa #${index} "${removed.name}" a fost eliminată de un admin.`));
+        global.chatSend(player, `!{Green}[RULETĂ] Masa #${index} "${removed.name}" a fost ștearsă.`);
+        global.chatBroadcast(`!{Red}[RULETĂ] Masa #${index} "${removed.name}" a fost eliminată de un admin.`);
     } else {
-        player.outputChatBox('!{Red}[RULETĂ] Nu există tabele salvate.');
+        global.chatSend(player, '!{Red}[RULETĂ] Nu există tabele salvate.');
     }
 });
 
 // Events
 mp.events.add('playerEnterColshape', (player, colshape) => {
     if (colshape.getVariable('isRouletteTable')) {
-        player.outputChatBox('!{Orange}[RULETĂ]!{White} Ai intrat în zona mesei. Apasă !{Green}E!{White} pentru a juca.');
+        global.chatSend(player, '!{Orange}[RULETĂ]!{White} Ai intrat în zona mesei. Apasă !{Green}E!{White} pentru a juca.');
         player.currentRouletteTable = colshape;
     }
 });
@@ -137,7 +171,7 @@ mp.events.add('playerExitColshape', (player, colshape) => {
         const lobby = getLobbyByPlayer(player);
 
         if (lobby && lobby.id === colshape.getVariable('tableIndex')) {
-            player.outputChatBox('!{Orange}[RULETĂ] !{Red}Te-ai îndepărtat prea mult de masă — ai fost scos automat.');
+            global.chatSend(player, '!{Orange}[RULETĂ] !{Red}Te-ai îndepărtat prea mult de masă — ai fost scos automat.');
             leaveLobby(player);
         }
     }

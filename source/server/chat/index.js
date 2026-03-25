@@ -34,6 +34,42 @@ mp.Player.prototype.outputChatBox = function(message) {
     sendToPlayer(this, 'system', '', html);
 };
 
+// Also override on each player instance (native bindings shadow prototype)
+mp.events.add('playerJoin', (player) => {
+    try {
+        Object.defineProperty(player, 'outputChatBox', {
+            value: function(message) {
+                const html = colorizeText(String(message || ''));
+                sendToPlayer(player, 'system', '', html);
+            },
+            writable: true,
+            configurable: true,
+            enumerable: true
+        });
+    } catch (_) {
+        // Fallback: simple assignment
+        try { player.outputChatBox = function(message) {
+            const html = colorizeText(String(message || ''));
+            sendToPlayer(player, 'system', '', html);
+        }; } catch (__) {}
+    }
+});
+
+// Global chat utilities — reliable from any package
+global.chatSend = function(player, message) {
+    const html = colorizeText(String(message || ''));
+    sendToPlayer(player, 'system', '', html);
+};
+
+global.chatBroadcast = function(message) {
+    const html = colorizeText(String(message || ''));
+    mp.players.forEach(p => {
+        if (p && p.id !== undefined) {
+            sendToPlayer(p, 'system', '', html);
+        }
+    });
+};
+
 mp.events.add('playerChat', (player, message) => {
     if (!message || typeof message !== 'string') return;
 

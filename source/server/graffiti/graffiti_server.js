@@ -117,12 +117,12 @@ function sendAllGraffitiToPlayer(player) {
 // /spray — open the drawing canvas
 mp.events.addCommand('spray', (player) => {
     if (getPlayerGraffitiCount(player) >= MAX_PER_PLAYER) {
-        player.outputChatBox(`!{FF4444}[GRAFFITI] Ai atins limita de ${MAX_PER_PLAYER} graffiti! Sterge unul cu /deletemygraffiti.`);
+        global.chatSend(player, `!{FF4444}[GRAFFITI] Ai atins limita de ${MAX_PER_PLAYER} graffiti! Sterge unul cu /deletemygraffiti.`);
         return;
     }
 
     if (isOnCooldown(player)) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Asteapta putin inainte sa faci alt graffiti.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Asteapta putin inainte sa faci alt graffiti.');
         return;
     }
 
@@ -150,7 +150,7 @@ mp.events.addCommand('deletemygraffiti', (player) => {
     }
 
     if (!nearest) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Nu ai niciun graffiti in raza de 5m.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Nu ai niciun graffiti in raza de 5m.');
         return;
     }
 
@@ -159,7 +159,7 @@ mp.events.addCommand('deletemygraffiti', (player) => {
     logger.logDeletedOwn(player.name, nearest.id);
 
     broadcastGraffitiToAll('graffitiDeleted', { id: nearest.id });
-    player.outputChatBox(`!{00FF88}[GRAFFITI] Graffiti #${nearest.id} sters!`);
+    global.chatSend(player, `!{00FF88}[GRAFFITI] Graffiti #${nearest.id} sters!`);
 });
 
 // /deletegraffiti — admin: delete nearest graffiti (< 5m)
@@ -181,7 +181,7 @@ mp.events.addCommand('deletegraffiti', (player) => {
     }
 
     if (!nearest) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Nu exista niciun graffiti in raza de 5m.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Nu exista niciun graffiti in raza de 5m.');
         return;
     }
 
@@ -191,14 +191,14 @@ mp.events.addCommand('deletegraffiti', (player) => {
     logger.logDeleted(player.name, nearest.id, ownerName);
 
     broadcastGraffitiToAll('graffitiDeleted', { id: nearest.id });
-    player.outputChatBox(`!{00FF88}[GRAFFITI] Graffiti #${nearest.id} (de la ${ownerName}) sters!`);
+    global.chatSend(player, `!{00FF88}[GRAFFITI] Graffiti #${nearest.id} (de la ${ownerName}) sters!`);
 });
 
 // /clearallgraffiti — admin: remove all
 mp.events.addCommand('clearallgraffiti', (player) => {
     const count = graffitiList.length;
     if (count === 0) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Nu exista graffiti pe server.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Nu exista graffiti pe server.');
         return;
     }
 
@@ -208,26 +208,26 @@ mp.events.addCommand('clearallgraffiti', (player) => {
     saveGraffiti();
 
     broadcastGraffitiToAll('graffitiClearAll', {});
-    player.outputChatBox(`!{00FF88}[GRAFFITI] Toate cele ${count} graffiti au fost sterse!`);
+    global.chatSend(player, `!{00FF88}[GRAFFITI] Toate cele ${count} graffiti au fost sterse!`);
 });
 
 // /graffitilist — admin: list all in chat
 mp.events.addCommand('graffitilist', (player) => {
     if (graffitiList.length === 0) {
-        player.outputChatBox('!{FFAA00}[GRAFFITI] Nu exista graffiti pe server.');
+        global.chatSend(player, '!{FFAA00}[GRAFFITI] Nu exista graffiti pe server.');
         return;
     }
 
-    player.outputChatBox(`!{FFAA00}[GRAFFITI] Total: ${graffitiList.length}`);
+    global.chatSend(player, `!{FFAA00}[GRAFFITI] Total: ${graffitiList.length}`);
     for (const g of graffitiList) {
-        player.outputChatBox(`  !{FFFFFF}#${g.id} | ${g.playerName} | (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(1)}, ${g.position.z.toFixed(1)})`);
+        global.chatSend(player, `  !{FFFFFF}#${g.id} | ${g.playerName} | (${g.position.x.toFixed(1)}, ${g.position.y.toFixed(1)}, ${g.position.z.toFixed(1)})`);
     }
 });
 
 // /graffitiview — admin: enter graffiti view/select mode (click to inspect)
 mp.events.addCommand('graffitiview', (player) => {
     player.call('Graffiti_EnterViewMode', []);
-    player.outputChatBox('!{00FF88}[GRAFFITI] Mod vizualizare activat. Click pe un graffiti pentru informatii.');
+    global.chatSend(player, '!{00FF88}[GRAFFITI] Mod vizualizare activat. Click pe un graffiti pentru informatii.');
 });
 
 // /nearestgraffiti — show info about the nearest graffiti to player
@@ -248,7 +248,7 @@ mp.events.addCommand('nearestgraffiti', (player) => {
     }
 
     if (!nearest) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Nu exista niciun graffiti in raza de 50m.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Nu exista niciun graffiti in raza de 50m.');
         return;
     }
 
@@ -259,15 +259,15 @@ mp.events.addCommand('nearestgraffiti', (player) => {
     let isOnline = false;
     mp.players.forEach(p => { if (p && p.socialClub === nearest.socialClub) isOnline = true; });
 
-    player.outputChatBox('!{FF8C00}=================================');
-    player.outputChatBox(`!{FF8C00}  NEAREST GRAFFITI #${nearest.id}`);
-    player.outputChatBox('!{FF8C00}=================================');
-    player.outputChatBox(`!{FFFFFF}  Owner: !{FFAA00}${nearest.playerName} !{888888}(${nearest.socialClub}) !{${isOnline ? '00FF88' : '888888'}}[${isOnline ? 'ONLINE' : 'OFFLINE'}]`);
-    player.outputChatBox(`!{FFFFFF}  Distanta: !{FFAA00}${nearestDist.toFixed(1)}m`);
-    player.outputChatBox(`!{FFFFFF}  Pozitie: !{FFAA00}${nearest.position.x.toFixed(2)}, ${nearest.position.y.toFixed(2)}, ${nearest.position.z.toFixed(2)}`);
-    player.outputChatBox(`!{FFFFFF}  Marime: !{FFAA00}${sW} x ${sH}`);
-    player.outputChatBox(`!{FFFFFF}  Data: !{FFAA00}${date}`);
-    player.outputChatBox('!{FF8C00}=================================');
+    global.chatSend(player, '!{FF8C00}=================================');
+    global.chatSend(player, `!{FF8C00}  NEAREST GRAFFITI #${nearest.id}`);
+    global.chatSend(player, '!{FF8C00}=================================');
+    global.chatSend(player, `!{FFFFFF}  Owner: !{FFAA00}${nearest.playerName} !{888888}(${nearest.socialClub}) !{${isOnline ? '00FF88' : '888888'}}[${isOnline ? 'ONLINE' : 'OFFLINE'}]`);
+    global.chatSend(player, `!{FFFFFF}  Distanta: !{FFAA00}${nearestDist.toFixed(1)}m`);
+    global.chatSend(player, `!{FFFFFF}  Pozitie: !{FFAA00}${nearest.position.x.toFixed(2)}, ${nearest.position.y.toFixed(2)}, ${nearest.position.z.toFixed(2)}`);
+    global.chatSend(player, `!{FFFFFF}  Marime: !{FFAA00}${sW} x ${sH}`);
+    global.chatSend(player, `!{FFFFFF}  Data: !{FFAA00}${date}`);
+    global.chatSend(player, '!{FF8C00}=================================');
 });
 
 // Client requests info about a specific graffiti (from view mode)
@@ -275,7 +275,7 @@ mp.events.add('Server_GraffitiViewInfo', (player, idStr) => {
     const id = parseInt(idStr);
     const g = graffitiList.find(item => item.id === id);
     if (!g) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Graffiti-ul nu a fost gasit.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Graffiti-ul nu a fost gasit.');
         player.call('Graffiti_ViewInfoResult', [JSON.stringify({ error: true })]);
         return;
     }
@@ -287,14 +287,14 @@ mp.events.add('Server_GraffitiViewInfo', (player, idStr) => {
     mp.players.forEach(p => { if (p && p.socialClub === g.socialClub) isOnline = true; });
 
     // Send to chat
-    player.outputChatBox('!{00FF88}=================================');
-    player.outputChatBox(`!{00FF88}  GRAFFITI #${g.id}`);
-    player.outputChatBox('!{00FF88}=================================');
-    player.outputChatBox(`!{FFFFFF}  Owner: !{FFAA00}${g.playerName} !{888888}(${g.socialClub}) !{${isOnline ? '00FF88' : '888888'}}[${isOnline ? 'ONLINE' : 'OFFLINE'}]`);
-    player.outputChatBox(`!{FFFFFF}  Pozitie: !{FFAA00}${g.position.x.toFixed(2)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(2)}`);
-    player.outputChatBox(`!{FFFFFF}  Marime: !{FFAA00}${sW} x ${sH}`);
-    player.outputChatBox(`!{FFFFFF}  Data: !{FFAA00}${date}`);
-    player.outputChatBox('!{00FF88}=================================');
+    global.chatSend(player, '!{00FF88}=================================');
+    global.chatSend(player, `!{00FF88}  GRAFFITI #${g.id}`);
+    global.chatSend(player, '!{00FF88}=================================');
+    global.chatSend(player, `!{FFFFFF}  Owner: !{FFAA00}${g.playerName} !{888888}(${g.socialClub}) !{${isOnline ? '00FF88' : '888888'}}[${isOnline ? 'ONLINE' : 'OFFLINE'}]`);
+    global.chatSend(player, `!{FFFFFF}  Pozitie: !{FFAA00}${g.position.x.toFixed(2)}, ${g.position.y.toFixed(2)}, ${g.position.z.toFixed(2)}`);
+    global.chatSend(player, `!{FFFFFF}  Marime: !{FFAA00}${sW} x ${sH}`);
+    global.chatSend(player, `!{FFFFFF}  Data: !{FFAA00}${date}`);
+    global.chatSend(player, '!{00FF88}=================================');
 
     // Also send to client for CEF panel display
     player.call('Graffiti_ViewInfoResult', [JSON.stringify({
@@ -327,7 +327,7 @@ mp.events.add('Server_GraffitiDeleteFromViewer', (player, idStr) => {
         try { p.call('graffitiDeleted', [JSON.stringify({ id })]); } catch(e) {}
     });
     player.call('Graffiti_DeleteResult', [JSON.stringify({ success: true, id })]);
-    player.outputChatBox(`!{00FF88}[GRAFFITI] Graffiti #${id} (de la ${ownerName}) sters!`);
+    global.chatSend(player, `!{00FF88}[GRAFFITI] Graffiti #${id} (de la ${ownerName}) sters!`);
 });
 
 // ──────────────────────────────────────────
@@ -342,12 +342,12 @@ mp.events.add('Server_GraffitiPlaceMeta', (player, metaJson, totalStr) => {
     try {
         meta = JSON.parse(metaJson);
     } catch (e) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Date invalide.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Date invalide.');
         return;
     }
     const total = parseInt(totalStr) || 0;
     if (total <= 0 || total > 200) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Date invalide.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Date invalide.');
         return;
     }
     pendingPlace[player.id] = {
@@ -377,22 +377,22 @@ mp.events.add('Server_GraffitiPlaceChunk', (player, idxStr, chunkData) => {
 
 function finalizeGraffitiPlace(player, meta, imageData) {
     if (!imageData || !meta.position || !meta.normal) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Date incomplete.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Date incomplete.');
         return;
     }
 
     if (imageData.length > MAX_IMAGE_SIZE) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Imaginea este prea mare.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Imaginea este prea mare.');
         return;
     }
 
     if (getPlayerGraffitiCount(player) >= MAX_PER_PLAYER) {
-        player.outputChatBox(`!{FF4444}[GRAFFITI] Ai atins limita de ${MAX_PER_PLAYER} graffiti!`);
+        global.chatSend(player, `!{FF4444}[GRAFFITI] Ai atins limita de ${MAX_PER_PLAYER} graffiti!`);
         return;
     }
 
     if (isOnCooldown(player)) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Asteapta putin inainte sa faci alt graffiti.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Asteapta putin inainte sa faci alt graffiti.');
         return;
     }
 
@@ -425,7 +425,7 @@ function finalizeGraffitiPlace(player, meta, imageData) {
     logger.logCreated(player.name, graffiti.id, graffiti.position);
 
     broadcastGraffitiToAll('graffitiCreated', graffiti);
-    player.outputChatBox(`!{00FF88}[GRAFFITI] Graffiti #${graffiti.id} plasat! (${getPlayerGraffitiCount(player)}/${MAX_PER_PLAYER})`);
+    global.chatSend(player, `!{00FF88}[GRAFFITI] Graffiti #${graffiti.id} plasat! (${getPlayerGraffitiCount(player)}/${MAX_PER_PLAYER})`);
 }
 
 // Legacy single-call placement (kept for backward compat)
@@ -434,7 +434,7 @@ mp.events.add('Server_GraffitiPlace', (player, jsonData) => {
     try {
         data = JSON.parse(jsonData);
     } catch (e) {
-        player.outputChatBox('!{FF4444}[GRAFFITI] Date invalide.');
+        global.chatSend(player, '!{FF4444}[GRAFFITI] Date invalide.');
         return;
     }
     finalizeGraffitiPlace(player, data, data.imageData);

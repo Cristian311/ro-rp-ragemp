@@ -189,17 +189,17 @@ setInterval(checkBotTurn, 1000);
 mp.events.addCommand('bjaddbot', (player, _, countStr) => {
     const lobby = getLobbyByPlayer(player);
     if (!lobby) {
-        player.outputChatBox('!{Red}[BJ-BOT] Nu ești la nicio masă de blackjack!');
+        global.chatSend(player, '!{Red}[BJ-BOT] Nu ești la nicio masă de blackjack!');
         return;
     }
     if (lobby.state === 'playing' || lobby.state === 'dealer_turn') {
-        player.outputChatBox('!{Red}[BJ-BOT] Nu poți adăuga boți în timpul jocului!');
+        global.chatSend(player, '!{Red}[BJ-BOT] Nu poți adăuga boți în timpul jocului!');
         return;
     }
 
     const count = Math.min(parseInt(countStr) || 1, LOBBY_CONFIG.MAX_PLAYERS - lobby.players.length);
     if (count <= 0) {
-        player.outputChatBox('!{Red}[BJ-BOT] Masa este plină sau număr invalid!');
+        global.chatSend(player, '!{Red}[BJ-BOT] Masa este plină sau număr invalid!');
         return;
     }
 
@@ -216,7 +216,7 @@ mp.events.addCommand('bjaddbot', (player, _, countStr) => {
         added.push(botName);
     }
 
-    player.outputChatBox(`!{Green}[BJ-BOT] Adăugat: ${added.join(', ')}`);
+    global.chatSend(player, `!{Green}[BJ-BOT] Adăugat: ${added.join(', ')}`);
 });
 
 // ──────────────────────────────────────────
@@ -225,7 +225,7 @@ mp.events.addCommand('bjaddbot', (player, _, countStr) => {
 mp.events.addCommand('bjremovebot', (player, _, countStr) => {
     const bots = getPlayerBots(player);
     if (!bots.length) {
-        player.outputChatBox('!{Red}[BJ-BOT] Nu ai niciun bot activ!');
+        global.chatSend(player, '!{Red}[BJ-BOT] Nu ai niciun bot activ!');
         return;
     }
 
@@ -235,7 +235,7 @@ mp.events.addCommand('bjremovebot', (player, _, countStr) => {
     removed.forEach(bot => {
         leaveLobby(bot);
         botOwner.delete(bot);
-        player.outputChatBox(`!{Yellow}[BJ-BOT] ${bot.name} a părăsit masa.`);
+        global.chatSend(player, `!{Yellow}[BJ-BOT] ${bot.name} a părăsit masa.`);
     });
 });
 
@@ -244,21 +244,21 @@ mp.events.addCommand('bjremovebot', (player, _, countStr) => {
 // ──────────────────────────────────────────
 mp.events.addCommand('bjbotstatus', (player) => {
     const lobby = getLobbyByPlayer(player);
-    if (!lobby) { player.outputChatBox('!{Red}Nu ești la o masă!'); return; }
+    if (!lobby) { global.chatSend(player, '!{Red}Nu ești la o masă!'); return; }
 
     const bots = getPlayerBots(player);
     if (!bots.length) {
-        player.outputChatBox('!{Yellow}[BJ-BOT] Nu ai boți la masă.');
+        global.chatSend(player, '!{Yellow}[BJ-BOT] Nu ai boți la masă.');
         return;
     }
 
-    player.outputChatBox('!{Cyan}══ BJ BOȚI ══');
+    global.chatSend(player, '!{Cyan}══ BJ BOȚI ══');
     bots.forEach(bot => {
         const slot = lobby.players.find(p => p.player === bot);
         if (!slot) return;
         const isTurn = lobby.players[lobby.currentPlayerIndex]?.player === bot;
         const turnMark = isTurn ? ' !{Green}◄ RÂNDUL LUI' : '';
-        player.outputChatBox(
+        global.chatSend(player, 
             `!{White}Scaun ${slot.seat + 1} | ${bot.name} | Chips: $${slot.chips} | Bet: $${slot.bet} | Status: ${slot.status}${turnMark}`
         );
     });
@@ -270,10 +270,10 @@ mp.events.addCommand('bjbotstatus', (player) => {
 mp.events.addCommand('bjautobots', (player) => {
     if (autoMode.has(player.name)) {
         autoMode.delete(player.name);
-        player.outputChatBox('!{Red}[BJ-BOT] Auto-play OPRIT.');
+        global.chatSend(player, '!{Red}[BJ-BOT] Auto-play OPRIT.');
     } else {
         autoMode.add(player.name);
-        player.outputChatBox('!{Green}[BJ-BOT] Auto-play PORNIT. Boții joacă singuri.');
+        global.chatSend(player, '!{Green}[BJ-BOT] Auto-play PORNIT. Boții joacă singuri.');
     }
 });
 
@@ -283,17 +283,17 @@ mp.events.addCommand('bjautobots', (player) => {
 mp.events.addCommand('bja', (player) => {
     const lobby = getLobbyByPlayer(player);
     if (!lobby) {
-        player.outputChatBox('!{Red}[BJ-BOT] Nu ești la nicio masă de blackjack!');
+        global.chatSend(player, '!{Red}[BJ-BOT] Nu ești la nicio masă de blackjack!');
         return;
     }
     if (lobby.state === 'playing' || lobby.state === 'dealer_turn') {
-        player.outputChatBox('!{Red}[BJ-BOT] Nu poți adăuga boți în timpul jocului!');
+        global.chatSend(player, '!{Red}[BJ-BOT] Nu poți adăuga boți în timpul jocului!');
         return;
     }
 
     const count = Math.min(3, LOBBY_CONFIG.MAX_PLAYERS - lobby.players.length);
     if (count <= 0) {
-        player.outputChatBox('!{Red}[BJ-BOT] Masa este plină!');
+        global.chatSend(player, '!{Red}[BJ-BOT] Masa este plină!');
         return;
     }
 
@@ -307,11 +307,11 @@ mp.events.addCommand('bja', (player) => {
         joinLobby(fakePlayer, lobby.id, lobby.name);
         added.push(botName);
     }
-    player.outputChatBox(`!{Green}[BJ-BOT] Adăugat: ${added.join(', ')}`);
+    global.chatSend(player, `!{Green}[BJ-BOT] Adăugat: ${added.join(', ')}`);
 
     if (!autoMode.has(player.name)) {
         autoMode.add(player.name);
-        player.outputChatBox('!{Green}[BJ-BOT] Auto-play PORNIT automat.');
+        global.chatSend(player, '!{Green}[BJ-BOT] Auto-play PORNIT automat.');
     }
 });
 
@@ -320,13 +320,13 @@ mp.events.addCommand('bja', (player) => {
 // ──────────────────────────────────────────
 mp.events.addCommand('bjsimbots', (player, _, numMeseStr, numBotiStr) => {
     if (!fs.existsSync(TABLES_SAVE_PATH)) {
-        player.outputChatBox('!{Red}[BJ-SIM] Nu există mese de blackjack salvate!');
+        global.chatSend(player, '!{Red}[BJ-SIM] Nu există mese de blackjack salvate!');
         return;
     }
 
     const tables = JSON.parse(fs.readFileSync(TABLES_SAVE_PATH, 'utf8'));
     if (tables.length === 0) {
-        player.outputChatBox('!{Red}[BJ-SIM] Nu există mese de blackjack salvate!');
+        global.chatSend(player, '!{Red}[BJ-SIM] Nu există mese de blackjack salvate!');
         return;
     }
 
@@ -357,13 +357,13 @@ mp.events.addCommand('bjsimbots', (player, _, numMeseStr, numBotiStr) => {
             totalAdded++;
         }
         mesePornite++;
-        player.outputChatBox(`!{Green}[BJ-SIM] Masa #${t} "${table.name}" — ${added.length} boți`);
+        global.chatSend(player, `!{Green}[BJ-SIM] Masa #${t} "${table.name}" — ${added.length} boți`);
     }
 
     if (!autoMode.has(player.name)) autoMode.add(player.name);
 
-    player.outputChatBox(`!{Green}[BJ-SIM] Simulare pornită: ${totalAdded} boți pe ${mesePornite} mese. Auto-play ON.`);
-    player.outputChatBox(`!{Yellow}[BJ-SIM] Folosește /bjstopsim pentru a opri.`);
+    global.chatSend(player, `!{Green}[BJ-SIM] Simulare pornită: ${totalAdded} boți pe ${mesePornite} mese. Auto-play ON.`);
+    global.chatSend(player, `!{Yellow}[BJ-SIM] Folosește /bjstopsim pentru a opri.`);
 });
 
 // ──────────────────────────────────────────
@@ -372,7 +372,7 @@ mp.events.addCommand('bjsimbots', (player, _, numMeseStr, numBotiStr) => {
 mp.events.addCommand('bjstopsim', (player) => {
     const bots = getPlayerBots(player);
     if (!bots.length) {
-        player.outputChatBox('!{Red}[BJ-SIM] Nu ai niciun bot activ!');
+        global.chatSend(player, '!{Red}[BJ-SIM] Nu ai niciun bot activ!');
         return;
     }
 
@@ -387,7 +387,7 @@ mp.events.addCommand('bjstopsim', (player) => {
     ownerBots.set(player.name, []);
     autoMode.delete(player.name);
 
-    player.outputChatBox(`!{Green}[BJ-SIM] Simulare oprită. ${count} boți eliminați.`);
+    global.chatSend(player, `!{Green}[BJ-SIM] Simulare oprită. ${count} boți eliminați.`);
 });
 
 // Cleanup la quit

@@ -30,6 +30,7 @@ let nativeRouletteBall  = null;
 let nativeTablePos      = null;
 let nativeTableHeading  = 0;
 let hiddenServerProp    = null;
+let hiddenServerProps   = [];    // array of all hidden props (multi-prop support)
 let dealerNPC           = null;  // dealer ped at the table
 let dealerIsServerPed   = false; // true if dealerNPC is a server-spawned ped
 let isAtRouletteTable   = false;
@@ -97,8 +98,15 @@ function loadAnimDict(dict) {
     return new Promise((resolve) => {
         if (mp.game.streaming.hasAnimDictLoaded(dict)) { resolve(); return; }
         mp.game.streaming.requestAnimDict(dict);
+        let elapsed = 0;
         let check = setInterval(() => {
-            if (mp.game.streaming.hasAnimDictLoaded(dict)) { clearInterval(check); resolve(); }
+            if (mp.game.streaming.hasAnimDictLoaded(dict)) { clearInterval(check); resolve(); return; }
+            elapsed += 50;
+            if (elapsed > 10000) { // 10s timeout — prevent infinite loop
+                clearInterval(check);
+                mp.console.logInfo(`[RULETĂ] WARNING: AnimDict "${dict}" failed to load after 10s`);
+                resolve(); // resolve anyway to prevent hanging
+            }
         }, 50);
     });
 }
@@ -109,12 +117,21 @@ function loadAnimDict(dict) {
 function spawnNativeRoulette(tableX, tableY, tableZ, tableHeading) {
     destroyNativeRoulette();
     const tableHash = mp.game.joaat('vw_prop_casino_roulette_01');
-    const serverObj = mp.game.object.getClosestObjectOfType(
-        tableX, tableY, tableZ, 5.0, tableHash, false, false, false);
-    if (serverObj && serverObj !== 0) {
-        mp.game.entity.setVisible(serverObj, false, false);
-        hiddenServerProp = serverObj;
+    // Hide ALL matching roulette props nearby (server-spawned AND IPL/interior props)
+    hiddenServerProps = [];
+    let searchX = tableX, searchY = tableY, searchZ = tableZ;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const obj = mp.game.object.getClosestObjectOfType(
+            searchX, searchY, searchZ, 5.0, tableHash, false, false, false);
+        if (!obj || obj === 0) break;
+        // Check we haven't already hidden this one
+        if (hiddenServerProps.includes(obj)) break;
+        mp.game.entity.setVisible(obj, false, false);
+        hiddenServerProps.push(obj);
+        // Nudge search position slightly to find the next one
+        searchX += 0.01;
     }
+    hiddenServerProp = hiddenServerProps.length > 0 ? hiddenServerProps[0] : null;
     const pos = new mp.Vector3(tableX, tableY, tableZ);
     nativeTablePos = pos;
     nativeTableHeading = tableHeading;
@@ -175,6 +192,11 @@ function destroyNativeRoulette() {
         try { mp.game.entity.setVisible(hiddenServerProp, true, false); } catch(e) {}
         hiddenServerProp = null;
     }
+    // Restore ALL hidden props (multi-prop support for casino interiors)
+    for (const handle of hiddenServerProps) {
+        try { mp.game.entity.setVisible(handle, true, false); } catch(e) {}
+    }
+    hiddenServerProps = [];
     nativeTablePos = null;
     nativeTableHeading = 0;
 }
@@ -264,6 +286,12 @@ function cleanupSpectator(key) {
     if (spec.hiddenProp) {
         try { mp.game.entity.setVisible(spec.hiddenProp, true, false); } catch(e) {}
     }
+    // Restore all hidden props (multi-prop support)
+    if (spec.hiddenProps) {
+        for (const handle of spec.hiddenProps) {
+            try { mp.game.entity.setVisible(handle, true, false); } catch(e) {}
+        }
+    }
     delete spectatorTables[key];
 }
 
@@ -275,12 +303,21 @@ mp.events.add('rouletteNearbySpinStart', (tableX, tableY, tableZ, tableHeading, 
     const pos = new mp.Vector3(tableX, tableY, tableZ);
     const tableHash = mp.game.joaat('vw_prop_casino_roulette_01');
 
-    // Hide server prop
+    // Hide server prop(s) — may be multiple overlapping in casino interiors
     const serverObj = mp.game.object.getClosestObjectOfType(tableX, tableY, tableZ, 5.0, tableHash, false, false, false);
     let hiddenProp = null;
+    let hiddenProps = [];
     if (serverObj && serverObj !== 0) {
         mp.game.entity.setVisible(serverObj, false, false);
         hiddenProp = serverObj;
+        hiddenProps.push(serverObj);
+        // Hide additional overlapping props
+        for (let i = 0; i < 4; i++) {
+            const extra = mp.game.object.getClosestObjectOfType(tableX, tableY, tableZ, 5.0, tableHash, false, false, false);
+            if (!extra || extra === 0) break;
+            mp.game.entity.setVisible(extra, false, false);
+            hiddenProps.push(extra);
+        }
     }
 
     const table = mp.objects.new(mp.game.joaat('vw_prop_casino_roulette_01'), pos);
@@ -290,7 +327,7 @@ mp.events.add('rouletteNearbySpinStart', (tableX, tableY, tableZ, tableHeading, 
     const ball = mp.objects.new(87196104,
         new mp.Vector3(pos.x, pos.y, pos.z));
 
-    spectatorTables[key] = { table, ball, hiddenProp };
+    spectatorTables[key] = { table, ball, hiddenProp, hiddenProps };
 
     // Play dealer spin animation on the server-spawned dealer ped
     if (tableIndex !== undefined) {
@@ -1229,6 +1266,7 @@ mp.events.add('render', () => {
     const excludeHandles = [mp.players.local.handle];
     if (nativeRouletteTable) excludeHandles.push(nativeRouletteTable.handle);
     if (hiddenServerProp) excludeHandles.push(hiddenServerProp);
+    for (const h of hiddenServerProps) { excludeHandles.push(h); }
     const ray = mp.raycasting.testPointToPoint(gameCam, endP, excludeHandles, 31);
     if (ray && ray.position) {
         rayHitPos = ray.position;
@@ -1548,6 +1586,32 @@ mp.events.add('render', () => {
     }
 
     // Controls hint — handled by CEF now
+
+    // ── KEYBIND INDICATOR HUD ──
+    const isAdmin = (mp.players.local.getVariable('adminLevel') || 0) >= 3;
+    const hintLines = [];
+    if (rouletteBetting && !rouletteSpinning) {
+        hintLines.push('~y~LMB~w~ Plaseaza pariu');
+        hintLines.push('~y~RMB~w~ Scoate pariu');
+        hintLines.push('~y~← →~w~ Schimba chip');
+        hintLines.push('~y~E~w~ Paraseste masa');
+    }
+    if (isAdmin) {
+        hintLines.push('');
+        hintLines.push('~o~[ADMIN]');
+        hintLines.push('~y~F~w~ Calibrare');
+        hintLines.push('~y~G~w~ Debug grid');
+        hintLines.push('~y~H~w~ Grid editor');
+        hintLines.push('~y~J~w~ Offset editor');
+    }
+    if (hintLines.length > 0) {
+        const hintX = 0.01;
+        const hintBaseY = 0.75;
+        for (let hi = 0; hi < hintLines.length; hi++) {
+            mp.game.graphics.drawText(hintLines[hi], [hintX, hintBaseY + hi * 0.022],
+                { font: 4, color: [220, 220, 220, 200], scale: [0.28, 0.28], outline: true, centre: false });
+        }
+    }
 });
 
 // ──────────────────────────────────────────
