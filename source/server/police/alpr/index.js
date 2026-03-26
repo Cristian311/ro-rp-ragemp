@@ -12,6 +12,7 @@ const crypto = require('crypto');
 // ──────────────────────────────────────────
 const dataDir = path.join(process.cwd(), 'data', 'alpr');
 const vehicleDbPath = path.join(dataDir, 'vehicles.json');
+const scanLogPath = path.join(dataDir, 'scan_log.json');
 fs.mkdirSync(dataDir, { recursive: true });
 
 let vehicleDb = {};
@@ -37,6 +38,86 @@ function saveVehicleDb() {
 }
 
 loadVehicleDb();
+
+// ──────────────────────────────────────────
+// SCAN LOG (saves each scan with timestamp)
+// ──────────────────────────────────────────
+let scanLog = [];
+
+function loadScanLog() {
+    try {
+        if (fs.existsSync(scanLogPath)) {
+            scanLog = JSON.parse(fs.readFileSync(scanLogPath, 'utf8').replace(/^\uFEFF/, ''));
+            console.log(`[ALPR] Loaded ${scanLog.length} scan log entries.`);
+        }
+    } catch (e) {
+        console.error(`[ALPR] Error loading scan log: ${e.message}`);
+        scanLog = [];
+    }
+}
+
+function saveScanLog() {
+    try {
+        fs.writeFileSync(scanLogPath, JSON.stringify(scanLog, null, 2), 'utf8');
+    } catch (e) {
+        console.error(`[ALPR] Error saving scan log: ${e.message}`);
+    }
+}
+
+function addScanLogEntry(officer, plate, model) {
+    scanLog.push({
+        timestamp: new Date().toISOString(),
+        officer: officer,
+        plate: plate,
+        model: model
+    });
+    // Keep last 500 entries
+    if (scanLog.length > 500) scanLog = scanLog.slice(-500);
+    saveScanLog();
+}
+
+loadScanLog();
+
+// ──────────────────────────────────────────
+// HUD POSITION (per-player, persistent)
+// ──────────────────────────────────────────
+const hudPosPath = path.join(dataDir, 'hud_positions.json');
+let hudPositions = {};
+
+function loadHudPositions() {
+    try {
+        if (fs.existsSync(hudPosPath)) {
+            hudPositions = JSON.parse(fs.readFileSync(hudPosPath, 'utf8').replace(/^\uFEFF/, ''));
+        }
+    } catch (e) {
+        console.error(`[ALPR] Error loading HUD positions: ${e.message}`);
+        hudPositions = {};
+    }
+}
+
+function saveHudPositions() {
+    try {
+        fs.writeFileSync(hudPosPath, JSON.stringify(hudPositions, null, 2), 'utf8');
+    } catch (e) {
+        console.error(`[ALPR] Error saving HUD positions: ${e.message}`);
+    }
+}
+
+loadHudPositions();
+
+mp.events.add('alpr:saveHudPos', (player, x, y) => {
+    const key = player.socialClub || player.name;
+    hudPositions[key] = { x: parseFloat(x), y: parseFloat(y) };
+    saveHudPositions();
+});
+
+mp.events.add('alpr:getHudPos', (player) => {
+    const key = player.socialClub || player.name;
+    const pos = hudPositions[key];
+    if (pos) {
+        player.call('alpr:loadHudPos', [pos.x, pos.y]);
+    }
+});
 
 // ──────────────────────────────────────────
 // LOAD VEHICLE NAMES FROM JSON (data/alpr/)
@@ -168,13 +249,12 @@ function resolveDisplayName(modelHashFromClient, serverVehicle) {
 // ──────────────────────────────────────────
 // SCAN EVENT — client sends vehicle data for lookup
 // ──────────────────────────────────────────
-mp.events.add('alpr:scan', (player, vehicleId, plate, modelHash, speed) => {
+mp.events.add('alpr:scan', (player, vehicleId, plate, modelHash) => {
     try {
         if (!player || !player.vehicle) return;
 
         plate = String(plate || '').trim().toUpperCase();
         modelHash = parseInt(modelHash) || 0;
-        speed = parseInt(speed) || 0;
         const parsedVehicleId = parseInt(vehicleId);
 
         // Try finding the target vehicle on server (use == for type-safe comparison)
@@ -266,11 +346,13 @@ mp.events.add('alpr:scan', (player, vehicleId, plate, modelHash, speed) => {
             insurance: record.insurance,
             wanted: record.wanted,
             stolen: record.stolen,
-            notes: record.notes || null,
-            speed: speed
+            notes: record.notes || null
         };
 
         player.call('alpr:result', [JSON.stringify(result)]);
+
+        // Log this scan
+        addScanLogEntry(player.name, record.plate, record.model);
 
     } catch (e) {
         console.error('[ALPR] Scan error:', e);
@@ -364,6 +446,26 @@ mp.events.addCommand('setplate', (player, _, plate, field, ...valueParts) => {
     global.chatSend(player, `!{3b82f6}[ALPR] !{22c55e}Actualizat ${plate}: ${field} = ${value}`);
 }, {
     description: 'Seteaza informatii vehicul in baza ALPR. Campuri: owner, insurance, license, wanted, stolen, notes, color, year'
+});
+
+// ──────────────────────────────────────────
+// SAVE NOTES (from CEF via client)
+// ──────────────────────────────────────────
+mp.events.add('alpr:saveNotes', (player, plate, notes) => {
+    if (!plate) return;
+    plate = String(plate).toUpperCase().trim();
+    notes = String(notes || '').trim();
+    if (!notes) return;
+
+    let record = vehicleDb[plate];
+    if (!record) {
+        record = { plate: plate, model: 'Vehicul Necunoscut', color: '-', vin: '-', year: '-', ownerName: '-', ownerId: '-', license: '-', insurance: true, wanted: false, stolen: false, notes: '' };
+        vehicleDb[plate] = record;
+    }
+
+    record.notes = notes;
+    saveVehicleDb();
+    player.call('alpr:notesSaved', [plate]);
 });
 
 // ──────────────────────────────────────────

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ro">
 <head>
 <meta charset="utf-8">
@@ -16,38 +16,43 @@
 
     #alpr-container {
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 420px;
+        bottom: 1.042vw;
+        right: 1.042vw;
+        width: 21.875vw;
         background: linear-gradient(135deg, rgba(15, 18, 30, 0.92) 0%, rgba(20, 25, 45, 0.95) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        backdrop-filter: blur(16px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        border: 0.052vw solid rgba(255, 255, 255, 0.08);
+        border-radius: 0.729vw;
+        backdrop-filter: blur(0.833vw);
+        box-shadow: 0 0.417vw 1.667vw rgba(0, 0, 0, 0.5), 0 0 0 0.052vw rgba(255, 255, 255, 0.05) inset;
         display: none;
         overflow: hidden;
+        /* Draggable: switch to top/left positioning */
+        top: auto;
+        left: auto;
     }
 
     #alpr-container.visible { display: block; }
 
     /* Header */
     .alpr-header {
-        padding: 16px 20px 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 0.833vw 1.042vw 0.625vw;
+        border-bottom: 0.052vw solid rgba(255, 255, 255, 0.06);
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        cursor: grab;
     }
+    .alpr-header:active { cursor: grabbing; }
     .alpr-title-row {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 0.521vw;
     }
     .alpr-dot {
-        width: 10px; height: 10px;
+        width: 0.521vw; height: 0.521vw;
         border-radius: 50%;
         background: #3b82f6;
-        box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+        box-shadow: 0 0 0.417vw rgba(59, 130, 246, 0.6);
         animation: pulse-dot 2s infinite;
     }
     @keyframes pulse-dot {
@@ -55,161 +60,196 @@
         50% { opacity: 0.5; }
     }
     .alpr-title {
-        font-size: 18px;
+        font-size: 0.938vw;
         font-weight: 800;
         color: #ffffff;
-        letter-spacing: 2px;
+        letter-spacing: 0.104vw;
     }
     .alpr-subtitle {
-        font-size: 11px;
+        font-size: 0.573vw;
         color: #6b7280;
-        margin-top: 2px;
+        margin-top: 0.104vw;
     }
     .speed-display {
         text-align: right;
     }
     .speed-value {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 28px;
+        font-size: 1.458vw;
         font-weight: 700;
         color: #f0f0f0;
         line-height: 1;
     }
     .speed-unit {
-        font-size: 11px;
+        font-size: 0.573vw;
         color: #6b7280;
         font-weight: 500;
-        letter-spacing: 1px;
+        letter-spacing: 0.052vw;
     }
 
     /* Plate Section */
     .plate-section {
-        padding: 14px 20px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 0.729vw 1.042vw;
+        border-bottom: 0.052vw solid rgba(255, 255, 255, 0.06);
     }
     .plate-label {
-        font-size: 10px;
+        font-size: 0.521vw;
         font-weight: 600;
         color: #6b7280;
-        letter-spacing: 2px;
+        letter-spacing: 0.104vw;
         text-transform: uppercase;
-        margin-bottom: 4px;
+        margin-bottom: 0.208vw;
     }
     .plate-number {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 28px;
+        font-size: 1.458vw;
         font-weight: 700;
         color: #ffffff;
-        letter-spacing: 3px;
+        letter-spacing: 0.156vw;
     }
     .plate-badges {
-        margin-top: 8px;
+        margin-top: 0.417vw;
         display: flex;
-        gap: 8px;
+        flex-wrap: wrap;
+        gap: 0.312vw;
     }
     .badge {
         display: inline-block;
-        padding: 3px 10px;
-        border-radius: 4px;
-        font-size: 11px;
+        padding: 0.156vw 0.521vw;
+        border-radius: 0.208vw;
+        font-size: 0.573vw;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.026vw;
     }
     .badge-danger {
         background: rgba(239, 68, 68, 0.2);
         color: #ef4444;
-        border: 1px solid rgba(239, 68, 68, 0.3);
+        border: 0.052vw solid rgba(239, 68, 68, 0.3);
     }
     .badge-success {
         background: rgba(34, 197, 94, 0.2);
         color: #22c55e;
-        border: 1px solid rgba(34, 197, 94, 0.3);
+        border: 0.052vw solid rgba(34, 197, 94, 0.3);
     }
     .badge-warning {
         background: rgba(234, 179, 8, 0.2);
         color: #eab308;
-        border: 1px solid rgba(234, 179, 8, 0.3);
+        border: 0.052vw solid rgba(234, 179, 8, 0.3);
+    }
+    .badge-info {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+        border: 0.052vw solid rgba(59, 130, 246, 0.3);
+    }
+    .badge-purple {
+        background: rgba(168, 85, 247, 0.2);
+        color: #a855f7;
+        border: 0.052vw solid rgba(168, 85, 247, 0.3);
     }
 
     /* Info Grid */
     .info-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1px;
-        margin: 0 16px 12px;
+        display: flex;
+        gap: 0.052vw;
+        margin: 0 0.833vw 0.625vw;
         background: rgba(255,255,255,0.04);
-        border-radius: 10px;
+        border-radius: 0.521vw;
         overflow: hidden;
-        border: 1px solid rgba(255,255,255,0.06);
-        margin-top: 12px;
+        border: 0.052vw solid rgba(255,255,255,0.06);
+        margin-top: 0.625vw;
+    }
+    .info-card {
+        flex: 1;
     }
     .info-card {
         background: rgba(15, 18, 30, 0.6);
-        padding: 12px 14px;
+        padding: 0.625vw 0.729vw;
     }
     .info-card-title {
-        font-size: 11px;
+        font-size: 0.573vw;
         font-weight: 700;
         color: #9ca3af;
-        margin-bottom: 8px;
-        letter-spacing: 0.5px;
+        margin-bottom: 0.417vw;
+        letter-spacing: 0.026vw;
     }
     .info-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 3px 0;
+        padding: 0.156vw 0;
     }
     .info-label {
-        font-size: 12px;
+        font-size: 0.625vw;
         color: #6b7280;
     }
     .info-value {
-        font-size: 12px;
+        font-size: 0.625vw;
         font-weight: 600;
         color: #e5e7eb;
         text-align: right;
     }
 
-    /* Notes */
-    .notes-section {
-        margin: 0 16px 14px;
-        background: rgba(234, 179, 8, 0.06);
-        border: 1px solid rgba(234, 179, 8, 0.15);
-        border-radius: 10px;
-        padding: 12px 14px;
-    }
-    .notes-title {
-        font-size: 12px;
-        font-weight: 700;
-        color: #eab308;
-        margin-bottom: 6px;
-    }
-    .notes-text {
-        font-size: 12px;
-        color: #d1d5db;
-        line-height: 1.5;
-    }
+
 
     /* Footer */
     .alpr-footer {
-        padding: 10px 20px;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-        font-size: 11px;
+        padding: 0.521vw 1.042vw;
+        border-top: 0.052vw solid rgba(255, 255, 255, 0.06);
+        font-size: 0.573vw;
         color: #4b5563;
     }
 
     /* No target state */
     .no-target {
-        padding: 40px 20px;
+        padding: 2.083vw 1.042vw;
         text-align: center;
         color: #4b5563;
-        font-size: 13px;
+        font-size: 0.677vw;
     }
     .no-target .scan-icon {
-        font-size: 36px;
-        margin-bottom: 10px;
+        font-size: 1.875vw;
+        margin-bottom: 0.521vw;
         opacity: 0.4;
+    }
+
+    /* Scanning state */
+    .scanning-overlay {
+        padding: 1.562vw 1.042vw;
+        text-align: center;
+        display: none;
+    }
+    .scanning-overlay.active { display: block; }
+    .scanning-text {
+        font-size: 0.781vw;
+        font-weight: 700;
+        color: #3b82f6;
+        letter-spacing: 0.104vw;
+        margin-bottom: 0.729vw;
+        animation: scanning-pulse 1.2s infinite;
+    }
+    @keyframes scanning-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+    .scan-progress-bar {
+        width: 100%;
+        height: 0.208vw;
+        background: rgba(59, 130, 246, 0.15);
+        border-radius: 0.104vw;
+        overflow: hidden;
+    }
+    .scan-progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        border-radius: 0.104vw;
+        transition: width 0.2s linear;
+        box-shadow: 0 0 0.417vw rgba(59, 130, 246, 0.5);
+    }
+    .scanning-sub {
+        margin-top: 0.521vw;
+        font-size: 0.573vw;
+        color: #4b5563;
     }
 
     /* Scan animation */
@@ -220,7 +260,7 @@
         content: '';
         position: absolute;
         top: 0; left: 0; right: 0;
-        height: 2px;
+        height: 0.104vw;
         background: linear-gradient(90deg, transparent, #3b82f6, transparent);
         animation: scan-line 2s infinite;
     }
@@ -241,10 +281,6 @@
             </div>
             <div class="alpr-subtitle" id="lastScan">Ultima scanare: --:--:-- --</div>
         </div>
-        <div class="speed-display">
-            <div class="speed-value" id="speedValue">---</div>
-            <div class="speed-unit">MPH</div>
-        </div>
     </div>
 
     <!-- Content area -->
@@ -252,6 +288,12 @@
         <div class="no-target" id="noTarget">
             <div class="scan-icon">◎</div>
             <div>Se scaneaza... Indreapta vehiculul spre un alt vehicul.</div>
+        </div>
+
+        <div class="scanning-overlay" id="scanningOverlay">
+            <div class="scanning-text">SCANNING...</div>
+            <div class="scan-progress-bar"><div class="scan-progress-fill" id="scanProgressFill"></div></div>
+            <div class="scanning-sub">Analiză vehicul detectat</div>
         </div>
 
         <div id="vehicleData" style="display:none;">
@@ -279,11 +321,7 @@
                 </div>
             </div>
 
-            <!-- Notes -->
-            <div class="notes-section" id="notesSection" style="display:none;">
-                <div class="notes-title">Notițe</div>
-                <div class="notes-text" id="notesText"></div>
-            </div>
+
         </div>
     </div>
 
@@ -294,6 +332,8 @@
     const container = document.getElementById('alpr-container');
     const noTarget = document.getElementById('noTarget');
     const vehicleData = document.getElementById('vehicleData');
+    const scanningOverlay = document.getElementById('scanningOverlay');
+    const scanProgressFill = document.getElementById('scanProgressFill');
 
     function show() {
         container.classList.add('visible');
@@ -306,13 +346,25 @@
 
     function resetData() {
         noTarget.style.display = '';
+        scanningOverlay.classList.remove('active');
         vehicleData.style.display = 'none';
-        document.getElementById('speedValue').textContent = '---';
         document.getElementById('lastScan').textContent = 'Ultima scanare: --:--:-- --';
+        scanProgressFill.style.width = '0%';
     }
 
-    function updateSpeed(speed) {
-        document.getElementById('speedValue').textContent = Math.round(speed);
+    function showScanning() {
+        noTarget.style.display = 'none';
+        vehicleData.style.display = 'none';
+        scanningOverlay.classList.add('active');
+        scanProgressFill.style.width = '0%';
+    }
+
+    function updateScanProgress(pct) {
+        scanProgressFill.style.width = (pct * 100).toFixed(1) + '%';
+    }
+
+    function hideScanningBar() {
+        scanningOverlay.classList.remove('active');
     }
 
     function updateScanTime() {
@@ -328,6 +380,7 @@
 
     function updateVehicleData(data) {
         noTarget.style.display = 'none';
+        scanningOverlay.classList.remove('active');
         vehicleData.style.display = '';
         updateScanTime();
 
@@ -342,10 +395,24 @@
             badgesEl.innerHTML += '<span class="badge badge-success">ASIGURAT</span>';
         }
         if (data.wanted) {
-            badgesEl.innerHTML += '<span class="badge badge-danger">CAUTAT</span>';
+            badgesEl.innerHTML += '<span class="badge badge-danger">CĂUTAT</span>';
         }
         if (data.stolen) {
             badgesEl.innerHTML += '<span class="badge badge-warning">FURAT</span>';
+        }
+        if (data.license === 'SUSPENDAT' || data.license === 'EXPIRAT') {
+            badgesEl.innerHTML += '<span class="badge badge-danger">PERMIS ' + data.license + '</span>';
+        } else if (data.license === 'VALID') {
+            badgesEl.innerHTML += '<span class="badge badge-success">PERMIS VALID</span>';
+        }
+        if (data.speed && parseInt(data.speed) > 100) {
+            badgesEl.innerHTML += '<span class="badge badge-purple">VITEZĂ: ' + data.speed + ' MPH</span>';
+        }
+        if (data.tags && Array.isArray(data.tags)) {
+            data.tags.forEach(t => {
+                const cls = t.type === 'danger' ? 'badge-danger' : t.type === 'warning' ? 'badge-warning' : t.type === 'success' ? 'badge-success' : t.type === 'purple' ? 'badge-purple' : 'badge-info';
+                badgesEl.innerHTML += '<span class="badge ' + cls + '">' + t.label + '</span>';
+            });
         }
 
         // Vehicle info
@@ -362,19 +429,58 @@
         licEl.textContent = data.license || '-';
         licEl.style.color = data.license === 'VALID' ? '#22c55e' : '#ef4444';
 
-        // Notes
-        const notesSection = document.getElementById('notesSection');
-        if (data.notes) {
-            notesSection.style.display = '';
-            document.getElementById('notesText').textContent = data.notes;
-        } else {
-            notesSection.style.display = 'none';
-        }
     }
 
     function clearTarget() {
         noTarget.style.display = '';
+        scanningOverlay.classList.remove('active');
         vehicleData.style.display = 'none';
+    }
+
+    // ── DRAGGABLE HUD ──
+    let isDragging = false;
+    let dragOffsetX = 0, dragOffsetY = 0;
+
+    const header = document.querySelector('.alpr-header');
+    header.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        const rect = container.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        let x = e.clientX - dragOffsetX;
+        let y = e.clientY - dragOffsetY;
+        // Clamp to viewport
+        x = Math.max(0, Math.min(window.innerWidth - container.offsetWidth, x));
+        y = Math.max(0, Math.min(window.innerHeight - container.offsetHeight, y));
+        container.style.left = x + 'px';
+        container.style.top = y + 'px';
+        container.style.right = 'auto';
+        container.style.bottom = 'auto';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        // Save position
+        const rect = container.getBoundingClientRect();
+        try {
+            mp.trigger('alpr:saveHudPos', rect.left, rect.top);
+        } catch(_) {}
+    });
+
+    // Load saved position on init
+    function setHudPosition(x, y) {
+        if (x != null && y != null) {
+            container.style.left = x + 'px';
+            container.style.top = y + 'px';
+            container.style.right = 'auto';
+            container.style.bottom = 'auto';
+        }
     }
 </script>
 </body>

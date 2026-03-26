@@ -5,7 +5,6 @@
  * KEYBINDS:
  *   J — Toggle Stalker debug rays (albastru=fata, verde=spate, rosu=hit)
  *   H — Toggle ALPR debug rays (galben=miss, rosu=hit)
- *   K — Save debug log to server JSON
  */
 
 // ──────────────────────────────────────────
@@ -133,24 +132,6 @@ mp.keys.bind(0x48, true, () => {
         text: alprDebug
             ? '!{f59e0b}[DEBUG] !{ffc800}ALPR rays !{22c55e}ON !{FFFFFF}(galben=miss, rosu=hit)'
             : '!{f59e0b}[DEBUG] !{ffc800}ALPR rays !{ef4444}OFF'
-    }));
-});
-
-// K (0x4B) — Save debug log to server JSON
-mp.keys.bind(0x4B, true, () => {
-    if (global.chatInputActive) return;
-    if (debugLog.length === 0) {
-        mp.events.call('chat:receive', JSON.stringify({
-            type: 'system',
-            text: '!{f59e0b}[DEBUG] !{FFFFFF}Nu exista loguri de salvat.'
-        }));
-        return;
-    }
-    // Send log to server to save as JSON
-    mp.events.callRemote('debug:saveLog', JSON.stringify(debugLog));
-    mp.events.call('chat:receive', JSON.stringify({
-        type: 'system',
-        text: `!{f59e0b}[DEBUG] !{22c55e}${debugLog.length} loguri trimise la server pentru salvare.`
     }));
 });
 

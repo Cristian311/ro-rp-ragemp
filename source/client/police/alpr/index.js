@@ -12,7 +12,13 @@ let scanInterval = null;
 let lastScannedVehicle = null;
 let lastScannedTime = 0;
 const SCAN_COOLDOWN = 1500; // ms between server lookups for same vehicle
-const RAYCAST_DISTANCE = 350.0; // how far ahead to scan (meters)
+const RAYCAST_DISTANCE = 70.0; // how far ahead to scan (meters) — matches Stalker
+const SCAN_DURATION = 6000; // 6 seconds scanning animation before showing result
+
+// Scanning state
+let scanningTarget = null; // remoteId of vehicle currently being scanned
+let scanningStartTime = 0; // when scanning started
+let scanningComplete = false; // whether 6s scan is done for current target
 
 // ──────────────────────────────────────────
 // BROWSER MANAGEMENT
@@ -20,7 +26,7 @@ const RAYCAST_DISTANCE = 350.0; // how far ahead to scan (meters)
 function ensureBrowser() {
     if (alprBrowser) return;
     try {
-        alprBrowser = mp.browsers.new('package://alpr/index.html');
+        alprBrowser = mp.browsers.new('package://police/alpr/index.html');
     } catch (e) {
         mp.console.logError('[ALPR] Failed to create browser: ' + e);
     }
@@ -46,9 +52,16 @@ function enableALPR() {
     if (alprActive) return;
     alprActive = true;
     lastScannedVehicle = null;
+    scanningTarget = null;
+    scanningStartTime = 0;
+    scanningComplete = false;
 
     ensureBrowser();
-    setTimeout(() => execBrowser('show()'), 150);
+    setTimeout(() => {
+        execBrowser('show()');
+        // Request saved HUD position from server
+        mp.events.callRemote('alpr:getHudPos');
+    }, 150);
 
     // Start scanning loop
     scanInterval = setInterval(scanForward, 200);
@@ -63,6 +76,8 @@ function disableALPR() {
     if (!alprActive) return;
     alprActive = false;
     lastScannedVehicle = null;
+    scanningTarget = null;
+    scanningComplete = false;
 
     if (scanInterval) {
         clearInterval(scanInterval);
@@ -90,26 +105,22 @@ function scanForward() {
     // Must be in a vehicle
     if (!player.vehicle) {
         execBrowser('clearTarget()');
-        execBrowser('updateSpeed(0)');
         lastScannedVehicle = null;
         return;
     }
 
     const veh = player.vehicle;
 
-    // Show player's own speed
-    const mySpeed = veh.getSpeed() * 2.23694; // m/s => mph
-    execBrowser(`updateSpeed(${mySpeed.toFixed(0)})`);
 
     // Multi-ray scan: cast a fan of rays at different horizontal angles and heights
     // This detects vehicles even when not directly behind them
     const fwdVec = veh.getForwardVector();
     const vehPos = veh.getCoords(true);
 
-    // Horizontal spread angles (degrees) — covers ~110° cone
-    const hAngles = [0, -2, 2, -5, 5, -9, 9, -14, 14, -20, 20, -28, 28, -37, 37, -46, 46, -55, 55];
-    // Base height offsets from vehicle center
-    const zOffsets = [-0.3, 0.2, 0.8, 1.5];
+    // Horizontal spread angles (degrees) — 35 rays, dense coverage
+    const hAngles = [0, 1.5, -1.5, 3.5, -3.5, 5.5, -5.5, 8, -8, 10.5, -10.5, 13, -13, 16, -16, 19, -19, 22, -22, 26, -26, 30, -30, 35, -35, 40, -40, 46, -46, 50, -50, 55, -55, 58, -58];
+    // Single height offset — just above vehicle roof
+    const zOffsets = [0.8];
     // Vertical pitch angles (degrees) — negative = downhill, positive = uphill
     const vAngles = [-8, -4, -1, 2, 6, 11, 17];
 
@@ -170,41 +181,61 @@ function scanForward() {
     }
 
     if (closestVeh) {
-        const targetSpeed = closestVeh.getSpeed() * 2.23694; // m/s => mph
+        const targetId = closestVeh.remoteId;
 
         // Debug log
         if (isDbg && dbg) {
             dbg.addDebugLog('alpr', {
-                targetSpeed: Math.round(targetSpeed),
                 distance: Math.round(closestDist),
                 plate: closestVeh.getNumberPlateText().trim(),
                 totalRays: hAngles.length * zOffsets.length * vAngles.length
             });
         }
 
-        // Update speed display to target vehicle speed
-        execBrowser(`updateSpeed(${targetSpeed.toFixed(0)})`);
+
+        // New target detected — start 6s scanning phase
+        if (targetId !== scanningTarget) {
+            scanningTarget = targetId;
+            scanningStartTime = Date.now();
+            scanningComplete = false;
+            lastScannedVehicle = null;
+            execBrowser('showScanning()');
+        }
 
         const now = Date.now();
-        const targetId = closestVeh.remoteId;
+        const elapsed = now - scanningStartTime;
 
-        // Only send to server if we haven't scanned this vehicle recently
-        if (targetId !== lastScannedVehicle || (now - lastScannedTime) > SCAN_COOLDOWN) {
-            lastScannedVehicle = targetId;
-            lastScannedTime = now;
+        // Update scanning progress in UI
+        if (!scanningComplete) {
+            const progress = Math.min(elapsed / SCAN_DURATION, 1.0);
+            execBrowser(`updateScanProgress(${progress.toFixed(2)})`);
+        }
 
-            // Get basic client-side info
+        // 6 seconds elapsed — scanning complete, send to server
+        if (!scanningComplete && elapsed >= SCAN_DURATION) {
+            scanningComplete = true;
+            execBrowser('hideScanningBar()');
+
             const plate = closestVeh.getNumberPlateText().trim();
             const modelHash = closestVeh.model;
-
-            // Send to server — server handles ALL name resolution via hash lookup
-            mp.events.callRemote('alpr:scan', targetId, plate, modelHash, targetSpeed.toFixed(0));
+            lastScannedVehicle = targetId;
+            lastScannedTime = now;
+            mp.events.callRemote('alpr:scan', targetId, plate, modelHash);
+        } else if (scanningComplete && (targetId !== lastScannedVehicle || (now - lastScannedTime) > SCAN_COOLDOWN)) {
+            // Re-scan same vehicle after cooldown
+            lastScannedVehicle = targetId;
+            lastScannedTime = now;
+            const plate = closestVeh.getNumberPlateText().trim();
+            const modelHash = closestVeh.model;
+            mp.events.callRemote('alpr:scan', targetId, plate, modelHash);
         }
     } else {
-        // No vehicle detected
-        if (lastScannedVehicle !== null) {
-            execBrowser('clearTarget()');
-            lastScannedVehicle = null;
+        // No vehicle detected — keep last scan on display (don't clear)
+        // Only reset scanning state if we were mid-scan
+        if (scanningTarget !== null && !scanningComplete) {
+            scanningTarget = null;
+            scanningComplete = false;
+            execBrowser('hideScanningBar()');
         }
     }
 }
@@ -215,11 +246,25 @@ function scanForward() {
 mp.events.add('alpr:result', (jsonStr) => {
     if (!alprActive || !alprBrowser) return;
     try {
-        const safeJson = JSON.stringify(JSON.parse(jsonStr));
+        const data = JSON.parse(jsonStr);
+        const safeJson = JSON.stringify(data);
         execBrowser(`updateVehicleData(${safeJson})`);
     } catch (e) {
         mp.console.logError('[ALPR] Failed to parse result: ' + e);
     }
+});
+
+// Notes saved confirmation — removed
+
+// CEF → client → server: save HUD position
+mp.events.add('alpr:saveHudPos', (x, y) => {
+    mp.events.callRemote('alpr:saveHudPos', x, y);
+});
+
+// Server → client: load saved HUD position
+mp.events.add('alpr:loadHudPos', (x, y) => {
+    if (!alprBrowser) return;
+    execBrowser(`setHudPosition(${x}, ${y})`);
 });
 
 // ──────────────────────────────────────────
@@ -237,7 +282,6 @@ mp.events.add('alpr:toggle', (state) => {
 mp.events.add('playerLeaveVehicle', () => {
     if (alprActive) {
         execBrowser('clearTarget()');
-        execBrowser('updateSpeed(0)');
         lastScannedVehicle = null;
     }
 });

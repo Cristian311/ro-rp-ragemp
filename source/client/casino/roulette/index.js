@@ -1572,18 +1572,7 @@ mp.events.add('render', () => {
 
     // HUD: bets, history, status — all handled by CEF now
 
-    // ── CHIP GLOW EFFECT ──
-    const glowPulse = (Math.sin(Date.now() * 0.005) + 1) / 2; // 0..1 pulsing
-    const glowAlpha = Math.floor(80 + glowPulse * 120); // 80..200
-    const glowSize = 0.025 + glowPulse * 0.015; // 0.025..0.040
-    for (const chip of placedChipObjects) {
-        try {
-            const cp = chip.obj.position;
-            mp.game.graphics.drawMarker(25, cp.x, cp.y, cp.z + 0.015,
-                0, 0, 0, 0, 0, 0, glowSize, glowSize, 0.003,
-                255, 215, 0, glowAlpha, false, false, 2, false, null, null, false);
-        } catch(e) {}
-    }
+    // ── CHIP GLOW EFFECT (disabled) ──
 
     // Controls hint — handled by CEF now
 
