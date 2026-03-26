@@ -113,27 +113,7 @@
   ],
   "2": [
     {
-      "number": 23,
-      "color": "red"
-    },
-    {
-      "number": 15,
-      "color": "black"
-    },
-    {
-      "number": 4,
-      "color": "black"
-    },
-    {
-      "number": 7,
-      "color": "red"
-    },
-    {
-      "number": 13,
-      "color": "black"
-    },
-    {
-      "number": 32,
+      "number": 14,
       "color": "red"
     },
     {
@@ -141,43 +121,51 @@
       "color": "red"
     },
     {
-      "number": "00",
-      "color": "green"
+      "number": 35,
+      "color": "black"
     },
     {
-      "number": 0,
-      "color": "green"
+      "number": 7,
+      "color": "red"
+    },
+    {
+      "number": 8,
+      "color": "black"
     },
     {
       "number": 13,
       "color": "black"
     },
     {
-      "number": 3,
-      "color": "red"
-    },
-    {
-      "number": 26,
+      "number": 35,
       "color": "black"
     },
     {
-      "number": 0,
+      "number": 35,
+      "color": "black"
+    },
+    {
+      "number": 30,
+      "color": "red"
+    },
+    {
+      "number": 22,
+      "color": "black"
+    },
+    {
+      "number": 35,
+      "color": "black"
+    },
+    {
+      "number": "00",
       "color": "green"
     },
     {
-      "number": 6,
-      "color": "black"
-    },
-    {
-      "number": 23,
+      "number": 36,
       "color": "red"
     },
     {
-      "number": 17,
-      "color": "black"
-    },
-    {
-      "number": 23,
+      "number": 36,
       "color": "red"
     },
     {
@@ -185,11 +173,23 @@
       "color": "red"
     },
     {
+      "number": 8,
+      "color": "black"
+    },
+    {
+      "number": 1,
+      "color": "red"
+    },
+    {
       "number": 34,
       "color": "red"
     },
     {
-      "number": 26,
+      "number": 3,
+      "color": "red"
+    },
+    {
+      "number": 31,
       "color": "black"
     }
   ],

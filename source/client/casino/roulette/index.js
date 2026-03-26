@@ -243,6 +243,9 @@ let rouletteSpinData = null;
 // Buffered result — shown only after animation completes
 let pendingResult = null;
 
+// Phase counter — incremented on every betting start to cancel stale result handlers
+let roulettePhase = 0;
+
 // ──────────────────────────────────────────
 // SERVER DEALER PED — apply clothing + idle when streamed in
 // ──────────────────────────────────────────
@@ -1154,6 +1157,7 @@ mp.events.add('render', () => {
     if (pendingResult && !rouletteSpinData) {
         const pr = pendingResult;
         pendingResult = null;
+        const phaseAtResult = roulettePhase;
         const colorName = pr.color === 'red' ? 'Rosu' : pr.color === 'black' ? 'Negru' : 'Verde';
         try { mp.events.call('chat:receive', JSON.stringify({type: 'system', text: `[RULETA] Rezultat: ${pr.number} (${colorName})`})); } catch(e) {}
         if (rouletteBrowser) {
@@ -1165,6 +1169,8 @@ mp.events.add('render', () => {
         if (rouletteHistory.length > 15) rouletteHistory.pop();
         // Keep spin camera for a few more seconds so player sees ball resting
         setTimeout(() => {
+            // Only restore camera and clear state if no new betting phase started
+            if (roulettePhase !== phaseAtResult) return;
             if (!global.freecamActive) restoreCameraFromWheel();
             rouletteBetting = false;
             clearChipObjects(); clearOtherChipObjects();
@@ -1576,31 +1582,7 @@ mp.events.add('render', () => {
 
     // Controls hint — handled by CEF now
 
-    // ── KEYBIND INDICATOR HUD ──
-    const isAdmin = (mp.players.local.getVariable('adminLevel') || 0) >= 3;
-    const hintLines = [];
-    if (rouletteBetting && !rouletteSpinning) {
-        hintLines.push('~y~LMB~w~ Plaseaza pariu');
-        hintLines.push('~y~RMB~w~ Scoate pariu');
-        hintLines.push('~y~← →~w~ Schimba chip');
-        hintLines.push('~y~E~w~ Paraseste masa');
-    }
-    if (isAdmin) {
-        hintLines.push('');
-        hintLines.push('~o~[ADMIN]');
-        hintLines.push('~y~F~w~ Calibrare');
-        hintLines.push('~y~G~w~ Debug grid');
-        hintLines.push('~y~H~w~ Grid editor');
-        hintLines.push('~y~J~w~ Offset editor');
-    }
-    if (hintLines.length > 0) {
-        const hintX = 0.01;
-        const hintBaseY = 0.75;
-        for (let hi = 0; hi < hintLines.length; hi++) {
-            mp.game.graphics.drawText(hintLines[hi], [hintX, hintBaseY + hi * 0.022],
-                { font: 4, color: [220, 220, 220, 200], scale: [0.28, 0.28], outline: true, centre: false });
-        }
-    }
+
 });
 
 // ──────────────────────────────────────────
@@ -1856,6 +1838,18 @@ mp.events.add('closeRouletteUI', closeRouletteUI);
 // ──────────────────────────────────────────
 
 mp.events.add('rouletteBettingStart', (betTime) => {
+    roulettePhase++;
+    // Force-cancel any stale spin state from alt-tab / desynced events
+    if (rouletteSpinData) {
+        rouletteSpinData = null;
+    }
+    if (pendingResult) {
+        pendingResult = null;
+    }
+    // Restore camera if still on spin cam
+    if (spinCam) {
+        restoreCameraFromWheel();
+    }
     rouletteSpinning = false;
     rouletteBetting = true;
     myBets = [];

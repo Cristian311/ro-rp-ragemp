@@ -1,6 +1,0 @@
-public enum ItemType
-{
-
-  CasinoChips = 12,
-
-}

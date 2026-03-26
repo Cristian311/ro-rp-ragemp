@@ -87,7 +87,7 @@ mp.events.add("playerJoin", (player) => {
     });
 
     // Initialize money
-    player.money = 0;
+    player.money = 10000;
 
     // Assign admin level from database
     const adminLevel = getAdminLevelFromDb(player.name);

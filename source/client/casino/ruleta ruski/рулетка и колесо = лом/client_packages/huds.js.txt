@@ -1,3 +1,0 @@
-mp.events.add('showFortune', function (hour, minute) {
-    mp.gui.execute(`HUD.showFortune(${hour},${minute})`);
-});
