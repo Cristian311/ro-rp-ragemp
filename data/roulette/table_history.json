@@ -113,6 +113,54 @@
   ],
   "2": [
     {
+      "number": 21,
+      "color": "red"
+    },
+    {
+      "number": 17,
+      "color": "black"
+    },
+    {
+      "number": 16,
+      "color": "red"
+    },
+    {
+      "number": 34,
+      "color": "red"
+    },
+    {
+      "number": 36,
+      "color": "red"
+    },
+    {
+      "number": 22,
+      "color": "black"
+    },
+    {
+      "number": 21,
+      "color": "red"
+    },
+    {
+      "number": 11,
+      "color": "black"
+    },
+    {
+      "number": 21,
+      "color": "red"
+    },
+    {
+      "number": 17,
+      "color": "black"
+    },
+    {
+      "number": 23,
+      "color": "red"
+    },
+    {
+      "number": 18,
+      "color": "red"
+    },
+    {
       "number": 14,
       "color": "red"
     },
@@ -142,54 +190,6 @@
     },
     {
       "number": 35,
-      "color": "black"
-    },
-    {
-      "number": 30,
-      "color": "red"
-    },
-    {
-      "number": 22,
-      "color": "black"
-    },
-    {
-      "number": 35,
-      "color": "black"
-    },
-    {
-      "number": "00",
-      "color": "green"
-    },
-    {
-      "number": 36,
-      "color": "red"
-    },
-    {
-      "number": 36,
-      "color": "red"
-    },
-    {
-      "number": 9,
-      "color": "red"
-    },
-    {
-      "number": 8,
-      "color": "black"
-    },
-    {
-      "number": 1,
-      "color": "red"
-    },
-    {
-      "number": 34,
-      "color": "red"
-    },
-    {
-      "number": 3,
-      "color": "red"
-    },
-    {
-      "number": 31,
       "color": "black"
     }
   ],
