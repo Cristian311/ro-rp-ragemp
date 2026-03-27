@@ -500,7 +500,7 @@ function positionPlayerAtTable(seatIndex) {
 let rayHitPos     = null;
 let rayPlanePos   = null;
 let rayHitBetZone = null;
-let selectedChipAmount = 25;
+let selectedChipAmount = 50;
 
 const RED_NUMBERS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 function getNumberColor(n) {
@@ -1438,7 +1438,7 @@ mp.events.add('render', () => {
         // Create or swap preview chip object when chip amount changes
         if (!previewChipObject || previewChipAmount !== selectedChipAmount) {
             if (previewChipObject) { try { previewChipObject.destroy(); } catch(e) {} previewChipObject = null; }
-            const propName = CHIP_AMOUNT_TO_HASH[selectedChipAmount] || CHIP_AMOUNT_TO_HASH[25];
+            const propName = CHIP_AMOUNT_TO_HASH[selectedChipAmount] || CHIP_AMOUNT_TO_HASH[50];
             const hash = mp.game.joaat(propName);
             if (mp.game.streaming.hasModelLoaded(hash)) {
                 previewChipObject = mp.objects.new(hash, new mp.Vector3(displayPos.x, displayPos.y, displayPos.z + 0.01 + CHIP_HEIGHT_OFFSET));
@@ -1588,7 +1588,7 @@ mp.events.add('render', () => {
 // ──────────────────────────────────────────
 // CHIP SELECT (1-6) + PLACE (LMB) + CLEAR (C)
 // ──────────────────────────────────────────
-const CHIP_AMOUNTS = [25, 50, 100, 500, 1000, 5000];
+const CHIP_AMOUNTS = [50, 100, 500, 1000, 2000, 3000, 5000];
 let selectedChipIndex = 0;
 
 // Arrow keys cycle through chips
@@ -1621,11 +1621,12 @@ mp.keys.bind(0x43, true, () => { // C key
 
 // Map chip amounts to specific prop models
 let CHIP_AMOUNT_TO_HASH = {
-    25:   'vw_prop_chip_10dollar_st',
     50:   'vw_prop_chip_50dollar_x1',
     100:  'vw_prop_chip_500dollar_x1',
     500:  'vw_prop_chip_1kdollar_st',
     1000: 'vw_prop_chip_1kdollar_st',
+    2000: 'vw_prop_chip_1kdollar_st',
+    3000: 'vw_prop_chip_5kdollar_x1',
     5000: 'vw_prop_chip_5kdollar_x1',
 };
 
@@ -1649,17 +1650,20 @@ function requestModel(hash) {
 }
 
 function spawnChipOnTable(x, y, z, amount, zoneKey) {
-    const propName = CHIP_AMOUNT_TO_HASH[amount] || CHIP_AMOUNT_TO_HASH[25];
+    const propName = CHIP_AMOUNT_TO_HASH[amount] || CHIP_AMOUNT_TO_HASH[50];
     const hash = mp.game.joaat(propName);
     requestModel(hash).then(() => {
         try {
             // Count chips already on this zone for stacking height
             const zoneChips = zoneKey && placedChipsByZone[zoneKey] ? placedChipsByZone[zoneKey].length : 0;
             const stackOffset = zoneChips * CHIP_STACK_OFFSET;
-            const chipZ = z + CHIP_HEIGHT_OFFSET + stackOffset + 0.005; // +0.005 base offset so first chip doesn't clip
+            const chipZ = z + CHIP_HEIGHT_OFFSET + stackOffset + 0.005;
+            // Slight random x/y offset for realism
+            const randX = (Math.random() - 0.5) * 0.006;
+            const randY = (Math.random() - 0.5) * 0.006;
             const chip = mp.objects.new(hash,
-                new mp.Vector3(x, y, chipZ));
-            const entry = { obj: chip, zoneKey, x, y, z: chipZ };
+                new mp.Vector3(x + randX, y + randY, chipZ));
+            const entry = { obj: chip, zoneKey, x: x + randX, y: y + randY, z: chipZ };
             placedChipObjects.push(entry);
             if (zoneKey) {
                 if (!placedChipsByZone[zoneKey]) placedChipsByZone[zoneKey] = [];
@@ -1670,13 +1674,15 @@ function spawnChipOnTable(x, y, z, amount, zoneKey) {
 }
 
 function spawnOtherChipOnTable(x, y, z, amount) {
-    const propName = CHIP_AMOUNT_TO_HASH[amount] || CHIP_AMOUNT_TO_HASH[25];
+    const propName = CHIP_AMOUNT_TO_HASH[amount] || CHIP_AMOUNT_TO_HASH[50];
     const hash = mp.game.joaat(propName);
     requestModel(hash).then(() => {
         try {
             const stackOffset = otherChipObjects.length * CHIP_STACK_OFFSET;
+            const randX = (Math.random() - 0.5) * 0.012;
+            const randY = (Math.random() - 0.5) * 0.012;
             const chip = mp.objects.new(hash,
-                new mp.Vector3(x, y, z + CHIP_HEIGHT_OFFSET + stackOffset));
+                new mp.Vector3(x + randX, y + randY, z + CHIP_HEIGHT_OFFSET + stackOffset));
             otherChipObjects.push(chip);
         } catch(e) {}
     });

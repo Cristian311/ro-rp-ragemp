@@ -152,6 +152,21 @@ mp.events.addCommand('saveanimpos', (name) => {
         chatMsg(`Roulette offset: F=${data.offset_f} R=${data.offset_r} U=${data.offset_u} H=${data.offset_heading}`);
     }
 
+    // Calculate relative offset from slots machine if at one
+    const sl = global.tableData && global.tableData.slots;
+    if (sl) {
+        const dx = pos.x - sl.x;
+        const dy = pos.y - sl.y;
+        const dz = pos.z - sl.z;
+        const hRad = sl.heading * Math.PI / 180;
+        data.tableType = 'slots';
+        data.offset_f = parseFloat((dx * (-Math.sin(hRad)) + dy * Math.cos(hRad)).toFixed(4));
+        data.offset_r = parseFloat((dx * Math.cos(hRad) + dy * Math.sin(hRad)).toFixed(4));
+        data.offset_u = parseFloat(dz.toFixed(4));
+        data.offset_heading = parseFloat((rot - sl.heading).toFixed(2));
+        chatMsg(`Slots offset: F=${data.offset_f} R=${data.offset_r} U=${data.offset_u} H=${data.offset_heading}`);
+    }
+
     mp.events.callRemote('animations:savePosition', JSON.stringify(data));
     chatMsg(`Position + animation saved as "${name || 'unnamed'}"`);
 });

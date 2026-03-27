@@ -15,6 +15,41 @@ const {
 
 const TABLES_SAVE_PATH = path.join(process.cwd(), 'data', 'roulette', 'roulette_tables.json');
 
+// Seat local offsets (same as client SEAT_POSITIONS)
+const SEAT_POSITIONS = [
+    { f: -1.0436, r: -0.2434, u: 0.5201, heading: 354 },
+    { f: -1.1104, r:  0.7752, u: 0.6101, heading: 379 },
+    { f: -0.0841, r:  1.5364, u: 0.5601, heading: 440 },
+    { f:  0.8431, r:  0.7731, u: 0.5601, heading: 174 },
+];
+
+const botPeds = new Map(); // botName → ped entity
+
+function spawnBotPed(bot, table, seatIndex) {
+    const hRad = (table.heading || 0) * Math.PI / 180;
+    const seat = SEAT_POSITIONS[seatIndex] || SEAT_POSITIONS[0];
+    const px = table.x + seat.f * (-Math.sin(hRad)) + seat.r * Math.cos(hRad);
+    const py = table.y + seat.f * Math.cos(hRad) + seat.r * Math.sin(hRad);
+    const pz = table.z + seat.u;
+    const pedHeading = ((table.heading || 0) + seat.heading) % 360;
+
+    const ped = mp.peds.new(bot.pedModel, new mp.Vector3(px, py, pz), {
+        heading: pedHeading,
+        dimension: 0,
+    });
+    ped.controller = undefined; // no AI
+    botPeds.set(bot.name, ped);
+    return ped;
+}
+
+function destroyBotPed(botName) {
+    const ped = botPeds.get(botName);
+    if (ped) {
+        try { ped.destroy(); } catch(e) {}
+        botPeds.delete(botName);
+    }
+}
+
 // ──────────────────────────────────────────
 // Random bot names
 // ──────────────────────────────────────────
@@ -202,7 +237,9 @@ mp.events.addCommand('rbot', (player, fullText, ...args) => {
             const lobby = getLobbyByPlayer(bot);
             if (lobby) {
                 added++;
-                console.log(`[RBOT] Bot "${bot.name}" adaugat la masa #${tableIndex} (skin: 0x${bot.pedModel.toString(16).toUpperCase()})`);
+                const slot = getPlayerSlot(lobby, bot);
+                if (slot) spawnBotPed(bot, table, slot.seat);
+                console.log(`[RBOT] Bot "${bot.name}" adaugat la masa #${tableIndex} (seat: ${slot ? slot.seat : '?'})`);
             } else {
                 allBots.delete(bot.name);
             }
@@ -234,6 +271,7 @@ mp.events.addCommand('rbot', (player, fullText, ...args) => {
             const botSlot = botsAtTable[i];
             const timer = botTimers.get(botSlot.player.name);
             if (timer) { clearTimeout(timer); botTimers.delete(botSlot.player.name); }
+            destroyBotPed(botSlot.player.name);
             leaveLobby(botSlot.player);
             allBots.delete(botSlot.player.name);
             removed++;
@@ -263,6 +301,7 @@ mp.events.addCommand('rbot', (player, fullText, ...args) => {
         allBots.forEach((bot, name) => {
             const timer = botTimers.get(name);
             if (timer) { clearTimeout(timer); botTimers.delete(name); }
+            destroyBotPed(name);
             leaveLobby(bot);
             removed++;
         });

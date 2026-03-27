@@ -2038,5 +2038,260 @@
     "roulette": null,
     "playerName": "Woolfye",
     "globalIndex": 87
+  },
+  {
+    "index": 0,
+    "timestamp": "2026-03-27T15:53:42.736Z",
+    "camera": {
+      "x": 9.8534,
+      "y": 14.6059,
+      "z": 72.4905,
+      "rotX": -36.92,
+      "rotY": 294.494,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 88
+  },
+  {
+    "index": 1,
+    "timestamp": "2026-03-27T15:53:58.630Z",
+    "camera": {
+      "x": 9.7246,
+      "y": 14.826,
+      "z": 72.4905,
+      "rotX": -36.92,
+      "rotY": 300.344,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 89
+  },
+  {
+    "index": 2,
+    "timestamp": "2026-03-27T15:54:28.289Z",
+    "camera": {
+      "x": 9.7539,
+      "y": 15.0853,
+      "z": 72.4905,
+      "rotX": -49.61,
+      "rotY": 263.534,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 90
+  },
+  {
+    "index": 3,
+    "timestamp": "2026-03-27T15:54:30.108Z",
+    "camera": {
+      "x": 9.7539,
+      "y": 15.0853,
+      "z": 72.4905,
+      "rotX": -49.61,
+      "rotY": 263.534,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 91
+  },
+  {
+    "index": 4,
+    "timestamp": "2026-03-27T15:54:30.434Z",
+    "camera": {
+      "x": 9.7539,
+      "y": 15.0853,
+      "z": 72.4905,
+      "rotX": -49.61,
+      "rotY": 263.534,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 92
+  },
+  {
+    "index": 5,
+    "timestamp": "2026-03-27T15:54:31.188Z",
+    "camera": {
+      "x": 9.7539,
+      "y": 15.0853,
+      "z": 72.4905,
+      "rotX": -49.61,
+      "rotY": 263.534,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 93
+  },
+  {
+    "index": 6,
+    "timestamp": "2026-03-27T15:54:33.092Z",
+    "camera": {
+      "x": 9.7539,
+      "y": 15.0853,
+      "z": 72.4905,
+      "rotX": -49.61,
+      "rotY": 263.534,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 94
+  },
+  {
+    "index": 7,
+    "timestamp": "2026-03-27T15:54:39.195Z",
+    "camera": {
+      "x": 9.7136,
+      "y": 15.6229,
+      "z": 72.5774,
+      "rotX": -49.61,
+      "rotY": 266.414,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 95
+  },
+  {
+    "index": 0,
+    "timestamp": "2026-03-27T15:58:55.508Z",
+    "camera": {
+      "x": 8.7532,
+      "y": 15.0615,
+      "z": 74.1443,
+      "rotX": -60.77,
+      "rotY": 271.9325,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 96
+  },
+  {
+    "index": 1,
+    "timestamp": "2026-03-27T15:59:04.881Z",
+    "camera": {
+      "x": 8.7532,
+      "y": 15.0615,
+      "z": 73.7393,
+      "rotX": -60.77,
+      "rotY": 271.9325,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 97
+  },
+  {
+    "index": 0,
+    "timestamp": "2026-03-27T16:03:38.427Z",
+    "camera": {
+      "x": 10.3984,
+      "y": 15.9663,
+      "z": 71.1455,
+      "rotX": -10.28,
+      "rotY": 278.41,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 98
+  },
+  {
+    "index": 1,
+    "timestamp": "2026-03-27T16:03:50.630Z",
+    "camera": {
+      "x": 11.1619,
+      "y": 15.507,
+      "z": 71.0848,
+      "rotX": -12.89,
+      "rotY": 277.51,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 99
+  },
+  {
+    "index": 2,
+    "timestamp": "2026-03-27T16:03:58.615Z",
+    "camera": {
+      "x": 10.2774,
+      "y": 16.3375,
+      "z": 70.8445,
+      "rotX": -14.78,
+      "rotY": 277.51,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 100
+  },
+  {
+    "index": 3,
+    "timestamp": "2026-03-27T16:03:59.116Z",
+    "camera": {
+      "x": 10.2774,
+      "y": 16.3375,
+      "z": 70.8445,
+      "rotX": -14.78,
+      "rotY": 277.51,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 101
+  },
+  {
+    "index": 4,
+    "timestamp": "2026-03-27T16:03:59.329Z",
+    "camera": {
+      "x": 10.2774,
+      "y": 16.3375,
+      "z": 70.8445,
+      "rotX": -14.78,
+      "rotY": 277.51,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 102
+  },
+  {
+    "index": 5,
+    "timestamp": "2026-03-27T16:04:02.736Z",
+    "camera": {
+      "x": 10.6418,
+      "y": 14.5619,
+      "z": 70.9555,
+      "rotX": -14.78,
+      "rotY": 277.87,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 103
+  },
+  {
+    "index": 6,
+    "timestamp": "2026-03-27T16:04:15.750Z",
+    "camera": {
+      "x": 11.3178,
+      "y": 15.077,
+      "z": 71.1443,
+      "rotX": -32.15,
+      "rotY": 279.13,
+      "fov": 60
+    },
+    "roulette": null,
+    "playerName": "Woolfye",
+    "globalIndex": 104
   }
 ]

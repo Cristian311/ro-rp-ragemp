@@ -14,6 +14,7 @@
     <div class="sep"></div>
     <div class="info" id="state-label">IDLE</div>
     <button id="btn-leave" onclick="leaveTable()">✕ LEAVE</button>
+    <button id="btn-audio" onclick="toggleAudio()">🔊</button>
 </div>
 
 <!-- ═══ MAIN MACHINE FRAME ═══ -->
@@ -56,7 +57,7 @@
             <div class="reel" id="reel-4"><div class="reel-strip"></div></div>
         </div>
         <!-- Win line overlay -->
-        <canvas id="winline-canvas" width="580" height="270"></canvas>
+        <canvas id="winline-canvas"></canvas>
     </div>
 
     <!-- ═══ WIN DISPLAY ═══ -->
@@ -114,7 +115,7 @@
             <div class="spin-text">SPIN</div>
         </button>
         <button class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoSpin()">🔄 AUTO</button>
-        <button class="action-btn btn-gamble" id="btn-gamble" onclick="doGamble()" style="display:none">
+        <button class="action-btn btn-gamble disabled" id="btn-gamble" onclick="doGamble()">
             <span>🃏 GAMBLE</span>
         </button>
         <button class="action-btn btn-collect" id="btn-collect" onclick="doCollect()" style="display:none">
@@ -129,7 +130,24 @@
         <div class="gamble-title">🃏 GAMBLE — DUBLEAZĂ SAU PIERZI</div>
         <div class="gamble-amount">$<span id="gamble-amount">0</span></div>
         <div id="gamble-card">
-            <div class="card-face">?</div>
+            <div class="card-inner">
+                <div class="card-back">
+                    <div class="card-back-pattern"></div>
+                    <div class="card-back-icon">🃏</div>
+                    <div class="card-back-pattern"></div>
+                </div>
+                <div class="card-front">
+                    <div class="card-tl">
+                        <span class="card-rank">?</span>
+                        <span class="card-suit-sm"></span>
+                    </div>
+                    <div class="card-center-suit">🂠</div>
+                    <div class="card-br">
+                        <span class="card-rank">?</span>
+                        <span class="card-suit-sm"></span>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="gamble-buttons">
             <button class="gamble-choice red" onclick="gambleChoice('red')">♥ ROȘU</button>
@@ -149,9 +167,9 @@
         </div>
         <div class="pt-section">
             <div class="pt-subtitle">👑 SCATTER (Crown)</div>
-            <div class="pt-scatter-row">3x Crown = 5x Total Bet + 15 FREE SPINS</div>
-            <div class="pt-scatter-row">4x Crown = 20x Total Bet + 15 FREE SPINS</div>
-            <div class="pt-scatter-row">5x Crown = 100x Total Bet + 15 FREE SPINS</div>
+            <div class="pt-scatter-row">3x Crown = 7x Total Bet + 15 FREE SPINS</div>
+            <div class="pt-scatter-row">4x Crown = 28x Total Bet + 15 FREE SPINS</div>
+            <div class="pt-scatter-row">5x Crown = 140x Total Bet + 15 FREE SPINS</div>
         </div>
         <div class="pt-section">
             <div class="pt-subtitle">⭐ WILD (Star)</div>
@@ -184,15 +202,15 @@ const SYMBOLS = {
 };
 
 const PAYTABLE = {
-    star:       [50, 200, 1000],
-    seven:      [40, 150, 750],
-    bell:       [25, 100, 400],
-    grapes:     [20, 80,  300],
-    watermelon: [15, 60,  200],
-    plum:       [10, 40,  150],
-    orange:     [8,  30,  100],
-    lemon:      [5,  20,  75],
-    cherry:     [5,  15,  50],
+    star:       [70, 280, 1400],
+    seven:      [56, 210, 1050],
+    bell:       [35, 140, 560],
+    grapes:     [28, 115, 420],
+    watermelon: [22, 85,  280],
+    plum:       [14, 56,  210],
+    orange:     [12, 42,  140],
+    lemon:      [7,  28,  105],
+    cherry:     [7,  22,  70],
 };
 
 const PAYLINES = [
@@ -243,7 +261,7 @@ let state = {
 let isSpinning = false;
 let autoSpin = false;
 let autoSpinTimer = null;
-const SYMBOL_HEIGHT = 90;
+let SYMBOL_HEIGHT = 90;
 const VISIBLE_ROWS = 3;
 let currentReelPositions = [0, 0, 0, 0, 0];
 let toastTimeout = null;
@@ -251,6 +269,13 @@ let winlineAnimFrame = null;
 let turboMode = false;
 let skipRequested = false;
 let currentSpinResolve = null; // callback to snap reels instantly
+let spaceHeld = false;
+let spaceTurboActive = false;
+let preTurboState = false;
+let audioMuted = false;
+let masterVolume = 1.0;
+let chargeTimer = null;
+const CHARGE_DELAY = 600;
 
 // ══════════════════════════════════════════
 // SOUND ENGINE (Web Audio API)
@@ -264,12 +289,13 @@ const SFX = (() => {
     }
 
     function playTone(freq, duration, type = 'sine', vol = 0.15, delay = 0) {
+        if (audioMuted) return;
         const c = getCtx();
         const osc = c.createOscillator();
         const gain = c.createGain();
         osc.type = type;
         osc.frequency.value = freq;
-        gain.gain.setValueAtTime(vol, c.currentTime + delay);
+        gain.gain.setValueAtTime(vol * masterVolume, c.currentTime + delay);
         gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
         osc.connect(gain);
         gain.connect(c.destination);
@@ -278,6 +304,7 @@ const SFX = (() => {
     }
 
     function playNoise(duration, vol = 0.08, filterFreq = 3000, delay = 0) {
+        if (audioMuted) return;
         const c = getCtx();
         const bufSize = Math.max(1, Math.floor(c.sampleRate * duration));
         const buf = c.createBuffer(1, bufSize, c.sampleRate);
@@ -289,7 +316,7 @@ const SFX = (() => {
         filter.type = 'lowpass';
         filter.frequency.value = filterFreq;
         const gain = c.createGain();
-        gain.gain.setValueAtTime(vol, c.currentTime + delay);
+        gain.gain.setValueAtTime(vol * masterVolume, c.currentTime + delay);
         gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
         src.connect(filter);
         filter.connect(gain);
@@ -299,54 +326,62 @@ const SFX = (() => {
 
     return {
         spinStart() {
-            playNoise(0.25, 0.1, 2500);
-            playTone(180, 0.12, 'square', 0.07);
-            playTone(240, 0.1, 'square', 0.05, 0.08);
+            playNoise(0.25, 0.25, 2500);
+            playTone(180, 0.12, 'square', 0.18);
+            playTone(240, 0.1, 'square', 0.12, 0.08);
         },
         reelTick() {
-            playTone(900 + Math.random() * 600, 0.025, 'square', 0.03);
+            playTone(900 + Math.random() * 600, 0.025, 'square', 0.08);
         },
         reelStop(index) {
             const freq = 130 - index * 8;
-            playTone(freq, 0.2, 'sine', 0.18);
-            playTone(freq * 1.5, 0.08, 'triangle', 0.09);
-            playNoise(0.08, 0.12, 800);
+            playTone(freq, 0.2, 'sine', 0.4);
+            playTone(freq * 1.5, 0.08, 'triangle', 0.2);
+            playNoise(0.08, 0.25, 800);
         },
         winSmall() {
             [523, 659, 784].forEach((f, i) =>
-                playTone(f, 0.3, 'sine', 0.12, i * 0.12));
+                playTone(f, 0.3, 'sine', 0.3, i * 0.12));
         },
         winBig() {
             [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => {
-                playTone(f, 0.4, 'sine', 0.14, i * 0.14);
-                playTone(f * 0.5, 0.35, 'triangle', 0.07, i * 0.14);
+                playTone(f, 0.4, 'sine', 0.35, i * 0.14);
+                playTone(f * 0.5, 0.35, 'triangle', 0.18, i * 0.14);
             });
         },
         freeSpins() {
             [392,440,494,523,587,659,784,880,1047].forEach((f, i) => {
-                playTone(f, 0.45, 'sine', 0.12, i * 0.09);
-                if (i % 2 === 0) playTone(f * 1.5, 0.25, 'triangle', 0.05, i * 0.09);
+                playTone(f, 0.45, 'sine', 0.3, i * 0.09);
+                if (i % 2 === 0) playTone(f * 1.5, 0.25, 'triangle', 0.12, i * 0.09);
             });
         },
         coinTick() {
-            playTone(2200 + Math.random() * 800, 0.04, 'sine', 0.07);
+            playTone(2200 + Math.random() * 800, 0.04, 'sine', 0.18);
         },
         cardFlip() {
-            playNoise(0.12, 0.09, 5000);
-            playTone(450, 0.08, 'sine', 0.07);
-            playTone(650, 0.06, 'sine', 0.05, 0.07);
+            playNoise(0.15, 0.3, 5000);
+            playTone(450, 0.1, 'sine', 0.2);
+            playTone(650, 0.08, 'sine', 0.15, 0.07);
         },
         gambleWin() {
-            playTone(523, 0.25, 'sine', 0.12);
-            playTone(784, 0.25, 'sine', 0.12, 0.14);
-            playTone(1047, 0.35, 'sine', 0.14, 0.28);
+            playTone(523, 0.3, 'sine', 0.35);
+            playTone(784, 0.3, 'sine', 0.35, 0.14);
+            playTone(1047, 0.4, 'sine', 0.4, 0.28);
         },
         gambleLose() {
-            playTone(300, 0.35, 'sawtooth', 0.09);
-            playTone(200, 0.45, 'sawtooth', 0.07, 0.18);
+            playTone(300, 0.4, 'sawtooth', 0.25);
+            playTone(200, 0.5, 'sawtooth', 0.2, 0.18);
+        },
+        gambleDeal() {
+            playNoise(0.08, 0.25, 6000);
+            playTone(600, 0.06, 'sine', 0.18);
+        },
+        gambleChoose() {
+            playTone(800, 0.1, 'sine', 0.25);
+            playTone(1000, 0.08, 'sine', 0.18, 0.06);
         },
         click() {
-            playTone(1200, 0.04, 'sine', 0.05);
+            playTone(1200, 0.04, 'sine', 0.15);
         },
     };
 })();
@@ -376,6 +411,25 @@ function initReels() {
     }
 }
 initReels();
+
+function initDimensions() {
+    const cell = document.querySelector('.sym-cell');
+    if (cell) SYMBOL_HEIGHT = cell.offsetHeight || 90;
+    const canvas = document.getElementById('winline-canvas');
+    const vp = document.getElementById('reels-viewport');
+    if (canvas && vp) {
+        canvas.width = vp.offsetWidth;
+        canvas.height = vp.offsetHeight;
+    }
+}
+requestAnimationFrame(initDimensions);
+window.addEventListener('resize', () => {
+    initDimensions();
+    for (let r = 0; r < 5; r++) {
+        const snapPx = currentReelPositions[r] * SYMBOL_HEIGHT;
+        reelStripEls[r].style.transform = `translateY(-${snapPx}px)`;
+    }
+});
 
 // ══════════════════════════════════════════
 // SPIN ANIMATION (requestAnimationFrame)
@@ -515,14 +569,14 @@ function drawWinLines(winLines, lineWins) {
 
     const canvas = document.getElementById('winline-canvas');
     const ctx = canvas.getContext('2d');
-    const cellW = 580 / 5;
-    const cellH = 270 / 3;
+    const cellW = canvas.width / 5;
+    const cellH = canvas.height / 3;
 
     let currentLineIdx = 0;
     let frameCount = 0;
 
     function frame() {
-        ctx.clearRect(0, 0, 580, 270);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         if (winLines.length === 0) return;
 
@@ -571,7 +625,7 @@ function drawWinLines(winLines, lineWins) {
     // Stop after a while
     setTimeout(() => {
         if (winlineAnimFrame) { cancelAnimationFrame(winlineAnimFrame); winlineAnimFrame = null; }
-        ctx.clearRect(0, 0, 580, 270);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     }, 8000);
 }
 
@@ -606,7 +660,7 @@ function spawnConfetti(count) {
 // ══════════════════════════════════════════
 function updateState(stateJson) {
     state = JSON.parse(stateJson);
-    if (state.turbo !== undefined) {
+    if (state.turbo !== undefined && !spaceTurboActive) {
         turboMode = state.turbo;
         document.getElementById('btn-turbo').classList.toggle('active', turboMode);
     }
@@ -640,10 +694,10 @@ function renderUI() {
     const btnGamble = document.getElementById('btn-gamble');
     const btnCollect = document.getElementById('btn-collect');
     if (state.totalWin > 0 && state.state === 'idle') {
-        btnGamble.style.display = 'flex';
-        btnCollect.style.display = 'none'; // collect happens automatically now
+        btnGamble.classList.remove('disabled');
+        btnCollect.style.display = 'none';
     } else {
-        btnGamble.style.display = 'none';
+        btnGamble.classList.add('disabled');
         btnCollect.style.display = 'none';
     }
 
@@ -665,11 +719,11 @@ function onSpinResult(spinDataJson, chips) {
     const data = JSON.parse(spinDataJson);
     state.chips = chips;
 
-    // Sync turbo state from server
-    if (data.turbo !== undefined) turboMode = data.turbo;
+    // Sync turbo state from server (don't override space-hold turbo)
+    if (data.turbo !== undefined && !spaceTurboActive) turboMode = data.turbo;
 
-    // Hide gamble button during spin
-    document.getElementById('btn-gamble').style.display = 'none';
+    // Disable gamble button during spin
+    document.getElementById('btn-gamble').classList.add('disabled');
 
     // Use turbo spin time if turbo
     const spinTime = turboMode ? 0.4 : 2.5;
@@ -707,11 +761,20 @@ function onSpinResult(spinDataJson, chips) {
         state.freeSpinsLeft = data.freeSpinsLeft;
         state.freeSpinsTotalWin = data.freeSpinsTotalWin;
 
+        // Ensure server transitions state quickly for continuous spinning
+        if ((spaceHeld || autoSpin || data.freeSpinsLeft > 0) && typeof mp !== 'undefined') {
+            mp.trigger('Slots_SkipAnimation');
+        }
+
         // Auto-spin during free spins
         if (data.freeSpinsLeft > 0) {
             setTimeout(() => {
                 if (state.freeSpinsLeft > 0) doSpin();
             }, turboMode ? 300 : 1500);
+        } else if (spaceHeld) {
+            setTimeout(() => {
+                if (spaceHeld) doSpin();
+            }, 150);
         } else if (autoSpin && data.totalWin === 0) {
             setTimeout(() => doSpin(), turboMode ? 300 : 1000);
         }
@@ -740,25 +803,33 @@ function onGambleStart(amount) {
     document.getElementById('gamble-overlay').classList.add('visible');
     document.getElementById('gamble-amount').textContent = amount.toLocaleString('en-US');
     document.getElementById('gamble-collect-amt').textContent = amount.toLocaleString('en-US');
-    document.getElementById('gamble-card').className = '';
-    document.querySelector('#gamble-card .card-face').textContent = '?';
+    const card = document.getElementById('gamble-card');
+    card.className = '';
+    const front = card.querySelector('.card-front');
+    front.className = 'card-front';
+    front.querySelectorAll('.card-rank').forEach(el => el.textContent = '?');
+    front.querySelectorAll('.card-suit-sm').forEach(el => el.textContent = '');
+    card.querySelector('.card-center-suit').textContent = '\ud83c\udca0';
+    SFX.gambleDeal();
 }
 
 function onGambleResult(resultJson) {
     const r = JSON.parse(resultJson);
     const card = document.getElementById('gamble-card');
-    const face = card.querySelector('.card-face');
+    const front = card.querySelector('.card-front');
 
     const suits = ['♥','♦','♣','♠'];
     const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
     const suit = suits[r.cardValue % 4];
     const rank = ranks[Math.floor(r.cardValue / 4) % 13];
 
-    card.classList.add('flip');
+    card.classList.add('flipped');
     SFX.cardFlip();
     setTimeout(() => {
-        face.textContent = `${rank}${suit}`;
-        face.className = `card-face ${r.resultColor}`;
+        front.className = 'card-front ' + r.resultColor;
+        front.querySelectorAll('.card-rank').forEach(el => el.textContent = rank);
+        front.querySelectorAll('.card-suit-sm').forEach(el => el.textContent = suit);
+        card.querySelector('.card-center-suit').textContent = suit;
         card.classList.add(r.won ? 'won' : 'lost');
         if (r.won) SFX.gambleWin(); else SFX.gambleLose();
     }, 300);
@@ -766,6 +837,23 @@ function onGambleResult(resultJson) {
     if (r.won) {
         document.getElementById('gamble-amount').textContent = r.newAmount.toLocaleString('en-US');
         document.getElementById('gamble-collect-amt').textContent = r.newAmount.toLocaleString('en-US');
+
+        if (r.maxReached) {
+            // Auto-collect after max gambles
+            setTimeout(() => {
+                document.getElementById('gamble-overlay').classList.remove('visible');
+            }, 1500);
+        } else {
+            // Reset card after 1.5s so player can gamble again
+            setTimeout(() => {
+                card.className = '';
+                front.className = 'card-front';
+                front.querySelectorAll('.card-rank').forEach(el => el.textContent = '?');
+                front.querySelectorAll('.card-suit-sm').forEach(el => el.textContent = '');
+                card.querySelector('.card-center-suit').textContent = '\ud83c\udca0';
+                SFX.gambleDeal();
+            }, 1500);
+        }
     } else {
         setTimeout(() => {
             document.getElementById('gamble-overlay').classList.remove('visible');
@@ -787,8 +875,9 @@ function doSpin() {
     document.getElementById('win-amount').textContent = '0';
 
     // Clear win lines
-    const ctx = document.getElementById('winline-canvas').getContext('2d');
-    ctx.clearRect(0, 0, 580, 270);
+    const cnv = document.getElementById('winline-canvas');
+    const ctx = cnv.getContext('2d');
+    ctx.clearRect(0, 0, cnv.width, cnv.height);
     if (winlineAnimFrame) { cancelAnimationFrame(winlineAnimFrame); winlineAnimFrame = null; }
 
     if (typeof mp !== 'undefined') {
@@ -812,6 +901,7 @@ function changeBet(delta) {
 }
 
 function doGamble() {
+    if (document.getElementById('btn-gamble').classList.contains('disabled')) return;
     if (typeof mp !== 'undefined') {
         mp.trigger('Slots_Gamble');
     }
@@ -824,7 +914,7 @@ function doCollect() {
 }
 
 function gambleChoice(choice) {
-    SFX.click();
+    SFX.gambleChoose();
     if (typeof mp !== 'undefined') {
         mp.trigger('Slots_GambleChoice', choice);
     }
@@ -868,6 +958,13 @@ function togglePaytable() {
     document.getElementById('paytable-overlay').classList.toggle('visible');
 }
 
+function toggleAudio() {
+    audioMuted = !audioMuted;
+    const btn = document.getElementById('btn-audio');
+    btn.textContent = audioMuted ? '🔇' : '🔊';
+    btn.classList.toggle('muted', audioMuted);
+}
+
 // ══════════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════════
@@ -900,21 +997,61 @@ function buildPaytable() {
 }
 buildPaytable();
 
+// Prevent all buttons from being focusable (stops SPACE triggering focused button)
+document.querySelectorAll('button').forEach(btn => btn.setAttribute('tabindex', '-1'));
+
 // ══════════════════════════════════════════
-// KEYBOARD
+// KEYBOARD (called from RAGE client script)
 // ══════════════════════════════════════════
+function onSpaceDown() {
+    document.activeElement && document.activeElement.blur();
+    if (isSpinning) {
+        skipRequested = true;
+        if (typeof mp !== 'undefined') mp.trigger('Slots_SkipAnimation');
+    } else {
+        spaceHeld = true;
+        doSpin();
+        // Start charge animation — turbo activates after holding
+        const btnSpin = document.getElementById('btn-spin');
+        btnSpin.classList.add('charging');
+        if (chargeTimer) clearTimeout(chargeTimer);
+        chargeTimer = setTimeout(() => {
+            if (spaceHeld) {
+                spaceTurboActive = true;
+                preTurboState = turboMode;
+                turboMode = true;
+                btnSpin.classList.remove('charging');
+                btnSpin.classList.add('turbo-active');
+                document.getElementById('btn-turbo').classList.add('active');
+            }
+        }, CHARGE_DELAY);
+    }
+}
+
+function onSpaceUp() {
+    spaceHeld = false;
+    const btnSpin = document.getElementById('btn-spin');
+    btnSpin.classList.remove('charging', 'turbo-active');
+    if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
+    if (spaceTurboActive) {
+        spaceTurboActive = false;
+        turboMode = preTurboState;
+        document.getElementById('btn-turbo').classList.toggle('active', turboMode);
+    }
+}
+
+// Fallback for standalone testing (outside RAGE)
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
         e.preventDefault();
-        if (isSpinning) {
-            // Skip animation instantly (local) + notify server
-            skipRequested = true;
-            if (typeof mp !== 'undefined') {
-                mp.trigger('Slots_SkipAnimation');
-            }
-        } else {
-            doSpin();
-        }
+        if (e.repeat) return;
+        if (typeof mp === 'undefined') onSpaceDown();
+    }
+});
+document.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') {
+        e.preventDefault();
+        if (typeof mp === 'undefined') onSpaceUp();
     }
 });
 document.addEventListener('contextmenu', (e) => e.preventDefault());

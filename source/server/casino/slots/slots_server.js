@@ -1,4 +1,8 @@
 const slotsLog = require('./slots_logger');
+const fs   = require('fs');
+const path = require('path');
+
+const slotsMachinesPath = path.join(process.cwd(), 'data', 'slots', 'slots_machines.json');
 
 // ──────────────────────────────────────────
 // CONFIG
@@ -81,22 +85,22 @@ const PAYLINES = [
 // ──────────────────────────────────────────
 const PAYTABLE = {
     //               3x    4x    5x
-    star:       [   50,  200, 1000 ],
-    seven:      [   40,  150,  750 ],
-    bell:       [   25,  100,  400 ],
-    grapes:     [   20,   80,  300 ],
-    watermelon: [   15,   60,  200 ],
-    plum:       [   10,   40,  150 ],
-    orange:     [    8,   30,  100 ],
-    lemon:      [    5,   20,   75 ],
-    cherry:     [    5,   15,   50 ],
+    star:       [   70,  280, 1400 ],
+    seven:      [   56,  210, 1050 ],
+    bell:       [   35,  140,  560 ],
+    grapes:     [   28,  115,  420 ],
+    watermelon: [   22,   85,  280 ],
+    plum:       [   14,   56,  210 ],
+    orange:     [   12,   42,  140 ],
+    lemon:      [    7,   28,  105 ],
+    cherry:     [    7,   22,   70 ],
 };
 
 // Scatter (crown) payouts: total_bet multiplier
 const SCATTER_PAY = {
-    3: 5,    // 3 crowns = 5x total bet
-    4: 20,   // 4 crowns = 20x total bet
-    5: 100,  // 5 crowns = 100x total bet
+    3: 7,    // 3 crowns = 7x total bet
+    4: 28,   // 4 crowns = 28x total bet
+    5: 140,  // 5 crowns = 140x total bet
 };
 
 // ──────────────────────────────────────────
@@ -117,6 +121,7 @@ function createSession(machineIndex, machineName) {
         freeSpinsTotalWin: 0,
         history: [],           // ultimele ~15 spinuri
         gambleAmount: 0,
+        gambleCount: 0,        // câte gamble-uri a făcut (max 5)
         turbo: false,          // turbo speed mode
         spinTimer: null,       // reference to state timeout
     };
@@ -168,6 +173,15 @@ function joinMachine(player, machineIndex, machineName) {
     global.chatSend(player, `!{Orange}[SLOTS] !{White}Te-ai așezat la aparatul "${machineName}".`);
     slotsLog.onPlayerJoin(machineIndex, machineName, player.name);
 
+    // Send machine position to client for animation offset calculation
+    try {
+        const machines = JSON.parse(fs.readFileSync(slotsMachinesPath, 'utf8'));
+        if (machines[machineIndex]) {
+            const m = machines[machineIndex];
+            player.call('slotsSetTableData', [m.x, m.y, m.z, m.heading]);
+        }
+    } catch(e) {}
+
     player.call('openSlotsUI');
     sendFullState(session);
 }
@@ -179,9 +193,10 @@ function leaveMachine(player) {
     console.log(`[SLOTS] LEAVE: ${player.name} părăsește aparatul "${session.name}"`);
     slotsLog.onPlayerLeave(session.id, session.name, player.name);
 
-    // Dacă are câștig necashuit din gamble, îi dăm banii
-    if (session.totalWin > 0) {
-        session.chips += session.totalWin;
+    // Dacă e în gamble, pierde banii (nu a colectat)
+    if (session.state === 'gamble') {
+        session.gambleAmount = 0;
+        session.gambleCount = 0;
         session.totalWin = 0;
     }
 
@@ -190,6 +205,7 @@ function leaveMachine(player) {
     }
 
     player.call('closeSlotsUI');
+    player.call('slotsClearTableData');
     global.chatSend(player, '!{Orange}[SLOTS] !{White}Ai părăsit aparatul.');
 
     session.player = null;
@@ -478,7 +494,8 @@ function startGamble(player) {
 
     session.state = 'gamble';
     session.gambleAmount = session.totalWin;
-    session.chips -= session.totalWin; // hold the amount
+    session.gambleCount = 0;
+    session.chips -= session.totalWin; // hold the amount (not in chips until collect)
 
     player.call('slotsGambleStart', [session.gambleAmount]);
 }
@@ -488,20 +505,38 @@ function gambleChoice(player, choice) {
     const session = getSessionByPlayer(player);
     if (!session || session.state !== 'gamble') return;
 
+    session.gambleCount++;
+
     const cardValue = Math.floor(Math.random() * 52);
     const isRed = (cardValue % 4) < 2; // hearts, diamonds red; clubs, spades black
     const resultColor = isRed ? 'red' : 'black';
     const won = (choice === resultColor);
 
+    let maxReached = false;
+
     if (won) {
         session.gambleAmount *= 2;
-        session.chips += session.gambleAmount;
         session.totalWin = session.gambleAmount;
-        global.chatSend(player, `!{Orange}[SLOTS] !{Green}GAMBLE CÂȘTIG! $${session.gambleAmount}!`);
+        global.chatSend(player, `!{Orange}[SLOTS] !{Green}GAMBLE CÂȘTIG! $${session.gambleAmount} (${session.gambleCount}/5)!`);
+
+        if (session.gambleCount >= 5) {
+            // Max gambles reached — auto collect
+            maxReached = true;
+            session.chips += session.gambleAmount;
+            global.chatSend(player, `!{Orange}[SLOTS] !{Yellow}Maxim 5 dublaje! Ai colectat $${session.gambleAmount}.`);
+            session.state = 'idle';
+            session.totalWin = 0;
+            session.gambleAmount = 0;
+            session.gambleCount = 0;
+        }
+        // else: state stays 'gamble', can gamble again
     } else {
+        // LOSE — lose everything
         session.totalWin = 0;
         session.gambleAmount = 0;
-        global.chatSend(player, `!{Orange}[SLOTS] !{Red}GAMBLE PIERDUT!`);
+        session.gambleCount = 0;
+        session.state = 'idle';
+        global.chatSend(player, `!{Orange}[SLOTS] !{Red}GAMBLE PIERDUT! Ai pierdut tot!`);
     }
 
     slotsLog.onGamble(session.id, session.name, player.name, session.gambleAmount, won, session.chips);
@@ -512,16 +547,17 @@ function gambleChoice(player, choice) {
         cardValue: cardValue,
         newAmount: session.gambleAmount,
         chips: session.chips,
+        gambleCount: session.gambleCount,
+        maxReached: maxReached,
     })]);
-
-    if (!won || session.gambleAmount > SLOTS_CONFIG.GAMBLE_MAX_AMOUNT) {
-        session.state = 'idle';
-        session.gambleAmount = 0;
-    }
-    // Dacă a câștigat, rămâne în gamble (poate dubla din nou)
 
     if (!player._isBot) {
         mp.events.call('slots:updatePlayerMoney', player, session.chips);
+    }
+
+    // Send updated UI state if gamble ended
+    if (session.state === 'idle') {
+        player.call('slotsUpdateState', [JSON.stringify(getStateForUI(session))]);
     }
 }
 
@@ -533,6 +569,7 @@ function collectGamble(player) {
     global.chatSend(player, `!{Orange}[SLOTS] !{White}Ai colectat $${session.gambleAmount}.`);
     session.totalWin = 0;
     session.gambleAmount = 0;
+    session.gambleCount = 0;
     session.state = 'idle';
 
     if (!player._isBot) {
@@ -559,6 +596,7 @@ function getStateForUI(session) {
         lastGrid: session.lastGrid,
         history: session.history.slice(0, 10),
         gambleAmount: session.gambleAmount,
+        gambleCount: session.gambleCount,
         turbo: session.turbo,
         config: {
             minBet: SLOTS_CONFIG.MIN_BET_PER_LINE,

@@ -47,5 +47,23 @@
         "heading": -91.8,
         "casinoId": null,
         "skipProp": false
+    },
+    {
+        "name": "RouletteTable_1774626299786",
+        "x": 19.85,
+        "y": 17.36,
+        "z": 69.35,
+        "heading": -93.25,
+        "casinoId": null,
+        "skipProp": false
+    },
+    {
+        "name": "RouletteTable_1774626313505",
+        "x": 23.9,
+        "y": 6.73,
+        "z": 69.32,
+        "heading": -137.82,
+        "casinoId": null,
+        "skipProp": false
     }
 ]

@@ -61,12 +61,13 @@
         }
     ],
     "chip_models": {
-        "10": "vw_prop_chip_10dollar_x1",
-        "25": "vw_prop_chip_10dollar_x1",
-        "50": "vw_prop_chip_50dollar_x1",
+        "50": "vw_prop_chip_10dollar_x1",
         "100": "vw_prop_chip_100dollar_x1",
         "500": "vw_prop_chip_500dollar_x1",
-        "1000": "vw_prop_chip_500dollar_x1"
+        "1000": "vw_prop_chip_1kdollar_x1",
+        "2000": "vw_prop_chip_5kdollar_x1",
+        "3000": "vw_prop_chip_50dollar_x1",
+        "5000": "vw_prop_chip_10kdollar_x1"
     },
     "ball_offset": {
         "x": -0.734742,
