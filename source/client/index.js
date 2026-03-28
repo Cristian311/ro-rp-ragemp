@@ -10,3 +10,4 @@ require('commands/fly.js');
 require('debug/radar_debug.js');
 require('police/alpr/index.js');
 require('police/stalker/index.js');
+require('discord/index.js');

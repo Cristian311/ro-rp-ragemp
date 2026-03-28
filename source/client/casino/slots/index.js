@@ -3,14 +3,15 @@
 let slotsBrowser = null;
 let slotsTablePos = null;  // { x, y, z, heading }
 let slotsCam = null;
+let slotsPropModel = '';   // model name of the slot machine prop
 
 // Hardcoded camera offset (relative to machine center)
 const SLOTS_CAM = {
-    f: -0.7478,
-    r: 0.0157,
-    u: 0.4543,
-    rotX: -32.15,
-    rotHeading: 358.55,
+    f: -0.8518,
+    r: -0.0332,
+    u: 0.3451,
+    rotX: -11.63,
+    rotHeading: 360.16,
     fov: 60
 };
 
@@ -131,6 +132,7 @@ mp.keys.bind(KEY_SPACE, false, () => {
 mp.events.add('openSlotsUI', () => {
     if (slotsBrowser === null) {
         positionPlayerAtSlots();
+        mp.game.entity.setVisible(mp.players.local.handle, false, false);
         slotsBrowser = mp.browsers.new('package://casino/slots/index.html');
         mp.gui.cursor.show(true, true);
     }
@@ -141,6 +143,7 @@ function closeSlotsUI() {
         slotsBrowser.destroy();
         slotsBrowser = null;
         mp.gui.cursor.show(false, false);
+        mp.game.entity.setVisible(mp.players.local.handle, true, false);
         unpositionPlayer();
     }
 }
@@ -171,9 +174,30 @@ mp.events.add('slotsGambleResult', (resultJson) => {
     }
 });
 
+const SLOT_ANIM_DICT = 'anim_casino_a@amb@casino@games@slots@female';
+const SLOT_ANIM_NAME = 'pull_spin_b_slotmachine';
+
+function playSlotMachineAnim() {
+    if (!mp.game.streaming.hasAnimDictLoaded(SLOT_ANIM_DICT)) {
+        mp.game.streaming.requestAnimDict(SLOT_ANIM_DICT);
+        let waited = 0;
+        const iv = setInterval(() => {
+            waited += 50;
+            if (mp.game.streaming.hasAnimDictLoaded(SLOT_ANIM_DICT)) {
+                clearInterval(iv);
+                mp.players.local.taskPlayAnim(SLOT_ANIM_DICT, SLOT_ANIM_NAME, 8.0, -8.0, 1800, 2, 0, false, false, false);
+            }
+            if (waited > 3000) clearInterval(iv);
+        }, 50);
+    } else {
+        mp.players.local.taskPlayAnim(SLOT_ANIM_DICT, SLOT_ANIM_NAME, 8.0, -8.0, 1800, 2, 0, false, false, false);
+    }
+}
+
 // Events from CEF → server
 mp.events.add('Slots_Spin', () => {
     mp.events.callRemote('Server_SlotsSpin');
+    playSlotMachineAnim();
 });
 
 mp.events.add('Slots_SetBet', (amount) => {
@@ -200,6 +224,32 @@ mp.events.add('Slots_SkipAnimation', () => {
     mp.events.callRemote('Server_SlotsSkipAnimation');
 });
 
+// Bell Link events (CEF → server)
+mp.events.add('Slots_SetGameMode', (mode) => {
+    mp.events.callRemote('Server_SlotsSetGameMode', mode);
+});
+
+mp.events.add('Slots_BellLinkStart', () => {
+    mp.events.callRemote('Server_SlotsBellLinkStart');
+});
+
+mp.events.add('Slots_BellLinkSpin', () => {
+    mp.events.callRemote('Server_SlotsBellLinkSpin');
+});
+
+// Bell Link events (server → CEF)
+mp.events.add('slotsBellLinkStart', (dataJson) => {
+    if (slotsBrowser !== null) {
+        slotsBrowser.execute(`onBellLinkStart('${dataJson.replace(/'/g, "\\'")}');`);
+    }
+});
+
+mp.events.add('slotsBellLinkResult', (dataJson) => {
+    if (slotsBrowser !== null) {
+        slotsBrowser.execute(`onBellLinkResult('${dataJson.replace(/'/g, "\\'")}');`);
+    }
+});
+
 mp.events.add('slotsSkipAnimation', () => {
     if (slotsBrowser !== null) {
         slotsBrowser.execute('skipAnimation();');
@@ -212,10 +262,11 @@ mp.events.add('Slots_LeaveTable', () => {
 });
 
 // Store slot machine position for animation offset calculation
-mp.events.add('slotsSetTableData', (x, y, z, heading) => {
+mp.events.add('slotsSetTableData', (x, y, z, heading, propModel) => {
     if (!global.tableData) global.tableData = {};
     global.tableData.slots = { x, y, z, heading };
     slotsTablePos = { x, y, z, heading };
+    slotsPropModel = propModel || '';
 });
 
 mp.events.add('slotsClearTableData', () => {

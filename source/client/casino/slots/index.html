@@ -8,153 +8,213 @@
 </head>
 <body>
 
-<!-- ═══ TOPBAR ═══ -->
-<div id="topbar">
-    <div class="logo">👑 SLOT MACHINE 👑</div>
-    <div class="sep"></div>
-    <div class="info" id="state-label">IDLE</div>
-    <button id="btn-leave" onclick="leaveTable()">✕ LEAVE</button>
-    <button id="btn-audio" onclick="toggleAudio()">🔊</button>
-</div>
-
-<!-- ═══ MAIN MACHINE FRAME ═══ -->
+<!-- ═══ MACHINE WRAPPER ═══ -->
 <div id="machine">
 
-    <!-- Crown decorations -->
-    <div class="crown-deco left">👑</div>
-    <div class="crown-deco right">👑</div>
-
-    <!-- Title -->
-    <div id="machine-title">
-        <span class="title-glow">SLOT MACHINE</span>
-    </div>
-
-    <!-- Paylines indicator (left) -->
-    <div id="paylines-left">
-        <div class="pl-num" data-line="0">1</div>
-        <div class="pl-num" data-line="1">2</div>
-        <div class="pl-num" data-line="2">3</div>
-        <div class="pl-num" data-line="3">4</div>
-        <div class="pl-num" data-line="4">5</div>
-    </div>
-
-    <!-- Paylines indicator (right) -->
-    <div id="paylines-right">
-        <div class="pl-num" data-line="5">6</div>
-        <div class="pl-num" data-line="6">7</div>
-        <div class="pl-num" data-line="7">8</div>
-        <div class="pl-num" data-line="8">9</div>
-        <div class="pl-num" data-line="9">10</div>
-    </div>
-
-    <!-- ═══ REELS VIEWPORT ═══ -->
-    <div id="reels-frame">
-        <div id="reels-viewport">
-            <div class="reel" id="reel-0"><div class="reel-strip"></div></div>
-            <div class="reel" id="reel-1"><div class="reel-strip"></div></div>
-            <div class="reel" id="reel-2"><div class="reel-strip"></div></div>
-            <div class="reel" id="reel-3"><div class="reel-strip"></div></div>
-            <div class="reel" id="reel-4"><div class="reel-strip"></div></div>
-        </div>
-        <!-- Win line overlay -->
-        <canvas id="winline-canvas"></canvas>
-    </div>
-
-    <!-- ═══ WIN DISPLAY ═══ -->
-    <div id="win-display">
-        <div id="win-label">CÂȘTIG</div>
-        <div id="win-amount">0</div>
-    </div>
-
-    <!-- ═══ FREE SPINS BANNER ═══ -->
-    <div id="freespin-banner">
-        <div class="fs-glow"></div>
-        <div class="fs-text">🎉 ROTIRI GRATUITE</div>
-        <div class="fs-count" id="fs-count">15</div>
-        <div class="fs-total">Total: $<span id="fs-total-win">0</span></div>
-    </div>
-
-    <!-- ═══ BOTTOM PANEL ═══ -->
-    <div id="bottom-panel">
-        <div class="panel-box">
-            <div class="panel-label">CREDIT</div>
-            <div class="panel-value" id="credit-value">0</div>
-        </div>
-
-        <div class="panel-box">
-            <div class="panel-label">PARIU / LINIE</div>
-            <div class="bet-controls">
-                <button class="bet-btn" onclick="changeBet(-10)">◄</button>
-                <div class="panel-value" id="bet-per-line">10</div>
-                <button class="bet-btn" onclick="changeBet(10)">►</button>
+    <!-- ═══ GAME SELECT (inside reels area) ═══ -->
+    <div id="game-select">
+        <div class="gs-title">ALEGE JOCUL</div>
+        <div class="gs-cards">
+            <div class="gs-card" onclick="selectGame('normal')">
+                <img class="gs-icon" src="icons/sapte.png" alt="7">
+                <div class="gs-name">7 Lucky Fruits</div>
+                <div class="gs-desc">Classic</div>
+            </div>
+            <div class="gs-card gs-card-bell" onclick="selectGame('belllink')">
+                <img class="gs-icon" src="icons/bell-link.png" alt="Bell">
+                <div class="gs-name">7 Lucky Fruits<br>Bell Link</div>
+                <div class="gs-desc">Bell Link Bonus</div>
+            </div>
+            <div class="gs-card gs-card-bor" onclick="selectGame('bookofra')">
+                <img class="gs-icon" src="icons/book_of_ra/indiana_jones.png" alt="Book of Ra">
+                <div class="gs-name">Book of Ra</div>
+                <div class="gs-desc">Free Spins + Expanding Symbol</div>
             </div>
         </div>
-
-        <div class="panel-box">
-            <div class="panel-label">LINII</div>
-            <div class="panel-value" id="lines-value">10</div>
-        </div>
-
-        <div class="panel-box">
-            <div class="panel-label">PARIU TOTAL</div>
-            <div class="panel-value" id="total-bet-value">100</div>
-        </div>
-
-        <div class="panel-box">
-            <div class="panel-label">ULTIMUL CÂȘTIG</div>
-            <div class="panel-value win-color" id="last-win-value">0</div>
-        </div>
     </div>
 
-    <!-- ═══ ACTION BUTTONS ═══ -->
-    <div id="action-bar">
-        <button class="action-btn btn-paytable" onclick="togglePaytable()">📋 TABEL</button>
-        <button class="action-btn btn-turbo" id="btn-turbo" onclick="toggleTurbo()">⚡ TURBO</button>
-        <button class="action-btn btn-spin" id="btn-spin" onclick="doSpin()">
-            <div class="spin-icon">▶</div>
-            <div class="spin-text">SPIN</div>
-        </button>
-        <button class="action-btn btn-auto" id="btn-auto" onclick="toggleAutoSpin()">🔄 AUTO</button>
-        <button class="action-btn btn-gamble disabled" id="btn-gamble" onclick="doGamble()">
-            <span>🃏 GAMBLE</span>
-        </button>
-        <button class="action-btn btn-collect" id="btn-collect" onclick="doCollect()" style="display:none">
-            <span>💰 COLLECT</span>
-        </button>
-    </div>
-</div>
+    <!-- ═══ REELS AREA ═══ -->
+    <div id="reels-area" style="display:none">
 
-<!-- ═══ GAMBLE OVERLAY ═══ -->
-<div id="gamble-overlay">
-    <div id="gamble-box">
-        <div class="gamble-title">🃏 GAMBLE — DUBLEAZĂ SAU PIERZI</div>
-        <div class="gamble-amount">$<span id="gamble-amount">0</span></div>
-        <div id="gamble-card">
-            <div class="card-inner">
-                <div class="card-back">
-                    <div class="card-back-pattern"></div>
-                    <div class="card-back-icon">🃏</div>
-                    <div class="card-back-pattern"></div>
-                </div>
-                <div class="card-front">
-                    <div class="card-tl">
-                        <span class="card-rank">?</span>
-                        <span class="card-suit-sm"></span>
+        <!-- Paylines left -->
+        <div id="paylines-left">
+            <div class="pl-num pl-red"   data-line="0">1</div>
+            <div class="pl-num pl-blue"  data-line="1">2</div>
+            <div class="pl-num pl-green" data-line="2">3</div>
+            <div class="pl-num pl-orange"data-line="3">4</div>
+            <div class="pl-num pl-gray"  data-line="4">5</div>
+        </div>
+
+        <!-- Reels -->
+        <div id="reels-frame">
+            <div id="reels-boost-indicator" style="display:none">REELS BOOST</div>
+            <div id="reels-viewport">
+                <div class="reel" id="reel-0"><div class="reel-strip"></div></div>
+                <div class="reel" id="reel-1"><div class="reel-strip"></div></div>
+                <div class="reel" id="reel-2"><div class="reel-strip"></div></div>
+                <div class="reel" id="reel-3"><div class="reel-strip"></div></div>
+                <div class="reel" id="reel-4"><div class="reel-strip"></div></div>
+            </div>
+            <!-- Win line overlay -->
+            <canvas id="winline-canvas"></canvas>
+        </div>
+
+        <!-- Paylines right -->
+        <div id="paylines-right">
+            <div class="pl-num pl-red"   data-line="0">1</div>
+            <div class="pl-num pl-blue"  data-line="1">2</div>
+            <div class="pl-num pl-green" data-line="2">3</div>
+            <div class="pl-num pl-orange"data-line="3">4</div>
+            <div class="pl-num pl-gray"  data-line="4">5</div>
+        </div>
+
+    </div>
+
+    <!-- ═══ GAMBLE PANEL (inside machine) ═══ -->
+    <div id="gamble-overlay">
+        <div id="gamble-box">
+            <div class="gamble-title">🃏 GAMBLE — DUBLEAZĂ SAU PIERZI</div>
+            <div id="gamble-history"></div>
+            <div class="gamble-amount">$<span id="gamble-amount">0</span></div>
+            <div id="gamble-card">
+                <div class="card-inner">
+                    <div class="card-back">
+                        <div class="card-back-pattern"></div>
+                        <div class="card-back-icon">🃏</div>
+                        <div class="card-back-pattern"></div>
                     </div>
-                    <div class="card-center-suit">🂠</div>
-                    <div class="card-br">
-                        <span class="card-rank">?</span>
-                        <span class="card-suit-sm"></span>
+                    <div class="card-front">
+                        <div class="card-tl">
+                            <span class="card-rank">?</span>
+                            <span class="card-suit-sm"></span>
+                        </div>
+                        <div class="card-center-suit">🂠</div>
+                        <div class="card-br">
+                            <span class="card-rank">?</span>
+                            <span class="card-suit-sm"></span>
+                        </div>
                     </div>
                 </div>
             </div>
+            <div class="gamble-buttons">
+                <button class="gamble-choice red" onclick="gambleChoice('red')">♥ ROȘU</button>
+                <button class="gamble-choice black" onclick="gambleChoice('black')">♠ NEGRU</button>
+            </div>
+            <button class="gamble-collect-btn" onclick="gambleCollect()">💰 COLLECT $<span id="gamble-collect-amt">0</span></button>
         </div>
-        <div class="gamble-buttons">
-            <button class="gamble-choice red" onclick="gambleChoice('red')">♥ ROȘU</button>
-            <button class="gamble-choice black" onclick="gambleChoice('black')">♠ NEGRU</button>
-        </div>
-        <button class="gamble-collect-btn" onclick="gambleCollect()">💰 COLLECT $<span id="gamble-collect-amt">0</span></button>
     </div>
+
+    <!-- ═══ BELL LINK BONUS OVERLAY ═══ -->
+    <div id="belllink-overlay">
+
+        <div id="belllink-header">
+            <div class="bl-title">🔔 BELL LINK</div>
+            <div class="bl-rules" id="bl-rules">15🔔 = 2x</div>
+            <div class="bl-info">
+                <span class="bl-badge">RESPINS: <b id="bl-respins">3</b></span>
+                <span class="bl-badge bl-badge-gold">TOTAL: $<b id="bl-total">0</b></span>
+                <span class="bl-badge bl-badge-boost" id="bl-boost" style="display:none">REELS BOOST</span>
+            </div>
+        </div>
+        <div id="belllink-grid">
+            <!-- 3 rows × 5 cols, built by JS -->
+        </div>
+    </div>
+
+    <!-- ═══ WIN INFO BAR ═══ -->
+    <div id="win-info-bar">
+        <span id="win-line-text">PLACE YOUR BETS</span>
+    </div>
+
+    <!-- ═══ BOOK OF RA FREE SPINS OVERLAY ═══ -->
+    <div id="bor-freespin-reveal" style="display:none">
+        <div class="bor-reveal-content">
+            <div class="bor-reveal-title">📕 10 JOCURI GRATUITE!</div>
+            <div class="bor-reveal-subtitle">SIMBOL EXPANDABIL SPECIAL</div>
+            <img id="bor-reveal-img" src="" class="bor-reveal-icon">
+            <div id="bor-reveal-name" class="bor-reveal-sym-name"></div>
+        </div>
+    </div>
+
+    <!-- ═══ BOR FREE SPIN BANNER ═══ -->
+    <div id="bor-freespin-banner" style="display:none">
+        <span class="bor-fs-item">📕 FREE SPINS: <b id="bor-fs-count">0</b></span>
+        <span class="bor-fs-item">EXPANDABIL: <img id="bor-fs-sym-icon" src="" class="bor-fs-icon"> <b id="bor-fs-sym-name"></b></span>
+        <span class="bor-fs-item bor-fs-total">TOTAL: $<b id="bor-fs-total">0</b></span>
+    </div>
+
+    <!-- ═══ BOTTOM BAR ═══ -->
+    <div id="bottom-bar" class="gs-disabled">
+
+        <!-- Left: credit + state info -->
+        <div id="bottom-left">
+            <div class="bl-row">
+                <button class="arcade-btn btn-leave-sm" onclick="leaveTable()">✕</button>
+                <button class="arcade-btn btn-audio-sm" id="btn-audio" onclick="toggleAudio()">🔊</button>
+                <button class="arcade-btn btn-games-sm" id="btn-games" onclick="backToGameSelect()">🎰</button>
+                <div class="bl-state" id="state-label">IDLE</div>
+            </div>
+            <div class="credit-display">
+                <div class="credit-label">CREDIT</div>
+                <div class="credit-value" id="credit-value">0</div>
+            </div>
+        </div>
+
+        <!-- Center-left: collect + gamble + info -->
+        <div id="bottom-center-left">
+            <button class="arcade-btn btn-collect-arc" id="btn-collect-arc" onclick="gambleCollect()">COLLECT</button>
+            <button class="arcade-btn btn-gamble-arc disabled" id="btn-gamble" onclick="doGamble()">GAMBLE</button>
+            <button class="arcade-btn btn-info-arc" onclick="togglePaytable()">INFO</button>
+        </div>
+
+        <!-- Center: WIN display -->
+        <div id="win-center">
+            <div id="win-display">
+                <div id="win-label">WIN</div>
+                <div id="win-amount">0</div>
+            </div>
+            <div id="win-sub" id="state-sub">GAME OVER / PLACE YOUR BETS</div>
+        </div>
+
+        <!-- Center-right: bet -->
+        <div id="bottom-center-right">
+            <div class="bet-group">
+                <button class="arcade-btn bet-arr" onclick="changeBet(-1)">◄</button>
+                <div class="bet-box">
+                    <div class="bet-label">BET TOTAL</div>
+                    <div class="bet-val" id="bet-per-line">100</div>
+                </div>
+                <button class="arcade-btn bet-arr" onclick="changeBet(1)">►</button>
+            </div>
+        </div>
+
+        <!-- Right: spin + auto + turbo + credit/bet boxes -->
+        <div id="bottom-right-group">
+            <div id="small-boxes">
+                <div class="small-box">
+                    <div class="sb-label">CREDIT</div>
+                    <div class="sb-val">1</div>
+                    <div class="sb-sub">£</div>
+                </div>
+                <div class="small-box">
+                    <div class="sb-label">BET</div>
+                    <div class="sb-val" id="total-bet-sm">0.05</div>
+                    <div class="sb-sub" id="lines-sm">5</div>
+                </div>
+            </div>
+            <div id="spin-group">
+                <button class="arcade-btn btn-auto-arc" id="btn-auto" onclick="toggleAutoSpin()">AUTO<br><span id="auto-label">OFF</span></button>
+                <button class="arcade-btn btn-spin-arc" id="btn-spin" onclick="doSpin()">
+                    <div class="spin-text">SPIN</div>
+                </button>
+                <button class="arcade-btn btn-turbo-arc" id="btn-turbo" onclick="toggleTurbo()">⚡<br><span style="font-size:0.55vw">TURBO</span></button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══ FREE SPINS BANNER (removed - no scatter) ═══ -->
+
 </div>
 
 <!-- ═══ PAYTABLE OVERLAY ═══ -->
@@ -164,16 +224,6 @@
         <div class="pt-close" onclick="togglePaytable()">✕</div>
         <div class="pt-grid" id="pt-grid">
             <!-- Built by JS -->
-        </div>
-        <div class="pt-section">
-            <div class="pt-subtitle">👑 SCATTER (Crown)</div>
-            <div class="pt-scatter-row">3x Crown = 7x Total Bet + 15 FREE SPINS</div>
-            <div class="pt-scatter-row">4x Crown = 28x Total Bet + 15 FREE SPINS</div>
-            <div class="pt-scatter-row">5x Crown = 140x Total Bet + 15 FREE SPINS</div>
-        </div>
-        <div class="pt-section">
-            <div class="pt-subtitle">⭐ WILD (Star)</div>
-            <div class="pt-scatter-row">Star înlocuiește toate simbolurile (excepție Crown)</div>
         </div>
     </div>
 </div>
@@ -189,28 +239,26 @@
 // SYMBOL CONFIG
 // ══════════════════════════════════════════
 const SYMBOLS = {
-    crown:      { emoji: '👑', name: 'Crown',      color: '#ffd700' },
-    star:       { emoji: '⭐', name: 'Star',        color: '#ffd700' },
-    seven:      { emoji: '7️⃣',  name: 'Seven',       color: '#e74c3c' },
-    bell:       { emoji: '🔔', name: 'Bell',        color: '#f39c12' },
-    grapes:     { emoji: '🍇', name: 'Grapes',      color: '#8e44ad' },
-    watermelon: { emoji: '🍉', name: 'Watermelon',  color: '#27ae60' },
-    plum:       { emoji: '🍑', name: 'Plum',        color: '#e67e22' },
-    orange:     { emoji: '🍊', name: 'Orange',      color: '#f39c12' },
-    lemon:      { emoji: '🍋', name: 'Lemon',       color: '#f1c40f' },
-    cherry:     { emoji: '🍒', name: 'Cherry',      color: '#c0392b' },
+    star:       { emoji: '⭐', name: 'Star',        color: '#ffd700', img: 'icons/star.png' },
+    seven:      { emoji: '7️⃣',  name: 'Seven',       color: '#e74c3c', img: 'icons/sapte.png' },
+    bell:       { emoji: '🔔', name: 'Bell',        color: '#f39c12', img: 'icons/bell.png' },
+    grapes:     { emoji: '🍇', name: 'Grapes',      color: '#8e44ad', img: 'icons/struguri.png' },
+    watermelon: { emoji: '🍉', name: 'Watermelon',  color: '#27ae60', img: 'icons/pepene.png' },
+    plum:       { emoji: '🍑', name: 'Plum',        color: '#e67e22', img: 'icons/pruna.png' },
+    orange:     { emoji: '🍊', name: 'Orange',      color: '#f39c12', img: 'icons/portocala.png' },
+    lemon:      { emoji: '🍋', name: 'Lemon',       color: '#f1c40f', img: 'icons/lamaie.png' },
+    cherry:     { emoji: '🍒', name: 'Cherry',      color: '#c0392b', img: 'icons/cirese.png' },
 };
 
 const PAYTABLE = {
-    star:       [70, 280, 1400],
-    seven:      [56, 210, 1050],
-    bell:       [35, 140, 560],
-    grapes:     [28, 115, 420],
-    watermelon: [22, 85,  280],
-    plum:       [14, 56,  210],
-    orange:     [12, 42,  140],
-    lemon:      [7,  28,  105],
-    cherry:     [7,  22,  70],
+    seven:      [135, 500, 2500],
+    bell:       [85,  335, 1350],
+    grapes:     [65,  275, 1000],
+    watermelon: [55,  200, 675],
+    plum:       [35,  135, 500],
+    orange:     [30,  100, 335],
+    lemon:      [16,  65,  250],
+    cherry:     [16,  55,  175],
 };
 
 const PAYLINES = [
@@ -228,25 +276,85 @@ const PAYLINE_COLORS = [
 // Full reel strips for animation
 const REEL_STRIPS = [
     ['cherry','lemon','orange','plum','seven','bell','grapes','watermelon','lemon','cherry',
-     'orange','star','plum','bell','lemon','cherry','grapes','crown','orange','cherry',
+     'orange','star','plum','bell','lemon','cherry','grapes','plum','orange','cherry',
      'seven','lemon','plum','cherry','watermelon','bell','orange','lemon','cherry','grapes'],
     ['lemon','cherry','bell','orange','plum','cherry','watermelon','grapes','lemon','seven',
-     'cherry','orange','crown','plum','lemon','bell','cherry','orange','grapes','cherry',
+     'cherry','orange','lemon','plum','lemon','bell','cherry','orange','grapes','cherry',
      'lemon','star','watermelon','plum','cherry','orange','lemon','bell','cherry','seven'],
     ['orange','lemon','cherry','grapes','bell','plum','cherry','lemon','watermelon','orange',
-     'cherry','seven','lemon','plum','bell','crown','orange','cherry','grapes','lemon',
+     'cherry','seven','lemon','plum','bell','orange','orange','cherry','grapes','lemon',
      'cherry','star','plum','bell','orange','cherry','lemon','watermelon','seven','cherry'],
     ['plum','cherry','lemon','orange','bell','cherry','grapes','lemon','watermelon','cherry',
-     'orange','seven','plum','lemon','crown','cherry','bell','orange','lemon','cherry',
+     'orange','seven','plum','lemon','cherry','cherry','bell','orange','lemon','cherry',
      'grapes','star','plum','watermelon','cherry','lemon','orange','bell','cherry','seven'],
     ['cherry','orange','lemon','bell','plum','cherry','seven','grapes','lemon','orange',
-     'cherry','watermelon','plum','lemon','bell','cherry','orange','crown','lemon','cherry',
+     'cherry','watermelon','plum','lemon','bell','cherry','orange','grapes','lemon','cherry',
      'grapes','star','bell','plum','orange','lemon','cherry','watermelon','seven','cherry'],
 ];
 
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
+let gameMode = 'normal'; // 'normal' | 'belllink' | 'bookofra'
+
+// ── Save originals for game switching ──
+const ORIG_SYMBOLS_DATA = {};
+for (const [k, v] of Object.entries(SYMBOLS)) ORIG_SYMBOLS_DATA[k] = { ...v };
+const ORIG_PAYTABLE_DATA = {};
+for (const [k, v] of Object.entries(PAYTABLE)) ORIG_PAYTABLE_DATA[k] = [...v];
+const ORIG_REEL_STRIPS_DATA = REEL_STRIPS.map(s => [...s]);
+
+// ── Book of Ra Configs ──
+const BOR_SYMBOLS = {
+    book:     { emoji: '📕', name: 'Book of Ra', color: '#c0392b', img: 'icons/book_of_ra/book.png' },
+    explorer: { emoji: '🤠', name: 'Explorer',   color: '#e67e22', img: 'icons/book_of_ra/indiana_jones.png' },
+    pharaoh:  { emoji: '👑', name: 'Pharaoh',    color: '#f1c40f', img: 'icons/book_of_ra/Totem.png' },
+    mummy:    { emoji: '🧟', name: 'Mummy',      color: '#95a5a6', img: 'icons/book_of_ra/Mumie.png' },
+    scarab:   { emoji: '🪲', name: 'Scarab',     color: '#27ae60', img: 'icons/book_of_ra/gandac.png' },
+    ace:      { emoji: 'A',  name: 'Ace',        color: '#e74c3c', img: 'icons/book_of_ra/A.png' },
+    king:     { emoji: 'K',  name: 'King',       color: '#3498db', img: 'icons/book_of_ra/K.png' },
+    queen:    { emoji: 'Q',  name: 'Queen',      color: '#9b59b6', img: 'icons/book_of_ra/Q.png' },
+    jack:     { emoji: 'J',  name: 'Jack',       color: '#2ecc71', img: 'icons/book_of_ra/J.png' },
+    ten:      { emoji: '10', name: '10',         color: '#1abc9c', img: 'icons/book_of_ra/10.png' },
+};
+const BOR_PAYTABLE = {
+    explorer: [10, 100, 1000, 5000],
+    pharaoh:  [5,  40,  400,  2000],
+    mummy:    [5,  30,  100,  750],
+    scarab:   [5,  30,  100,  750],
+    ace:      [0,  5,   40,   150],
+    king:     [0,  5,   40,   150],
+    queen:    [0,  5,   25,   100],
+    jack:     [0,  5,   25,   100],
+    ten:      [0,  5,   25,   100],
+};
+const BOR_REEL_STRIPS = [
+    ['ten','jack','queen','king','ace','scarab','ten','jack','queen','mummy',
+     'king','ten','jack','queen','ace','pharaoh','ten','jack','king','book',
+     'ten','jack','queen','ace','scarab','mummy','ten','queen','explorer','king'],
+    ['jack','ten','king','queen','ace','mummy','jack','ten','queen','scarab',
+     'king','ten','jack','ace','queen','ten','jack','book','king','pharaoh',
+     'ten','queen','jack','ace','ten','king','scarab','queen','jack','explorer'],
+    ['queen','ten','jack','king','ace','ten','scarab','jack','queen','mummy',
+     'king','ten','jack','queen','ace','ten','pharaoh','jack','king','queen',
+     'book','ten','jack','ace','scarab','king','ten','explorer','queen','jack'],
+    ['king','ten','jack','queen','ace','scarab','ten','jack','king','queen',
+     'mummy','ten','jack','ace','king','queen','ten','jack','pharaoh','queen',
+     'ten','jack','book','king','ace','ten','scarab','queen','jack','explorer'],
+    ['ace','ten','jack','queen','king','ten','mummy','jack','scarab','queen',
+     'king','ten','jack','ace','queen','pharaoh','ten','jack','king','queen',
+     'ten','jack','ace','book','king','ten','explorer','queen','jack','scarab'],
+];
+
+function switchGameConfig(symbols, paytable, reelStrips) {
+    for (const k in SYMBOLS) delete SYMBOLS[k];
+    for (const [k, v] of Object.entries(symbols)) SYMBOLS[k] = { ...v };
+    for (const k in PAYTABLE) delete PAYTABLE[k];
+    for (const [k, v] of Object.entries(paytable)) PAYTABLE[k] = [...v];
+    REEL_STRIPS.length = 0;
+    for (const s of reelStrips) REEL_STRIPS.push([...s]);
+}
+
 let state = {
     chips: 0,
     betPerLine: 10,
@@ -274,8 +382,15 @@ let spaceTurboActive = false;
 let preTurboState = false;
 let audioMuted = false;
 let masterVolume = 1.0;
+let spaceDetectTimer = null;
 let chargeTimer = null;
-const CHARGE_DELAY = 600;
+const SPACE_DETECT_MS = 500;
+const CHARGE_FILL_MS = 400;
+
+// Book of Ra free spin state
+let borFreeSpinActive = false;
+let borExpandingSymbol = null;
+let borFreeSpinAutoTimer = null;
 
 // ══════════════════════════════════════════
 // SOUND ENGINE (Web Audio API)
@@ -383,6 +498,14 @@ const SFX = (() => {
         click() {
             playTone(1200, 0.04, 'sine', 0.15);
         },
+        bellChime() {
+            // Bell chime — ascending bell tones
+            [1047, 1319, 1568, 1760, 2093].forEach((f, i) => {
+                playTone(f, 0.5, 'sine', 0.3, i * 0.12);
+                playTone(f * 0.5, 0.4, 'triangle', 0.15, i * 0.12);
+            });
+            playNoise(0.06, 0.12, 8000);
+        },
     };
 })();
 
@@ -400,7 +523,10 @@ function initReels() {
             REEL_STRIPS[r].forEach(sym => {
                 const cell = document.createElement('div');
                 cell.className = 'sym-cell';
-                cell.innerHTML = `<span class="sym-emoji">${SYMBOLS[sym].emoji}</span>`;
+                const s = SYMBOLS[sym];
+                cell.innerHTML = s.img
+                    ? `<img class="sym-img" src="${s.img}" alt="${s.name}" draggable="false">`
+                    : `<span class="sym-emoji">${s.emoji}</span>`;
                 cell.dataset.symbol = sym;
                 strip.appendChild(cell);
             });
@@ -479,10 +605,13 @@ function animateReels(grid, reelStops, spinTime, callback) {
     }
 
     function frame(now) {
-        // Check for skip request
+        // Check for skip request — allow after a brief minimum animation time
         if (skipRequested && currentSpinResolve) {
-            currentSpinResolve();
-            return;
+            const minSkipMs = turboMode ? 80 : 200;
+            if ((now - startTime) >= minSkipMs) {
+                currentSpinResolve();
+                return;
+            }
         }
 
         const elapsed = now - startTime;
@@ -669,47 +798,105 @@ function updateState(stateJson) {
 
 function renderUI() {
     document.getElementById('credit-value').textContent = (state.chips || 0).toLocaleString('en-US');
-    document.getElementById('bet-per-line').textContent = state.betPerLine || 10;
-    document.getElementById('lines-value').textContent = state.lines || 10;
-    document.getElementById('total-bet-value').textContent = ((state.betPerLine || 10) * (state.lines || 10)).toLocaleString('en-US');
-    document.getElementById('last-win-value').textContent = (state.lastWin || 0).toLocaleString('en-US');
+    document.getElementById('bet-per-line').textContent = ((state.betPerLine || 10) * (state.lines || 10)).toLocaleString('en-US');
+    // lines-value may not exist in new layout — guard
+    const lv = document.getElementById('lines-value');
+    if (lv) lv.textContent = state.lines || 10;
+    // total-bet-value may not exist in new layout — guard
+    const tbv = document.getElementById('total-bet-value');
+    if (tbv) tbv.textContent = ((state.betPerLine || 10) * (state.lines || 10)).toLocaleString('en-US');
+    // last-win-value may not exist in new layout — guard
+    const lwv = document.getElementById('last-win-value');
+    if (lwv) lwv.textContent = (state.lastWin || 0).toLocaleString('en-US');
+    // small boxes
+    const tbsm = document.getElementById('total-bet-sm');
+    if (tbsm) tbsm.textContent = ((state.betPerLine || 10) * (state.lines || 10)).toLocaleString('en-US');
+    const lsm = document.getElementById('lines-sm');
+    if (lsm) lsm.textContent = state.lines || 10;
 
     const stateUpper = (state.state || 'idle').toUpperCase();
     document.getElementById('state-label').textContent =
-        stateUpper === 'FREESPIN' ? `FREE SPIN (${state.freeSpinsLeft})` :
+        borFreeSpinActive ? '📕 FREE SPINS' :
+        stateUpper === 'BELLLINK' ? '🔔 BELL LINK' :
         stateUpper === 'GAMBLE' ? 'GAMBLE' :
-        stateUpper === 'SPINNING' ? 'SPINNING...' : 'GATA';
+        stateUpper === 'SPINNING' ? 'SPINNING...' : 'READY';
 
-    // Free spin banner
-    const fsBanner = document.getElementById('freespin-banner');
-    if (state.freeSpinsLeft > 0 || state.state === 'freespin') {
-        fsBanner.classList.add('visible');
-        document.getElementById('fs-count').textContent = state.freeSpinsLeft;
-        document.getElementById('fs-total-win').textContent = (state.freeSpinsTotalWin || 0).toLocaleString('en-US');
-    } else {
-        fsBanner.classList.remove('visible');
+    // win sub text
+    const winSub = document.getElementById('win-sub');
+    if (winSub) {
+        if (stateUpper === 'SPINNING') winSub.textContent = 'SPINNING...';
+        else if (state.lastWin > 0) winSub.textContent = 'GAME OVER / PLACE YOUR BETS';
+        else winSub.textContent = 'GAME OVER / PLACE YOUR BETS';
     }
 
-    // Gamble / collect buttons
+    // Gamble button
     const btnGamble = document.getElementById('btn-gamble');
-    const btnCollect = document.getElementById('btn-collect');
     if (state.totalWin > 0 && state.state === 'idle') {
         btnGamble.classList.remove('disabled');
-        btnCollect.style.display = 'none';
     } else {
         btnGamble.classList.add('disabled');
-        btnCollect.style.display = 'none';
     }
+
+    // collect arc button
+    const btnCollectArc = document.getElementById('btn-collect-arc');
+    if (btnCollectArc) {
+        btnCollectArc.style.opacity = (state.totalWin > 0 && state.state === 'idle') ? '1' : '0.4';
+    }
+
+    // Legacy btn-collect hidden
+    const btnCollect = document.getElementById('btn-collect');
+    if (btnCollect) btnCollect.style.display = 'none';
 
     // Spin button state
     const btnSpin = document.getElementById('btn-spin');
-    if (state.state === 'freespin') {
-        btnSpin.querySelector('.spin-text').textContent = 'FREE SPIN';
+    const spinTxt = btnSpin.querySelector('.spin-text');
+    if (state.state === 'freespin' || borFreeSpinActive) {
+        if (spinTxt) spinTxt.textContent = 'FREE';
         btnSpin.classList.add('free');
     } else {
-        btnSpin.querySelector('.spin-text').textContent = 'SPIN';
+        if (spinTxt) spinTxt.textContent = 'SPIN';
         btnSpin.classList.remove('free');
     }
+
+    // Auto label
+    const autoLabel = document.getElementById('auto-label');
+    if (autoLabel) autoLabel.textContent = autoSpin ? 'ON' : 'OFF';
+}
+
+// ══════════════════════════════════════════
+// BELL VALUE BADGES (overlay on reel symbols)
+// ══════════════════════════════════════════
+function showBellValueBadges(grid, bellPositions) {
+    // Remove any existing badges first
+    document.querySelectorAll('.bell-value-badge, .bell-boost-badge').forEach(b => b.remove());
+
+    for (const bp of bellPositions) {
+        // Find the cell in the reel that shows this position
+        const reel = document.querySelector(`#reel-${bp.reel} .reel-strip`);
+        if (!reel) continue;
+        const stopIdx = currentReelPositions[bp.reel];
+        const cellIdx = stopIdx + bp.row;
+        const cells = reel.querySelectorAll('.sym-cell');
+        if (cellIdx < cells.length) {
+            const cell = cells[cellIdx];
+            if (bp.isBoost) {
+                // Boost bell: show "REELS BOOST" instead of value
+                const boostBadge = document.createElement('div');
+                boostBadge.className = 'bell-boost-badge';
+                boostBadge.textContent = 'REELS BOOST';
+                cell.appendChild(boostBadge);
+            } else {
+                const badge = document.createElement('div');
+                badge.className = 'bell-value-badge';
+                badge.textContent = '$' + bp.value.toLocaleString('en-US');
+                cell.appendChild(badge);
+            }
+        }
+    }
+}
+
+function clearBellValueBadges() {
+    document.querySelectorAll('.bell-value-badge, .bell-boost-badge').forEach(b => b.remove());
 }
 
 // ══════════════════════════════════════════
@@ -728,12 +915,21 @@ function onSpinResult(spinDataJson, chips) {
     // Use turbo spin time if turbo
     const spinTime = turboMode ? 0.4 : 2.5;
 
+    // Show/hide Reels Boost indicator on reel area
+    const boostInd = document.getElementById('reels-boost-indicator');
+    boostInd.style.display = 'none';
+
     // Animate reels
     animateReels(data.grid, data.reelStops, spinTime, () => {
+        // Bell Link mode: overlay bell values on bell symbols
+        if (gameMode === 'belllink' && data.bellPositions && data.bellPositions.length > 0) {
+            showBellValueBadges(data.grid, data.bellPositions);
+        }
+
         // Show win
         if (data.totalWin > 0) {
             animateWinCounter(data.totalWin);
-            document.getElementById('win-display').classList.add('visible');
+            document.getElementById('win-display').classList.remove('hidden-win');
 
             if (data.totalWin >= state.betPerLine * state.lines * 10) {
                 spawnConfetti(80);
@@ -744,39 +940,141 @@ function onSpinResult(spinDataJson, chips) {
             }
 
             drawWinLines(data.winLines, data.lineWins);
-        } else {
-            document.getElementById('win-display').classList.remove('visible', 'big-win');
-            document.getElementById('win-amount').textContent = '0';
-        }
 
-        // Free spins
-        if (data.freeSpinsWon > 0) {
-            showToast(`🎉 ${data.freeSpinsWon} ROTIRI GRATUITE!`, 3000);
-            spawnConfetti(50);
-            SFX.freeSpins();
+            // Win info bar
+            if (data.lineWins && data.lineWins.length === 1) {
+                document.getElementById('win-line-text').textContent =
+                    `LINE ${data.lineWins[0].line + 1} PAYS $${data.lineWins[0].win.toLocaleString('en-US')}`;
+            } else if (data.lineWins && data.lineWins.length > 1) {
+                document.getElementById('win-line-text').textContent =
+                    `${data.lineWins.length} LINES — WIN $${data.totalWin.toLocaleString('en-US')}`;
+            }
+            document.getElementById('win-info-bar').classList.add('winning');
+        } else {
+            document.getElementById('win-display').classList.remove('big-win');
+            document.getElementById('win-amount').textContent = '0';
+            document.getElementById('win-line-text').textContent = 'PLACE YOUR BETS';
+            document.getElementById('win-info-bar').classList.remove('winning');
         }
 
         state.lastWin = data.totalWin;
         state.totalWin = data.totalWin;
-        state.freeSpinsLeft = data.freeSpinsLeft;
-        state.freeSpinsTotalWin = data.freeSpinsTotalWin;
+
+        // Bell Link trigger — stop auto-spin, animated sequence
+        if (data.bellLinkTriggered) {
+            autoSpin = false;
+
+            // Step 1: Brief pause to let results settle (400ms)
+            setTimeout(() => {
+                // Step 2: Highlight bell symbols on reels (boost bells get special class)
+                for (const bp of data.bellPositions) {
+                    const reel = document.querySelector(`#reel-${bp.reel} .reel-strip`);
+                    if (!reel) continue;
+                    const stopIdx = currentReelPositions[bp.reel];
+                    const cellIdx = stopIdx + bp.row;
+                    const cells = reel.querySelectorAll('.sym-cell');
+                    if (cellIdx < cells.length) {
+                        cells[cellIdx].classList.add('bell-highlight');
+                        if (bp.isBoost) cells[cellIdx].classList.add('boost-bell-highlight');
+                    }
+                }
+
+                // Step 3: Play bell chime SFX
+                SFX.bellChime();
+
+                // Step 4: After chime, show "SPECIAL ACTIVATED" banner
+                setTimeout(() => {
+                    if (data.reelsBoost) {
+                        showToast('REELS BOOST + 🔔 BELL LINK!', 2000);
+                    } else {
+                        showToast('🔔 BELL LINK ACTIVAT!', 2000);
+                    }
+                    document.getElementById('win-line-text').textContent = '🔔 BELL LINK — SPECIALA ACTIVATĂ!';
+                    document.getElementById('win-info-bar').classList.add('winning');
+
+                    // Step 5: Ensure server finishes spin, then start bell link
+                    if (typeof mp !== 'undefined') {
+                        mp.trigger('Slots_SkipAnimation');
+                    }
+                    setTimeout(() => {
+                        // Remove highlights
+                        document.querySelectorAll('.bell-highlight, .boost-bell-highlight').forEach(el => {
+                            el.classList.remove('bell-highlight');
+                            el.classList.remove('boost-bell-highlight');
+                        });
+                        if (typeof mp !== 'undefined') {
+                            mp.trigger('Slots_BellLinkStart');
+                        }
+                    }, 1500);
+                }, 800);
+            }, 400);
+
+            renderUI();
+            return; // Don't auto-spin
+        }
+
+        // ── Book of Ra: expanding symbol animation ──
+        if (gameMode === 'bookofra' && data.expandedReels && data.expandedReels.length > 0 && data.isFree) {
+            borAnimateExpansion(data.expandedReels, data.expandingSymbol);
+        }
+
+        // ── Book of Ra: free spins trigger ──
+        if (gameMode === 'bookofra' && data.freeSpinsWon > 0 && data.newExpandingSymbol && !borFreeSpinActive) {
+            autoSpin = false;
+            borFreeSpinActive = true;
+            borExpandingSymbol = data.newExpandingSymbol;
+
+            // Skip server animation timer
+            if (typeof mp !== 'undefined') mp.trigger('Slots_SkipAnimation');
+
+            // Show reveal overlay after a brief delay
+            setTimeout(() => {
+                borShowFreeSpinReveal(data.newExpandingSymbol, data.freeSpinsLeft);
+            }, 800);
+
+            renderUI();
+            return;
+        }
+
+        // ── Book of Ra: free spin re-trigger (during active free spins) ──
+        if (gameMode === 'bookofra' && data.freeSpinsWon > 0 && borFreeSpinActive) {
+            showToast(`📕 +${data.freeSpinsWon} JOCURI GRATUITE!`, 2000);
+            SFX.freeSpins();
+        }
+
+        // ── Book of Ra: update free spin banner & auto-spin ──
+        if (gameMode === 'bookofra' && borFreeSpinActive) {
+            borUpdateFreeSpinBanner(data.freeSpinsLeft, data.freeSpinsTotalWin);
+
+            if (typeof mp !== 'undefined') mp.trigger('Slots_SkipAnimation');
+
+            if (data.freeSpinsLeft > 0) {
+                borFreeSpinAutoTimer = setTimeout(() => {
+                    doSpin();
+                }, turboMode ? 600 : 1800);
+            } else {
+                // Free spins ended
+                borEndFreeSpins(data.freeSpinsTotalWin);
+            }
+
+            renderUI();
+            return;
+        }
 
         // Ensure server transitions state quickly for continuous spinning
-        if ((spaceHeld || autoSpin || data.freeSpinsLeft > 0) && typeof mp !== 'undefined') {
+        if (((spaceHeld && spaceTurboActive) || autoSpin) && typeof mp !== 'undefined') {
             mp.trigger('Slots_SkipAnimation');
         }
 
-        // Auto-spin during free spins
-        if (data.freeSpinsLeft > 0) {
+        // Auto-spin / turbo-spin
+        if (spaceHeld && spaceTurboActive) {
             setTimeout(() => {
-                if (state.freeSpinsLeft > 0) doSpin();
-            }, turboMode ? 300 : 1500);
-        } else if (spaceHeld) {
-            setTimeout(() => {
-                if (spaceHeld) doSpin();
+                if (spaceHeld && spaceTurboActive) doSpin();
             }, 150);
-        } else if (autoSpin && data.totalWin === 0) {
-            setTimeout(() => doSpin(), turboMode ? 300 : 1000);
+        } else if (autoSpin) {
+            setTimeout(() => {
+                if (autoSpin) doSpin();
+            }, turboMode ? 300 : 1000);
         }
 
         renderUI();
@@ -800,6 +1098,8 @@ function animateWinCounter(targetWin) {
 // GAMBLE
 // ══════════════════════════════════════════
 function onGambleStart(amount) {
+    // Hide reels, show gamble panel inside machine
+    document.getElementById('reels-area').style.display = 'none';
     document.getElementById('gamble-overlay').classList.add('visible');
     document.getElementById('gamble-amount').textContent = amount.toLocaleString('en-US');
     document.getElementById('gamble-collect-amt').textContent = amount.toLocaleString('en-US');
@@ -832,6 +1132,16 @@ function onGambleResult(resultJson) {
         card.querySelector('.card-center-suit').textContent = suit;
         card.classList.add(r.won ? 'won' : 'lost');
         if (r.won) SFX.gambleWin(); else SFX.gambleLose();
+
+        // Add to history
+        const hist = document.getElementById('gamble-history');
+        const mini = document.createElement('div');
+        mini.className = 'history-card ' + r.resultColor + (r.won ? ' won' : ' lost');
+        mini.innerHTML = `<span class="hc-rank">${rank}</span><span class="hc-suit">${suit}</span>`;
+        hist.appendChild(mini);
+        // Keep last 10 visible
+        while (hist.children.length > 10) hist.removeChild(hist.firstChild);
+        hist.scrollLeft = hist.scrollWidth;
     }, 300);
 
     if (r.won) {
@@ -842,6 +1152,7 @@ function onGambleResult(resultJson) {
             // Auto-collect after max gambles
             setTimeout(() => {
                 document.getElementById('gamble-overlay').classList.remove('visible');
+                document.getElementById('reels-area').style.display = '';
             }, 1500);
         } else {
             // Reset card after 1.5s so player can gamble again
@@ -857,6 +1168,7 @@ function onGambleResult(resultJson) {
     } else {
         setTimeout(() => {
             document.getElementById('gamble-overlay').classList.remove('visible');
+            document.getElementById('reels-area').style.display = '';
         }, 1500);
     }
 
@@ -871,8 +1183,11 @@ function doSpin() {
     if (isSpinning) return;
     SFX.click();
 
-    document.getElementById('win-display').classList.remove('visible', 'big-win');
+    document.getElementById('win-display').classList.remove('big-win');
     document.getElementById('win-amount').textContent = '0';
+
+    // Clear bell value badges
+    clearBellValueBadges();
 
     // Clear win lines
     const cnv = document.getElementById('winline-canvas');
@@ -887,17 +1202,28 @@ function doSpin() {
     }
 }
 
-function changeBet(delta) {
-    if (isSpinning || state.state === 'freespin') return;
+const BET_LEVELS = [1, 5, 10, 20, 50, 100, 200, 500];
+let betIndex = 2; // default 10
+
+function changeBet(dir) {
+    if (isSpinning || state.state === 'freespin' || borFreeSpinActive) return;
     SFX.click();
-    let newBet = (state.betPerLine || 10) + delta;
-    newBet = Math.max(1, Math.min(500, newBet));
-    state.betPerLine = newBet;
+    betIndex = Math.max(0, Math.min(BET_LEVELS.length - 1, betIndex + dir));
+    state.betPerLine = BET_LEVELS[betIndex];
     renderUI();
 
     if (typeof mp !== 'undefined') {
-        mp.trigger('Slots_SetBet', newBet);
+        mp.trigger('Slots_SetBet', state.betPerLine);
     }
+}
+
+function doMaxBet() {
+    if (isSpinning || state.state === 'freespin') return;
+    SFX.click();
+    betIndex = BET_LEVELS.length - 1;
+    state.betPerLine = BET_LEVELS[betIndex];
+    renderUI();
+    if (typeof mp !== 'undefined') mp.trigger('Slots_SetBet', state.betPerLine);
 }
 
 function doGamble() {
@@ -921,7 +1247,9 @@ function gambleChoice(choice) {
 }
 
 function gambleCollect() {
-    document.getElementById('gamble-overlay').classList.remove('visible');
+    const go = document.getElementById('gamble-overlay');
+    if (go) go.classList.remove('visible');
+    document.getElementById('reels-area').style.display = '';
     if (typeof mp !== 'undefined') {
         mp.trigger('Slots_CollectGamble');
     }
@@ -951,6 +1279,23 @@ function skipAnimation() {
 
 function leaveTable() {
     autoSpin = false;
+    bellLinkActive = false;
+    borFreeSpinActive = false;
+    borExpandingSymbol = null;
+    if (bellLinkAutoTimer) { clearTimeout(bellLinkAutoTimer); bellLinkAutoTimer = null; }
+    if (borFreeSpinAutoTimer) { clearTimeout(borFreeSpinAutoTimer); borFreeSpinAutoTimer = null; }
+    clearBellValueBadges();
+    const gh = document.getElementById('gamble-history');
+    if (gh) gh.innerHTML = '';
+    const wlt = document.getElementById('win-line-text');
+    if (wlt) wlt.textContent = 'PLACE YOUR BETS';
+    const wib = document.getElementById('win-info-bar');
+    if (wib) wib.classList.remove('winning');
+    document.getElementById('belllink-overlay').classList.remove('visible');
+    document.getElementById('gamble-overlay').classList.remove('visible');
+    document.getElementById('bor-freespin-banner').style.display = 'none';
+    document.getElementById('bor-freespin-reveal').style.display = 'none';
+    document.getElementById('reels-area').style.display = '';
     if (typeof mp !== 'undefined') mp.trigger('Slots_LeaveTable');
 }
 
@@ -983,19 +1328,383 @@ function buildPaytable() {
     const grid = document.getElementById('pt-grid');
     grid.innerHTML = '';
 
-    for (const [sym, pays] of Object.entries(PAYTABLE)) {
-        const row = document.createElement('div');
-        row.className = 'pt-row';
-        row.innerHTML = `
-            <div class="pt-sym">${SYMBOLS[sym].emoji} ${SYMBOLS[sym].name}</div>
-            <div class="pt-pay">3x = <b>${pays[0]}x</b></div>
-            <div class="pt-pay">4x = <b>${pays[1]}x</b></div>
-            <div class="pt-pay">5x = <b>${pays[2]}x</b></div>
+    if (gameMode === 'bookofra') {
+        // Book scatter section
+        const scatterRow = document.createElement('div');
+        scatterRow.className = 'pt-row pt-scatter';
+        scatterRow.innerHTML = `
+            <div class="pt-sym">📕 Book of Ra (Wild + Scatter)</div>
+            <div class="pt-pay">3x = <b>2x bet</b></div>
+            <div class="pt-pay">4x = <b>20x bet</b></div>
+            <div class="pt-pay">5x = <b>200x bet</b></div>
         `;
-        grid.appendChild(row);
+        grid.appendChild(scatterRow);
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'pt-section';
+        infoDiv.innerHTML = '<div class="pt-subtitle">📕 Substituie toate simbolurile. 3+ = 10 Jocuri Gratuite cu Simbol Expandabil Special.</div>';
+        grid.appendChild(infoDiv);
+
+        for (const [sym, pays] of Object.entries(PAYTABLE)) {
+            const row = document.createElement('div');
+            row.className = 'pt-row';
+            const s = SYMBOLS[sym];
+            const imgHtml = s.img ? `<img src="${s.img}" style="width:1.2vw;height:1.2vw;vertical-align:middle;margin-right:0.3vw;">` : s.emoji;
+            if (pays[0] > 0) {
+                row.innerHTML = `
+                    <div class="pt-sym">${imgHtml} ${s.name}</div>
+                    <div class="pt-pay">2x=<b>${pays[0]}x</b> 3x=<b>${pays[1]}x</b></div>
+                    <div class="pt-pay">4x=<b>${pays[2]}x</b></div>
+                    <div class="pt-pay">5x=<b>${pays[3]}x</b></div>
+                `;
+            } else {
+                row.innerHTML = `
+                    <div class="pt-sym">${imgHtml} ${s.name}</div>
+                    <div class="pt-pay">3x = <b>${pays[1]}x</b></div>
+                    <div class="pt-pay">4x = <b>${pays[2]}x</b></div>
+                    <div class="pt-pay">5x = <b>${pays[3]}x</b></div>
+                `;
+            }
+            grid.appendChild(row);
+        }
+    } else {
+        for (const [sym, pays] of Object.entries(PAYTABLE)) {
+            const row = document.createElement('div');
+            row.className = 'pt-row';
+            row.innerHTML = `
+                <div class="pt-sym">${SYMBOLS[sym].emoji} ${SYMBOLS[sym].name}</div>
+                <div class="pt-pay">3x = <b>${pays[0]}x</b></div>
+                <div class="pt-pay">4x = <b>${pays[1]}x</b></div>
+                <div class="pt-pay">5x = <b>${pays[2]}x</b></div>
+            `;
+            grid.appendChild(row);
+        }
     }
 }
 buildPaytable();
+
+// ══════════════════════════════════════════
+// GAME SELECT
+// ══════════════════════════════════════════
+function selectGame(mode) {
+    gameMode = mode;
+    document.getElementById('game-select').style.display = 'none';
+    document.getElementById('reels-area').style.display = '';
+    document.getElementById('bottom-bar').classList.remove('gs-disabled');
+
+    if (mode === 'bookofra') {
+        switchGameConfig(BOR_SYMBOLS, BOR_PAYTABLE, BOR_REEL_STRIPS);
+    } else {
+        switchGameConfig(ORIG_SYMBOLS_DATA, ORIG_PAYTABLE_DATA, ORIG_REEL_STRIPS_DATA);
+        if (mode === 'belllink') {
+            SYMBOLS.bell.img = 'icons/bell-link.png';
+        } else {
+            SYMBOLS.bell.img = 'icons/bell.png';
+        }
+    }
+
+    // Re-init reels with correct icons
+    initReels();
+    initDimensions();
+    buildPaytable();
+
+    // Hide BOR free spin elements
+    document.getElementById('bor-freespin-banner').style.display = 'none';
+    document.getElementById('bor-freespin-reveal').style.display = 'none';
+    borFreeSpinActive = false;
+    borExpandingSymbol = null;
+
+    // Tell server
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_SetGameMode', mode);
+    }
+}
+
+function backToGameSelect() {
+    if (isSpinning || bellLinkActive || borFreeSpinActive || state.state === 'gamble') return;
+    document.getElementById('reels-area').style.display = 'none';
+    document.getElementById('game-select').style.display = '';
+    document.getElementById('bottom-bar').classList.add('gs-disabled');
+    document.getElementById('bor-freespin-banner').style.display = 'none';
+    document.getElementById('bor-freespin-reveal').style.display = 'none';
+    borFreeSpinActive = false;
+    autoSpin = false;
+    if (autoSpinTimer) { clearTimeout(autoSpinTimer); autoSpinTimer = null; }
+    if (borFreeSpinAutoTimer) { clearTimeout(borFreeSpinAutoTimer); borFreeSpinAutoTimer = null; }
+}
+
+// ══════════════════════════════════════════
+// BELL LINK BONUS
+// ══════════════════════════════════════════
+let bellLinkActive = false;
+let bellLinkAutoTimer = null;
+
+// Random fruit icons for empty bell link cells
+const BL_RANDOM_FRUITS = ['cherry', 'lemon', 'orange', 'plum', 'grapes', 'watermelon', 'seven'];
+
+function getRandomFruitImg() {
+    const sym = BL_RANDOM_FRUITS[Math.floor(Math.random() * BL_RANDOM_FRUITS.length)];
+    return SYMBOLS[sym].img;
+}
+
+function buildBellLinkGrid(grid, boostCells) {
+    const container = document.getElementById('belllink-grid');
+    container.innerHTML = '';
+    for (let row = 0; row < 3; row++) {
+        for (let reel = 0; reel < 5; reel++) {
+            const cell = document.createElement('div');
+            cell.className = 'bl-cell';
+            cell.dataset.row = row;
+            cell.dataset.reel = reel;
+            const val = grid[row][reel];
+            if (val !== null) {
+                cell.classList.add('has-bell');
+                const isBoost = boostCells && boostCells[row] && boostCells[row][reel];
+                if (isBoost) {
+                    cell.classList.add('boost-bell');
+                    cell.innerHTML = `
+                        <img class="bl-cell-img" src="icons/bell-link.png" draggable="false">
+                        <div class="bl-boost-label">REELS BOOST</div>
+                    `;
+                } else {
+                    cell.innerHTML = `
+                        <img class="bl-cell-img" src="icons/bell-link.png" draggable="false">
+                        <div class="bl-cell-value">$${val.toLocaleString('en-US')}</div>
+                    `;
+                }
+            } else {
+                cell.innerHTML = `<img class="bl-cell-fruit" src="${getRandomFruitImg()}" draggable="false">`;
+            }
+            container.appendChild(cell);
+        }
+    }
+}
+
+function onBellLinkStart(dataJson) {
+    const data = JSON.parse(dataJson);
+    bellLinkActive = true;
+
+    // Hide reels, show bell link overlay
+    document.getElementById('reels-area').style.display = 'none';
+    document.getElementById('belllink-overlay').classList.add('visible');
+
+    // Update header
+    document.getElementById('bl-respins').textContent = data.respinsLeft;
+    document.getElementById('bl-total').textContent = data.total.toLocaleString('en-US');
+
+    // Reels Boost indicator
+    const boostEl = document.getElementById('bl-boost');
+    const rulesEl = document.getElementById('bl-rules');
+    if (data.reelsBoost) {
+        boostEl.style.display = '';
+        rulesEl.textContent = '12🔔 = 2x  ·  15🔔 = 4x  REELS BOOST';
+    } else {
+        boostEl.style.display = 'none';
+        rulesEl.textContent = '15🔔 = 2x';
+    }
+
+    // Build grid
+    buildBellLinkGrid(data.grid, data.boostCells);
+
+    // Update info bar
+    document.getElementById('win-line-text').textContent = '🔔 BELL LINK — RESPINS: ' + data.respinsLeft;
+    document.getElementById('win-info-bar').classList.add('winning');
+
+    SFX.freeSpins();
+    showToast('🔔 BELL LINK ACTIVAT!', 2500);
+
+    // Auto-spin after delay
+    bellLinkAutoTimer = setTimeout(() => {
+        doBellLinkSpin();
+    }, turboMode ? 800 : 2000);
+}
+
+function onBellLinkResult(dataJson) {
+    const data = JSON.parse(dataJson);
+
+    // Update header
+    document.getElementById('bl-respins').textContent = data.respinsLeft;
+    document.getElementById('bl-total').textContent = data.total.toLocaleString('en-US');
+
+    // Re-randomize fruit icons on empty (non-bell) cells
+    const gridEl = document.getElementById('belllink-grid');
+    const newBellSet = new Set(data.newBells.map(nb => nb.row * 5 + nb.reel));
+    for (let i = 0; i < gridEl.children.length; i++) {
+        const cell = gridEl.children[i];
+        if (!cell.classList.contains('has-bell') && !newBellSet.has(i)) {
+            cell.innerHTML = `<img class="bl-cell-fruit" src="${getRandomFruitImg()}" draggable="false">`;
+        }
+    }
+
+    // Animate new bells
+    if (data.newBells.length > 0) {
+        SFX.winSmall();
+        for (const nb of data.newBells) {
+            const idx = nb.row * 5 + nb.reel;
+            const cell = gridEl.children[idx];
+            if (cell) {
+                cell.className = 'bl-cell has-bell new-bell';
+                cell.innerHTML = `
+                    <img class="bl-cell-img" src="icons/bell-link.png" draggable="false">
+                    <div class="bl-cell-value">$${nb.value.toLocaleString('en-US')}</div>
+                `;
+                // Remove new-bell animation class after it plays
+                setTimeout(() => cell.classList.remove('new-bell'), 600);
+            }
+        }
+    }
+
+    document.getElementById('win-line-text').textContent = '🔔 BELL LINK — RESPINS: ' + data.respinsLeft;
+
+    if (data.finished) {
+        // Bonus finished
+        bellLinkActive = false;
+        if (bellLinkAutoTimer) { clearTimeout(bellLinkAutoTimer); bellLinkAutoTimer = null; }
+
+        const mult = data.multiplier || 1;
+        const finalTotal = data.total * mult;
+
+        if (mult > 1) {
+            document.getElementById('win-line-text').textContent = `🔔 BELL LINK WIN: $${data.total.toLocaleString('en-US')} × ${mult} = $${finalTotal.toLocaleString('en-US')}`;
+            showToast(`${mult}x MULTIPLIER!`, 2500);
+        } else {
+            document.getElementById('win-line-text').textContent = '🔔 BELL LINK WIN: $' + finalTotal.toLocaleString('en-US');
+        }
+
+        // Show total win in win counter
+        animateWinCounter(finalTotal);
+        document.getElementById('win-display').classList.remove('hidden-win');
+        if (finalTotal >= state.betPerLine * state.lines * 10) {
+            document.getElementById('win-display').classList.add('big-win');
+            spawnConfetti(80);
+            SFX.winBig();
+        }
+
+        // After delay, hide bell link and show reels again
+        setTimeout(() => {
+            document.getElementById('belllink-overlay').classList.remove('visible');
+            document.getElementById('reels-area').style.display = '';
+            document.getElementById('win-info-bar').classList.remove('winning');
+            renderUI();
+        }, turboMode ? 1500 : 3000);
+    } else {
+        // Continue — auto-spin next
+        bellLinkAutoTimer = setTimeout(() => {
+            doBellLinkSpin();
+        }, turboMode ? 600 : 1500);
+    }
+}
+
+function doBellLinkSpin() {
+    if (!bellLinkActive) return;
+    SFX.spinStart();
+    if (typeof mp !== 'undefined') {
+        mp.trigger('Slots_BellLinkSpin');
+    }
+}
+
+// ══════════════════════════════════════════
+// BOOK OF RA — FREE SPINS UI
+// ══════════════════════════════════════════
+function borShowFreeSpinReveal(expandingSymbol, freeSpinsLeft) {
+    const s = SYMBOLS[expandingSymbol];
+    if (!s) return;
+
+    const revealEl = document.getElementById('bor-freespin-reveal');
+    const revealImg = document.getElementById('bor-reveal-img');
+    const revealName = document.getElementById('bor-reveal-name');
+
+    if (s.img) {
+        revealImg.src = s.img;
+        revealImg.style.display = '';
+    } else {
+        revealImg.style.display = 'none';
+    }
+    revealName.textContent = s.name;
+    revealEl.style.display = 'flex';
+
+    SFX.freeSpins();
+    showToast('📕 10 JOCURI GRATUITE!', 3000);
+
+    // After reveal (3 seconds), hide reveal and start free spinning
+    setTimeout(() => {
+        revealEl.style.display = 'none';
+
+        // Show free spin banner
+        document.getElementById('bor-freespin-banner').style.display = 'flex';
+        const symIcon = document.getElementById('bor-fs-sym-icon');
+        if (s.img) {
+            symIcon.src = s.img;
+            symIcon.style.display = '';
+        } else {
+            symIcon.style.display = 'none';
+        }
+        document.getElementById('bor-fs-sym-name').textContent = s.name;
+        borUpdateFreeSpinBanner(freeSpinsLeft, 0);
+
+        // Start first free spin
+        borFreeSpinAutoTimer = setTimeout(() => {
+            doSpin();
+        }, turboMode ? 400 : 1000);
+    }, 3000);
+}
+
+function borUpdateFreeSpinBanner(spinsLeft, totalWin) {
+    document.getElementById('bor-fs-count').textContent = spinsLeft;
+    document.getElementById('bor-fs-total').textContent = (totalWin || 0).toLocaleString('en-US');
+}
+
+function borEndFreeSpins(totalWin) {
+    if (borFreeSpinAutoTimer) { clearTimeout(borFreeSpinAutoTimer); borFreeSpinAutoTimer = null; }
+
+    borFreeSpinActive = false;
+    borExpandingSymbol = null;
+
+    if (totalWin > 0) {
+        showToast(`📕 JOCURI GRATUITE — TOTAL: $${totalWin.toLocaleString('en-US')}`, 3500);
+        if (totalWin >= state.betPerLine * state.lines * 5) {
+            spawnConfetti(80);
+            SFX.winBig();
+        }
+    }
+
+    // Hide banner after delay
+    setTimeout(() => {
+        document.getElementById('bor-freespin-banner').style.display = 'none';
+        renderUI();
+    }, turboMode ? 1500 : 3000);
+}
+
+function borAnimateExpansion(expandedReels, expandingSymbol) {
+    // After reels stop, visually expand the symbol on the affected reels
+    const s = SYMBOLS[expandingSymbol];
+    if (!s) return;
+
+    for (const reelIdx of expandedReels) {
+        const strip = document.querySelector(`#reel-${reelIdx} .reel-strip`);
+        if (!strip) continue;
+        const stopIdx = currentReelPositions[reelIdx];
+
+        for (let row = 0; row < 3; row++) {
+            const cellIdx = stopIdx + row;
+            const cells = strip.querySelectorAll('.sym-cell');
+            if (cellIdx < cells.length) {
+                const cell = cells[cellIdx];
+                cell.classList.add('bor-expanding');
+                // Replace image with expanding symbol
+                if (s.img) {
+                    cell.innerHTML = `<img class="sym-img" src="${s.img}" alt="${s.name}" draggable="false">`;
+                } else {
+                    cell.innerHTML = `<span class="sym-emoji">${s.emoji}</span>`;
+                }
+            }
+        }
+    }
+
+    // Remove expansion highlight after a brief period
+    setTimeout(() => {
+        document.querySelectorAll('.bor-expanding').forEach(el => el.classList.remove('bor-expanding'));
+    }, 1500);
+}
 
 // Prevent all buttons from being focusable (stops SPACE triggering focused button)
 document.querySelectorAll('button').forEach(btn => btn.setAttribute('tabindex', '-1'));
@@ -1008,31 +1717,53 @@ function onSpaceDown() {
     if (isSpinning) {
         skipRequested = true;
         if (typeof mp !== 'undefined') mp.trigger('Slots_SkipAnimation');
-    } else {
-        spaceHeld = true;
-        doSpin();
-        // Start charge animation — turbo activates after holding
+        return;
+    }
+    spaceHeld = true;
+    // Phase 1: wait SPACE_DETECT_MS to decide normal vs turbo
+    if (spaceDetectTimer) clearTimeout(spaceDetectTimer);
+    spaceDetectTimer = setTimeout(() => {
+        spaceDetectTimer = null;
+        if (!spaceHeld) return; // released early — already handled in onSpaceUp
+        // Phase 2: still held → show charge bar
         const btnSpin = document.getElementById('btn-spin');
         btnSpin.classList.add('charging');
         if (chargeTimer) clearTimeout(chargeTimer);
         chargeTimer = setTimeout(() => {
-            if (spaceHeld) {
-                spaceTurboActive = true;
-                preTurboState = turboMode;
-                turboMode = true;
-                btnSpin.classList.remove('charging');
-                btnSpin.classList.add('turbo-active');
-                document.getElementById('btn-turbo').classList.add('active');
-            }
-        }, CHARGE_DELAY);
-    }
+            chargeTimer = null;
+            if (!spaceHeld) return;
+            // Charge complete → activate turbo and start spinning
+            spaceTurboActive = true;
+            preTurboState = turboMode;
+            turboMode = true;
+            btnSpin.classList.remove('charging');
+            btnSpin.classList.add('turbo-active');
+            document.getElementById('btn-turbo').classList.add('active');
+            doSpin();
+        }, CHARGE_FILL_MS);
+    }, SPACE_DETECT_MS);
 }
 
 function onSpaceUp() {
+    const wasHeld = spaceHeld;
     spaceHeld = false;
     const btnSpin = document.getElementById('btn-spin');
     btnSpin.classList.remove('charging', 'turbo-active');
-    if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
+    // If still in detect phase (< 500ms) → normal spin
+    if (spaceDetectTimer) {
+        clearTimeout(spaceDetectTimer);
+        spaceDetectTimer = null;
+        if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
+        if (wasHeld) doSpin();
+        return;
+    }
+    // If in charge phase → cancel, do normal spin
+    if (chargeTimer) {
+        clearTimeout(chargeTimer);
+        chargeTimer = null;
+        if (wasHeld) doSpin();
+    }
+    // If turbo was active → deactivate
     if (spaceTurboActive) {
         spaceTurboActive = false;
         turboMode = preTurboState;

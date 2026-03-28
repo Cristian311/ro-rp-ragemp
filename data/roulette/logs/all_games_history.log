@@ -1780,3 +1780,30 @@
 [03/27/2026, 17:51:05] LEAVE: Woolfye a părăsit masa #1 "RouletteTable_1774318948645" (result)
 [03/27/2026, 18:52:19] JOIN: Woolfye s-a alăturat mesei #1 "RouletteTable_1774318948645" (1/4)
 [03/27/2026, 18:52:23] LEAVE: Woolfye a părăsit masa #1 "RouletteTable_1774318948645" (betting)
+[03/28/2026, 08:54:37] JOIN: Woolfye s-a alăturat mesei #2 "RouletteTable_1774341307935" (1/4)
+[03/28/2026, 08:54:46] JOIN: Laura_Dobre_1 s-a alăturat mesei #2 "RouletteTable_1774341307935" (2/4)
+[03/28/2026, 08:54:47] SPIN: Numărul câștigător = 18 (red) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:54:47] ══ GAME #521 START ══ Masa "RouletteTable_1774341307935" | Jucători: Woolfye, Laura_Dobre_1
+[03/28/2026, 08:55:05] ══ GAME #521 END ══ Masa "RouletteTable_1774341307935" | Profit casă: $200
+[03/28/2026, 08:55:08] LEAVE: Woolfye a părăsit masa #2 "RouletteTable_1774341307935" (result)
+[03/28/2026, 08:55:23] SPIN: Numărul câștigător = 17 (black) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:55:23] ══ GAME #522 START ══ Masa "RouletteTable_1774341307935" | Jucători: Laura_Dobre_1
+[03/28/2026, 08:55:41] ══ GAME #522 END ══ Masa "RouletteTable_1774341307935" | Profit casă: $1464
+[03/28/2026, 08:55:59] SPIN: Numărul câștigător = 28 (black) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:55:59] ══ GAME #523 START ══ Masa "RouletteTable_1774341307935" | Jucători: Laura_Dobre_1
+[03/28/2026, 08:56:17] WIN: Laura_Dobre_1 a câștigat $36684 (pariu: $1019) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:56:17] ══ GAME #523 END ══ Masa "RouletteTable_1774341307935" | Profit casă: $0
+[03/28/2026, 08:56:35] SPIN: Numărul câștigător = 26 (black) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:56:35] ══ GAME #524 START ══ Masa "RouletteTable_1774341307935" | Jucători: Laura_Dobre_1
+[03/28/2026, 08:56:53] ══ GAME #524 END ══ Masa "RouletteTable_1774341307935" | Profit casă: $2352
+[03/28/2026, 08:57:11] SPIN: Numărul câștigător = 7 (red) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:57:11] ══ GAME #525 START ══ Masa "RouletteTable_1774341307935" | Jucători: Laura_Dobre_1
+[03/28/2026, 08:57:29] ══ GAME #525 END ══ Masa "RouletteTable_1774341307935" | Profit casă: $11272
+[03/28/2026, 08:57:48] SPIN: Numărul câștigător = 20 (black) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:57:48] ══ GAME #526 START ══ Masa "RouletteTable_1774341307935" | Jucători: Laura_Dobre_1
+[03/28/2026, 08:58:06] WIN: Laura_Dobre_1 a câștigat $87048 (pariu: $2418) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:58:06] ══ GAME #526 END ══ Masa "RouletteTable_1774341307935" | Profit casă: $0
+[03/28/2026, 08:58:24] SPIN: Numărul câștigător = 35 (black) | Masa "RouletteTable_1774341307935"
+[03/28/2026, 08:58:24] ══ GAME #527 START ══ Masa "RouletteTable_1774341307935" | Jucători: Laura_Dobre_1
+[03/28/2026, 09:45:09] JOIN: Woolfye s-a alăturat mesei #0 "RouletteTable_1774227865706" (1/4)
+[03/28/2026, 09:45:14] LEAVE: Woolfye a părăsit masa #0 "RouletteTable_1774227865706" (betting)

@@ -125,6 +125,30 @@
   ],
   "2": [
     {
+      "number": 20,
+      "color": "black"
+    },
+    {
+      "number": 7,
+      "color": "red"
+    },
+    {
+      "number": 26,
+      "color": "black"
+    },
+    {
+      "number": 28,
+      "color": "black"
+    },
+    {
+      "number": 17,
+      "color": "black"
+    },
+    {
+      "number": 18,
+      "color": "red"
+    },
+    {
       "number": 32,
       "color": "red"
     },
@@ -179,30 +203,6 @@
     {
       "number": 4,
       "color": "black"
-    },
-    {
-      "number": 24,
-      "color": "black"
-    },
-    {
-      "number": 12,
-      "color": "red"
-    },
-    {
-      "number": 19,
-      "color": "red"
-    },
-    {
-      "number": 13,
-      "color": "black"
-    },
-    {
-      "number": 22,
-      "color": "black"
-    },
-    {
-      "number": 23,
-      "color": "red"
     }
   ],
   "3": [

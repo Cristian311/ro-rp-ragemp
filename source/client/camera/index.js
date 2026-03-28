@@ -5,15 +5,15 @@ let freecamCamera = null;
 let freecamPos = { x: 0, y: 0, z: 0 };
 let freecamRot = { x: 0, y: 0, roll: 0 }; // pitch, yaw, roll
 let moveSpeed = 0.05;
-const SPEED_STEPS = [0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0];
-let speedIndex = 0; // default 0.05
+const SPEED_STEPS = [0.001, 0.003, 0.005, 0.008, 0.01, 0.02, 0.03, 0.05, 0.08, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0, 2.0, 5.0, 10.0];
+let speedIndex = 7; // default 0.05
 let savedPositions = [];
 let hudVisible = true;
 let camBrowser = null;
 let playerStartPos = { x: 0, y: 0, z: 0 };
 const MAX_DISTANCE = 20.0; // max distance from player
 const COLLISION_OFFSET = 0.3; // offset from wall
-let lastFrameTime = Date.now(); // for delta time
+let lastFrameTime = 0; // for delta time (set on first render frame)
 
 // Screen effects — { display: UI name, effect: GTA internal name }
 const SCREEN_EFFECTS = [
@@ -101,6 +101,7 @@ function startFreecam() {
     freecamActive = true;
     global.freecamActive = true;
     hudVisible = true;
+    lastFrameTime = 0; // reset so first frame gets proper dt
 
     const player = mp.players.local;
     const pos = player.position;
@@ -253,7 +254,9 @@ mp.events.add('render', () => {
 
     // Delta time for FPS-independent movement
     const now = Date.now();
-    const dt = Math.min((now - lastFrameTime) / 1000, 0.1); // cap at 100ms
+    if (lastFrameTime === 0) lastFrameTime = now;
+    const rawDt = (now - lastFrameTime) / 1000;
+    const dt = Math.min(Math.max(rawDt, 0.0001), 0.1); // clamp between 0.1ms and 100ms
     lastFrameTime = now;
 
     // Disable all controls so player doesn't move/shoot
@@ -295,7 +298,7 @@ mp.events.add('render', () => {
     // Movement direction based on yaw
     const yawRad = freecamRot.y * Math.PI / 180;
     const pitchRad = freecamRot.x * Math.PI / 180;
-    const speed = moveSpeed * dt * 60; // normalize to 60fps baseline
+    const speed = moveSpeed * dt * 60; // units per second = moveSpeed * 60, FPS-independent
 
     // Forward vector (based on yaw + pitch)
     const fwdX = -Math.sin(yawRad) * Math.cos(pitchRad);
