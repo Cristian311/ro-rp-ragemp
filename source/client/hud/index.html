@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        background: transparent;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color: white;
+        overflow: hidden;
+        user-select: none;
+    }
+
+    #hud-container {
+        position: fixed;
+        top: 1.5vw;
+        left: 1.5vw;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4vw;
+        min-width: 14vw;
+    }
+
+    .hud-card {
+        background: rgba(0, 0, 0, 0.65);
+        border-left: 0.2vw solid;
+        border-radius: 0.3vw;
+        padding: 0.5vw 0.8vw;
+        backdrop-filter: blur(6px);
+        display: flex;
+        align-items: center;
+        gap: 0.5vw;
+    }
+
+    .hud-card .icon {
+        font-size: 1vw;
+        width: 1.6vw;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .hud-card .info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hud-card .label {
+        font-size: 0.55vw;
+        text-transform: uppercase;
+        letter-spacing: 0.1vw;
+        color: rgba(255, 255, 255, 0.45);
+        line-height: 1;
+    }
+
+    .hud-card .value {
+        font-size: 0.9vw;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+
+    /* Player Name */
+    .card-name { border-color: #3b82f6; }
+    .card-name .icon { color: #3b82f6; }
+    .card-name .value { color: #93bbfd; }
+
+    /* Money */
+    .card-money { border-color: #22c55e; }
+    .card-money .icon { color: #22c55e; }
+    .card-money .value { color: #6dffb0; }
+
+    /* Players Online */
+    .card-players { border-color: #f59e0b; }
+    .card-players .icon { color: #f59e0b; }
+    .card-players .value { color: #fcd34d; }
+
+    /* Time */
+    .card-time { border-color: #a78bfa; }
+    .card-time .icon { color: #a78bfa; }
+    .card-time .value { color: #c4b5fd; }
+</style>
+</head>
+<body>
+<div id="hud-container">
+    <div class="hud-card card-name">
+        <div class="icon">👤</div>
+        <div class="info">
+            <span class="label">Jucator</span>
+            <span class="value" id="player-name">—</span>
+        </div>
+    </div>
+    <div class="hud-card card-money">
+        <div class="icon">💰</div>
+        <div class="info">
+            <span class="label">Bani</span>
+            <span class="value" id="player-money">$0</span>
+        </div>
+    </div>
+    <div class="hud-card card-players">
+        <div class="icon">🌐</div>
+        <div class="info">
+            <span class="label">Online</span>
+            <span class="value" id="players-online">0</span>
+        </div>
+    </div>
+    <div class="hud-card card-time">
+        <div class="icon">🕐</div>
+        <div class="info">
+            <span class="label">Ora</span>
+            <span class="value" id="current-time">00:00</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function setName(name) {
+        document.getElementById('player-name').textContent = name;
+    }
+
+    function setMoney(amount) {
+        const formatted = Number(amount).toLocaleString('en-US');
+        document.getElementById('player-money').textContent = '$' + formatted;
+    }
+
+    function setPlayers(count) {
+        document.getElementById('players-online').textContent = count;
+    }
+
+    function setTime(timeStr) {
+        document.getElementById('current-time').textContent = timeStr;
+    }
+
+    // Update clock every second
+    function updateClock() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        setTime(h + ':' + m);
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+</script>
+</body>
+</html>

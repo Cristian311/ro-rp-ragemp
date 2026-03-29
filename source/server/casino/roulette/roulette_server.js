@@ -587,6 +587,7 @@ function updateLobbyUI(lobby) {
 // ──────────────────────────────────────────
 mp.events.add('roulette:updatePlayerMoney', (player, newAmount) => {
     player.money = newAmount;
+    if (global.hudUpdateMoney) global.hudUpdateMoney(player, newAmount);
     console.log(`[RULETĂ] MONEY_SET: ${player.name} → $${newAmount}`);
 });
 

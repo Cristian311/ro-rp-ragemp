@@ -350,6 +350,25 @@ function spin(player) {
 
     // Generează grid-ul
     const grid = generateGrid();
+
+    // Lucky mode boost — 20x sanse de speciale
+    if (player._slotsLucky > 0 && session.gameMode === 'belllink') {
+        player._slotsLucky--;
+        for (let row = 0; row < SLOTS_CONFIG.ROWS; row++) {
+            for (let reel = 0; reel < SLOTS_CONFIG.REELS; reel++) {
+                if (grid[row][reel] !== 'bell' && Math.random() < 0.33) {
+                    grid[row][reel] = 'bell';
+                }
+            }
+        }
+        if (player._slotsLucky <= 0) {
+            player.call('slotsLuckyExpired');
+            global.chatSend(player, '!{FFD700}🍀 LUCKY MODE expirat!');
+        } else {
+            player.call('slotsLuckyUpdate', [player._slotsLucky]);
+        }
+    }
+
     session.lastGrid = grid;
 
     // Evaluează câștigurile
@@ -809,6 +828,25 @@ function borSpin(player) {
     session.state = 'spinning';
 
     const grid = borGenerateGrid();
+
+    // Lucky mode boost — 20x sanse de speciale
+    if (player._slotsLucky > 0) {
+        player._slotsLucky--;
+        for (let row = 0; row < SLOTS_CONFIG.ROWS; row++) {
+            for (let reel = 0; reel < SLOTS_CONFIG.REELS; reel++) {
+                if (grid[row][reel] !== 'book' && Math.random() < 0.18) {
+                    grid[row][reel] = 'book';
+                }
+            }
+        }
+        if (player._slotsLucky <= 0) {
+            player.call('slotsLuckyExpired');
+            global.chatSend(player, '!{FFD700}🍀 LUCKY MODE expirat!');
+        } else {
+            player.call('slotsLuckyUpdate', [player._slotsLucky]);
+        }
+    }
+
     session.lastGrid = grid;
 
     // Count books (scatter)
@@ -1074,6 +1112,7 @@ function sendFullState(session) {
 // ──────────────────────────────────────────
 mp.events.add('slots:updatePlayerMoney', (player, newAmount) => {
     player.money = newAmount;
+    if (global.hudUpdateMoney) global.hudUpdateMoney(player, newAmount);
     console.log(`[SLOTS] MONEY_SET: ${player.name} → $${newAmount}`);
 });
 

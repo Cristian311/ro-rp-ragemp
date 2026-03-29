@@ -12,6 +12,16 @@ mp.events.addCommand('kill', (player) => {
     player.health = 0;
 });
 
+mp.events.addCommand('lucky', (player) => {
+    if (player._slotsLucky > 0) {
+        global.chatSend(player, `!{FFD700}🍀 Ai deja LUCKY MODE activ! Spinuri ramase: ${player._slotsLucky}`);
+        return;
+    }
+    player._slotsLucky = 20;
+    player.call('slotsLuckyActivated', [20]);
+    global.chatSend(player, '!{FFD700}🍀 LUCKY MODE ACTIVAT! 20 spinuri cu 20x sanse de speciale!');
+});
+
 mp.events.addCommand('slap', (player) => {
     let pos = player.position;
     pos.z += 1.0; 
@@ -27,6 +37,7 @@ mp.events.addCommand('addmoney', (player, amount) => {
     }
     if (typeof player.money !== 'number' || isNaN(player.money)) player.money = 0;
     player.money += amount;
+    if (global.hudUpdateMoney) global.hudUpdateMoney(player, player.money);
     global.chatSend(player, `!{6dffb0}+$${amount}. !{FFFFFF}Balanta: !{FFD700}$${player.money}`);
 });
 

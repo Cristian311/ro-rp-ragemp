@@ -1,0 +1,8 @@
+public class CharacterData
+    {
+      
+   public DateTime LastSpinWheel;
+        public int Prize = -1;
+
+
+}

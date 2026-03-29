@@ -1005,3 +1005,175 @@ body {
     0%   { filter: brightness(1); }
     100% { filter: brightness(1.5) drop-shadow(0 0 12px rgba(192,57,43,0.8)); }
 }
+
+/* ═══════════════════════════════════════════
+   BELL DANCE ANIMATION
+   Clopotele dansează la fiecare specială
+   ═══════════════════════════════════════════ */
+.bell-dance {
+    animation: bellDance 1.2s ease-in-out !important;
+}
+@keyframes bellDance {
+    0%   { transform: rotate(0deg) scale(1); }
+    8%   { transform: rotate(-18deg) scale(1.15); }
+    16%  { transform: rotate(18deg) scale(1.15); }
+    24%  { transform: rotate(-14deg) scale(1.12); }
+    32%  { transform: rotate(14deg) scale(1.12); }
+    40%  { transform: rotate(-10deg) scale(1.08); }
+    48%  { transform: rotate(10deg) scale(1.08); }
+    56%  { transform: rotate(-6deg) scale(1.04); }
+    64%  { transform: rotate(6deg) scale(1.04); }
+    72%  { transform: rotate(-3deg) scale(1.02); }
+    80%  { transform: rotate(3deg) scale(1.02); }
+    90%  { transform: rotate(-1deg) scale(1); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+/* Bell link new bell apare cu bounce + shine */
+.bl-cell.new-bell .bl-cell-img {
+    animation: bellDance 1.2s ease-in-out;
+}
+
+/* ═══════════════════════════════════════════
+   BELL LINK GRID SPIN ANIMATION
+   ═══════════════════════════════════════════ */
+.bl-cell-spinning {
+    animation: blCellFlash 0.15s ease-in-out;
+    opacity: 0.5;
+    filter: blur(1px);
+}
+@keyframes blCellFlash {
+    0%   { transform: translateY(-40%); opacity: 0.2; }
+    50%  { transform: translateY(0); opacity: 0.5; }
+    100% { transform: translateY(40%); opacity: 0.2; }
+}
+
+/* ═══════════════════════════════════════════
+   BOOK OF RA — EXPANDING SYMBOL DANCE
+   ═══════════════════════════════════════════ */
+.bor-expand-dance {
+    animation: borExpandDance 1.5s ease-in-out !important;
+}
+@keyframes borExpandDance {
+    0%   { transform: scale(0.3) rotate(-20deg); opacity: 0; filter: brightness(2) drop-shadow(0 0 20px rgba(255,215,0,0.8)); }
+    20%  { transform: scale(1.25) rotate(8deg); opacity: 1; filter: brightness(1.5) drop-shadow(0 0 15px rgba(255,215,0,0.6)); }
+    35%  { transform: scale(0.95) rotate(-5deg); filter: brightness(1.2); }
+    50%  { transform: scale(1.1) rotate(3deg); filter: brightness(1.4) drop-shadow(0 0 12px rgba(255,215,0,0.5)); }
+    65%  { transform: scale(0.98) rotate(-2deg); filter: brightness(1.1); }
+    80%  { transform: scale(1.05) rotate(1deg); filter: brightness(1.2) drop-shadow(0 0 8px rgba(255,215,0,0.3)); }
+    100% { transform: scale(1) rotate(0deg); filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+/* ═══════════════════════════════════════════
+   LUCKY MODE
+   ═══════════════════════════════════════════ */
+
+/* Full-screen lucky overlay */
+#lucky-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(0,80,0,0.92) 0%, rgba(0,40,0,0.97) 100%);
+    pointer-events: none;
+}
+.lucky-clover {
+    font-size: 14vw;
+    filter: drop-shadow(0 0 40px rgba(80,255,80,0.9)) drop-shadow(0 0 80px rgba(0,200,0,0.5));
+    animation: luckyCloverSpin 2s ease-in-out infinite;
+}
+.lucky-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 6vw;
+    color: #ffd700;
+    text-shadow: 0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.4), 0 4px 0 #996600;
+    letter-spacing: 0.6vw;
+    margin-top: 1vw;
+}
+.lucky-subtitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 2vw;
+    color: #88ff88;
+    text-shadow: 0 0 20px rgba(80,255,80,0.6);
+    letter-spacing: 0.3vw;
+    margin-top: 0.5vw;
+}
+
+@keyframes luckyCloverSpin {
+    0%   { transform: scale(1) rotate(0deg); }
+    25%  { transform: scale(1.15) rotate(8deg); }
+    50%  { transform: scale(1) rotate(0deg); }
+    75%  { transform: scale(1.15) rotate(-8deg); }
+    100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Entrance animation */
+.lucky-entrance {
+    animation: luckyEntrance 0.6s ease-out forwards;
+}
+@keyframes luckyEntrance {
+    0%   { opacity: 0; transform: scale(0.3); }
+    50%  { opacity: 1; transform: scale(1.1); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Exit animation */
+.lucky-exit {
+    animation: luckyExit 0.6s ease-in forwards;
+}
+@keyframes luckyExit {
+    0%   { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* Persistent lucky badge */
+#lucky-badge {
+    position: absolute;
+    top: 1.2vw;
+    right: 1.2vw;
+    z-index: 800;
+    display: none;
+    align-items: center;
+    gap: 0.4vw;
+    padding: 0.4vw 1vw;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6vw;
+    color: #ffd700;
+    background: linear-gradient(135deg, rgba(0,80,0,0.85), rgba(0,50,0,0.95));
+    border: 2px solid #44cc44;
+    border-radius: 0.6vw;
+    box-shadow: 0 0 15px rgba(0,200,0,0.4), inset 0 0 8px rgba(80,255,80,0.15);
+    text-shadow: 0 0 10px rgba(255,215,0,0.6);
+}
+#lucky-badge #lucky-spins-left {
+    color: #88ff88;
+    font-size: 1.8vw;
+    text-shadow: 0 0 12px rgba(80,255,80,0.8);
+}
+
+.lucky-badge-pulse {
+    animation: luckyBadgePulse 2s ease-in-out infinite;
+}
+@keyframes luckyBadgePulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(0,200,0,0.4), inset 0 0 8px rgba(80,255,80,0.15); }
+    50%      { box-shadow: 0 0 25px rgba(0,255,0,0.7), inset 0 0 12px rgba(80,255,80,0.3); border-color: #66ff66; }
+}
+
+.lucky-badge-flash {
+    animation: luckyBadgeFlash 0.4s ease-out;
+}
+@keyframes luckyBadgeFlash {
+    0%   { transform: scale(1.2); filter: brightness(1.5); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+.lucky-badge-fade {
+    animation: luckyBadgeFade 1s ease-out forwards;
+}
+@keyframes luckyBadgeFade {
+    0%   { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.6); }
+}

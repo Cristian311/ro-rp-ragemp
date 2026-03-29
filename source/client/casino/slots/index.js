@@ -97,11 +97,6 @@ const KEY_SPACE = 0x20;
 
 let slotsSpaceHeld = false;
 
-/*
-mp.keys.bind(KEY_E, true, () => {
-    mp.events.callRemote('Server_PlayerAction', 'interact');
-});
-*/
 mp.keys.bind(KEY_ESC, true, () => {
     if (global.chatInputActive) return;
     if (slotsBrowser !== null) {
@@ -253,6 +248,25 @@ mp.events.add('slotsBellLinkResult', (dataJson) => {
 mp.events.add('slotsSkipAnimation', () => {
     if (slotsBrowser !== null) {
         slotsBrowser.execute('skipAnimation();');
+    }
+});
+
+// Lucky mode events (server → CEF)
+mp.events.add('slotsLuckyActivated', (spins) => {
+    if (slotsBrowser !== null) {
+        slotsBrowser.execute(`onLuckyActivated(${spins});`);
+    }
+});
+
+mp.events.add('slotsLuckyUpdate', (spinsLeft) => {
+    if (slotsBrowser !== null) {
+        slotsBrowser.execute(`onLuckyUpdate(${spinsLeft});`);
+    }
+});
+
+mp.events.add('slotsLuckyExpired', () => {
+    if (slotsBrowser !== null) {
+        slotsBrowser.execute('onLuckyExpired();');
     }
 });
 

@@ -1011,6 +1011,7 @@ function updateLobbyUI(lobby) {
 //Events
 mp.events.add('poker:updatePlayerMoney', (player, newAmount) => {
     player.money = newAmount; // banii din mana
+    if (global.hudUpdateMoney) global.hudUpdateMoney(player, newAmount);
     console.log(`[POKER] MONEY_SET: ${player.name} → $${newAmount}`);
 });
 

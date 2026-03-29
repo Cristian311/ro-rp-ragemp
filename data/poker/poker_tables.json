@@ -42,5 +42,21 @@
         "z": 66.76,
         "heading": -156.94,
         "casinoId": null
+    },
+    {
+        "name": "PokerTable_1774726058364",
+        "x": 39.47,
+        "y": 0.52,
+        "z": 69.73,
+        "heading": -120.36,
+        "casinoId": null
+    },
+    {
+        "name": "PokerTable_1774726058368",
+        "x": 39.47,
+        "y": 0.52,
+        "z": 69.73,
+        "heading": -120.36,
+        "casinoId": null
     }
 ]
